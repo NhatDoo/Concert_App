@@ -1,4 +1,4 @@
-import { StaffRole } from "../VO/staff_vo/staff.role";
+import { StaffRole } from "../VO/staff.role";
 
 export class Staff {
     id: number;

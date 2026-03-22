@@ -1,4 +1,4 @@
-import { InvoiceItem } from "../VO/invode_vo/invode.vo";
+import { InvoiceItem } from "../VO/invode.vo";
 
 // BƯỚC 1: Xây dựng Interface - MỞ RỘNG (Open for Extension)
 export interface ITaxPolicy {

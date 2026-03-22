@@ -1,4 +1,4 @@
-import { InvoiceItem } from "../VO/invode_vo/invode.vo";
+import { InvoiceItem } from "../VO/invode.vo";
 import { ITaxPolicy } from "../policy/tax.policy";
 
 export enum InvoiceStatus {

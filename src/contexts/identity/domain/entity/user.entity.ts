@@ -1,7 +1,7 @@
-import { phoneNumber } from "../VO/user_vo/phonenumber.vo";
-import { Email } from "../VO/user_vo/email.vo";
-import { Password } from "../VO/user_vo/password.vo";
-import { Role } from "../VO/user_vo/role.vo";
+import { phoneNumber } from "../VO/phonenumber.vo";
+import { Email } from "../VO/email.vo";
+import { Password } from "../VO/password.vo";
+import { Role } from "../VO/role.vo";
 export class User{
     id: number ; 
     name: string ;

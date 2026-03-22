@@ -1,4 +1,4 @@
-import { Tickettype } from "../VO/ticket_vo/tickettype.vo"
+import { Tickettype } from "../VO/tickettype.vo"
 
 export class Ticket {
     id: number

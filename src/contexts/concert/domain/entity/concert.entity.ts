@@ -1,4 +1,4 @@
-import { StartDate } from "../VO/concert_vo/startdate.vo"
+import { StartDate } from "../VO/startdate.vo"
 
 export class Concert {
     id : number
