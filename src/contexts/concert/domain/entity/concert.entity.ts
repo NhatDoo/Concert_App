@@ -1,28 +1,36 @@
-import { StartDate } from "../VO/startdate.vo"
+import { AggregateRoot } from "@nestjs/cqrs";
+import { StartDate } from "../VO/startdate.vo";
+import { ConcertCreatedEvent } from "../events/concert-created.event";
+import { ConcertRescheduledEvent } from "../events/concert-rescheduled.event";
 
-export class Concert {
-    id : number
-    organizerId : number
-    name : string
-    startdate : StartDate
-    location : string
+export class Concert extends AggregateRoot {
+    private readonly id: number;
+    private readonly organizerId: number;
+    private name: string;
+    private startdate: StartDate;
+    private location: string;
 
-    constructor(id: number, name: string, date: StartDate, location: string) {
+    private constructor(id: number, name: string, date: StartDate, location: string) {
+        super();
         this.id = id;
         this.name = name;
-        this.startdate = date;   
+        this.startdate = date;
         this.location = location;
+
     }
 
     static create(id: number, name: string, startdate: StartDate, location: string): Concert {
         if (!name) throw new Error("Name is required");
-        return new Concert(id, name, startdate, location);
+
+        const concert = new Concert(id, name, startdate, location);
+        concert.apply(new ConcertCreatedEvent(id, name, startdate.getValue(), location));
+        return concert;
     }
 
     getId(): number {
         return this.id;
-    }   
-    getName(): string { 
+    }
+    getName(): string {
         return this.name;
     }
     getDate(): StartDate {
@@ -31,13 +39,20 @@ export class Concert {
     getLocation(): string {
         return this.location;
     }
-    setName(name: string): void {
-        this.name = name;
+
+    // --- Domain Behaviors ---
+    rename(newName: string): void {
+        if (!newName) throw new Error("Name cannot be empty");
+        this.name = newName;
     }
-    setDate(date: StartDate): void {
-        this.startdate = date;
+
+    reschedule(newDate: StartDate): void {
+        this.startdate = newDate;
+        this.apply(new ConcertRescheduledEvent(this.id, newDate.getValue()));
     }
-    setLocation(location: string): void {
-        this.location = location;
+
+    changeLocation(newLocation: string): void {
+        if (!newLocation) throw new Error("Location cannot be empty");
+        this.location = newLocation;
     }
 }

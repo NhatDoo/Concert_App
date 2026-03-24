@@ -1,15 +1,18 @@
+import { AggregateRoot } from "@nestjs/cqrs";
 import { Divide } from "../entity/devide.entity";
 import { Location } from "../entity/location.entity";
 import { Logistics, LogisticsStatus } from "../entity/logistics.entity";
+import { LocationAssignedEvent } from "../events/location-assigned.event";
 
-export class OrganizeAggregate {
-    id: number;
-    concertId: number;
-    location: Location | null;
-    equipments: Divide[];
-    logistics: Logistics[];
+export class OrganizeAggregate extends AggregateRoot {
+    private readonly id: number;
+    private readonly concertId: number;
+    private location: Location | null;
+    private equipments: Divide[];
+    private logistics: Logistics[];
 
-    constructor(id: number, concertId: number, location: Location | null = null, equipments: Divide[] = [], logistics: Logistics[] = []) {
+    private constructor(id: number, concertId: number, location: Location | null = null, equipments: Divide[] = [], logistics: Logistics[] = []) {
+        super();
         this.id = id;
         this.concertId = concertId;
         this.location = location;
@@ -25,10 +28,21 @@ export class OrganizeAggregate {
     // --- Location Management (Địa điểm) ---
     assignLocation(location: Location): void {
         this.location = location;
+        // Assume location has an ID, using a dummy or fetching if exists:
+        const locId = (location as any).id || 0; // Replace with proper location ID getter in production
+        this.apply(new LocationAssignedEvent(this.id, this.concertId, locId));
     }
 
     getLocation(): Location | null {
         return this.location;
+    }
+
+    getId(): number {
+        return this.id;
+    }
+
+    getConcertId(): number {
+        return this.concertId;
     }
 
     // --- Equipment Management (Thiết bị) ---

@@ -1,24 +1,27 @@
+import { AggregateRoot } from "@nestjs/cqrs";
 import { phoneNumber } from "../VO/phonenumber.vo";
 import { Email } from "../VO/email.vo";
 import { Password } from "../VO/password.vo";
 import { Role } from "../VO/role.vo";
-export class User{
-    id: number ; 
-    name: string ;
-    phoneNumber: phoneNumber ;
-    email: Email ;
-    role: Role ;
-    password: Password ;
 
+export class User extends AggregateRoot {
+    private readonly id: number;
+    private name: string;
+    private phoneNumber: phoneNumber;
+    private email: Email;
+    private role: Role;
+    private password: Password;
 
-    constructor(id: number, name: string, phoneNumber: phoneNumber, email: Email, password: Password , role: Role ) {
-        this.id = id ;
-        this.name = name ;
-        this.phoneNumber = phoneNumber ;
-        this.email = email ;
-        this.password = password ;
-        this.role = role ;
+    private constructor(id: number, name: string, phoneNumber: phoneNumber, email: Email, password: Password, role: Role) {
+        super();
+        this.id = id;
+        this.name = name;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.password = password;
+        this.role = role;
     }
+
     static create(
         id: number,
         name: string,
@@ -28,7 +31,7 @@ export class User{
         role: Role
     ): User {
         if (!name) throw new Error("Name is required");
-        return new User(id, name, phoneNumber, email, password , role);
+        return new User(id, name, phoneNumber, email, password, role);
     }
 
     getId(): number {
@@ -46,20 +49,27 @@ export class User{
     getEmail(): Email {
         return this.email;
     }
-    setName(name: string): void {
-        this.name = name;
+
+    changeName(newName: string): void {
+        if (!newName) throw new Error("Name cannot be empty");
+        this.name = newName;
     }
-    setRole(role: Role): void {
-        this.role = role;
+
+    assignRole(newRole: Role): void {
+        this.role = newRole;
     }
-    setPhoneNumber(phoneNumber: phoneNumber): void {
-        this.phoneNumber = phoneNumber;
+
+    changePhoneNumber(newPhoneNumber: phoneNumber): void {
+        this.phoneNumber = newPhoneNumber;
     }
-    setEmail(email: Email): void {
-        this.email = email;
+
+    changeEmail(newEmail: Email): void {
+        this.email = newEmail;
     }
-    setPassword(password: Password): void {
-        this.password = password;
+
+    changePassword(newPassword: Password): void {
+        // Here you might emit a UserPasswordChangedEvent if you had one.
+        this.password = newPassword;
     }
 
     async verifyPassword(plain: string) {

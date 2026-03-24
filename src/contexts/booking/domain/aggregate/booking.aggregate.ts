@@ -1,25 +1,34 @@
+import { AggregateRoot } from '@nestjs/cqrs';
 import { Ticket } from "../entity/ticket.entity";
+import { BookingCreatedEvent } from '../events/booking-created.event';
+import { BookingConfirmedEvent } from '../events/booking-confirmed.event';
+import { BookingCancelledEvent } from '../events/booking-cancelled.event';
+import { BookingId } from '../VO/booking-id.vo';
+import { UserId } from '../../../identity/domain/VO/user-id.vo';
+import { ConcertId } from '../../../concert/domain/VO/concert-id.vo';
+import { InvalidBookingStateException } from '../exception/invalid-booking-state.exception';
 
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 
-export class Booking {
-    private id: number;
-    private userId: number;
-    private concertId: number;
+export class Booking extends AggregateRoot {
+    private readonly id: BookingId;
+    private readonly userId: UserId;
+    private readonly concertId: ConcertId;
     private tickets: Ticket[];
     private totalAmount: number;
     private status: BookingStatus;
-    private createdAt: Date;
+    private readonly createdAt: Date;
 
     private constructor(
-        id: number,
-        userId: number,
-        concertId: number,
+        id: BookingId,
+        userId: UserId,
+        concertId: ConcertId,
         tickets: Ticket[],
         totalAmount: number,
         status: BookingStatus,
         createdAt: Date
     ) {
+        super();
         this.id = id;
         this.userId = userId;
         this.concertId = concertId;
@@ -29,24 +38,20 @@ export class Booking {
         this.createdAt = createdAt;
     }
 
-    /**
-     * Factory method: Tạo một Booking mới (Luôn bắt đầu ở trạng thái PENDING)
-     */
-    static create(id: number, userId: number, concertId: number, tickets: Ticket[]): Booking {
+
+    static create(id: BookingId, userId: UserId, concertId: ConcertId, tickets: Ticket[]): Booking {
         if (!tickets || tickets.length === 0) {
             throw new Error("A booking must contain at least one ticket.");
         }
 
-        // Kiểm tra xem tất cả ticket có thuộc cùng một concert không
-        const allSameConcert = tickets.every(t => t.getConcertId() === concertId);
+        const allSameConcert = tickets.every(t => t.getConcertId() === concertId.getNumber());
         if (!allSameConcert) {
             throw new Error("All tickets in a booking must belong to the same concert.");
         }
 
-        // Tính tổng tiền dựa trên giá của từng vé (Logic nghiệp vụ nằm ở đây)
         const totalAmount = tickets.reduce((sum, ticket) => sum + ticket.getPrice(), 0);
 
-        return new Booking(
+        const booking = new Booking(
             id,
             userId,
             concertId,
@@ -55,39 +60,42 @@ export class Booking {
             'PENDING',
             new Date()
         );
+
+        booking.apply(new BookingCreatedEvent(
+            id.getNumber(),
+            userId.getNumber(),
+            concertId.getNumber(),
+            totalAmount
+        ));
+        return booking;
     }
 
-    /**
-     * Domain Behavior: Xác nhận thanh toán/đặt chỗ thành công
-     */
+
     confirm(): void {
         if (this.status === 'CANCELLED') {
-            throw new Error("Cannot confirm a cancelled booking.");
+            throw new InvalidBookingStateException('confirm', this.status);
         }
         if (this.status === 'CONFIRMED') {
-            throw new Error("Booking is already confirmed.");
+            throw new InvalidBookingStateException('confirm', this.status);
         }
         this.status = 'CONFIRMED';
+        this.apply(new BookingConfirmedEvent(this.id.getNumber(), this.totalAmount));
     }
 
-    /**
-     * Domain Behavior: Hủy đặt chỗ
-     */
     cancel(): void {
         if (this.status === 'CONFIRMED') {
-            throw new Error("Cannot cancel a confirmed booking (require refund process).");
+            throw new InvalidBookingStateException('cancel', this.status);
         }
         this.status = 'CANCELLED';
+        this.apply(new BookingCancelledEvent(this.id.getNumber()));
     }
 
-    /**
-     * Domain Behavior: Thêm vé vào Booking (chỉ khi chưa xác nhận)
-     */
+
     addTicket(ticket: Ticket): void {
         if (this.status !== 'PENDING') {
-            throw new Error("Can only add tickets to a PENDING booking.");
+            throw new InvalidBookingStateException('add ticket', this.status);
         }
-        if (ticket.getConcertId() !== this.concertId) {
+        if (ticket.getConcertId() !== this.concertId.getNumber()) {
             throw new Error("Cannot add ticket from a different concert.");
         }
 
@@ -95,28 +103,23 @@ export class Booking {
         this.recalculateTotalAmount();
     }
 
-    /**
-     * Method nội bộ để cập nhật lại tổng tiền mỗi khi số lượng vé thay đổi
-     */
+
     private recalculateTotalAmount(): void {
         this.totalAmount = this.tickets.reduce((sum, ticket) => sum + ticket.getPrice(), 0);
     }
-
-    // Getters (Chỉ expose những thứ cần thiết, giấu các logic set data trực tiếp)
-    getId(): number {
+    getId(): BookingId {
         return this.id;
     }
 
-    getUserId(): number {
+    getUserId(): UserId {
         return this.userId;
     }
 
-    getConcertId(): number {
+    getConcertId(): ConcertId {
         return this.concertId;
     }
 
     getTickets(): Ticket[] {
-        // Trả về một bản copy của mảng tickets để tránh bị mutability (sửa đổi mảng gốc từ bên ngoài)
         return [...this.tickets];
     }
 
