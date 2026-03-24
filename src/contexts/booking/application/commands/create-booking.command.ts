@@ -1,7 +1,7 @@
 export class CreateBookingCommand {
     constructor(
-        public readonly userId: number,
-        public readonly concertId: number,
-        public readonly ticketIds: number[]
+        public readonly userId: string,
+        public readonly concertId: string,
+        public readonly ticketIds: string[]
     ) { }
 }

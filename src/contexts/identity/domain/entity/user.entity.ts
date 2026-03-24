@@ -11,8 +11,17 @@ export class User extends AggregateRoot {
     private email: Email;
     private role: Role;
     private password: Password;
+    private refreshToken: string | null;
 
-    private constructor(id: string, name: string, phoneNumber: phoneNumber, email: Email, password: Password, role: Role) {
+    private constructor(
+        id: string,
+        name: string,
+        phoneNumber: phoneNumber,
+        email: Email,
+        password: Password,
+        role: Role,
+        refreshToken: string | null = null
+    ) {
         super();
         this.id = id;
         this.name = name;
@@ -20,6 +29,7 @@ export class User extends AggregateRoot {
         this.email = email;
         this.password = password;
         this.role = role;
+        this.refreshToken = refreshToken;
     }
 
     static create(
@@ -28,10 +38,11 @@ export class User extends AggregateRoot {
         phoneNumber: phoneNumber,
         email: Email,
         password: Password,
-        role: Role
+        role: Role,
+        refreshToken: string | null = null
     ): User {
         if (!name) throw new Error("Name is required");
-        return new User(id, name, phoneNumber, email, password, role);
+        return new User(id, name, phoneNumber, email, password, role, refreshToken);
     }
 
     getId(): string {
@@ -49,6 +60,12 @@ export class User extends AggregateRoot {
     getEmail(): Email {
         return this.email;
     }
+    getPassword(): Password {
+        return this.password;
+    }
+    getRefreshToken(): string | null {
+        return this.refreshToken;
+    }
 
     changeName(newName: string): void {
         if (!newName) throw new Error("Name cannot be empty");
@@ -57,6 +74,10 @@ export class User extends AggregateRoot {
 
     assignRole(newRole: Role): void {
         this.role = newRole;
+    }
+
+    updateRefreshToken(token: string | null): void {
+        this.refreshToken = token;
     }
 
     changePhoneNumber(newPhoneNumber: phoneNumber): void {

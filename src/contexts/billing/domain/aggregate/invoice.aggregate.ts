@@ -1,22 +1,22 @@
 import { InvoiceItem } from "../VO/invode.vo";
 import { ITaxPolicy } from "../policy/tax.policy";
+import { Money } from "../../../../common/domain/value-object/money.vo";
+
 
 export enum InvoiceStatus {
-    DRAFT = "DRAFT",         // Bản nháp (chưa chốt)
-    ISSUED = "ISSUED",       // Đã xuất/phát hành (chờ người dùng thanh toán)
-    PAID = "PAID",           // Đã thanh toán (thành công)
-    CANCELLED = "CANCELLED"  // Bị hủy
+    DRAFT = "DRAFT",
+    ISSUED = "ISSUED",
+    PAID = "PAID",
+    CANCELLED = "CANCELLED"
 }
 
-
-// Aggregate Root bao trọn toàn bộ khái niệm "Hóa đơn"
 export class InvoiceAggregate {
     id: string;
     bookingId: string;
     userId: string;
     items: InvoiceItem[];    // Danh sách dòng tiền
-    taxAmount: number;
-    discountAmount: number;
+    taxAmount: Money;
+    discountAmount: Money;
     status: InvoiceStatus;
     issueDate: Date;
     dueDate: Date;
@@ -26,7 +26,7 @@ export class InvoiceAggregate {
         id: string,
         bookingId: string,
         userId: string,
-        discountAmount: number = 0,
+        discountAmount: Money,
         issueDate: Date,
         dueDate: Date
     ) {
@@ -34,26 +34,24 @@ export class InvoiceAggregate {
         this.bookingId = bookingId;
         this.userId = userId;
         this.items = [];
-        this.taxAmount = 0; // Khởi tạo bằng 0 khi còn là DRAFT
+        this.taxAmount = Money.create(0); // Khởi tạo bằng 0 khi còn là DRAFT
         this.discountAmount = discountAmount;
         this.status = InvoiceStatus.DRAFT;
         this.issueDate = issueDate;
         this.dueDate = dueDate;
     }
 
-    // Factory method tạo mới Hóa đơn
-    static create(id: string, bookingId: string, userId: string, dueDate: Date, discountAmount: number = 0): InvoiceAggregate {
+    static create(id: string, bookingId: string, userId: string, dueDate: Date, discountAmount?: Money): InvoiceAggregate {
         if (!bookingId) throw new Error("Booking Id is required to generate an invoice");
         if (!userId) throw new Error("User Id is required to generate an invoice");
 
         const issueDate = new Date();
         if (dueDate <= issueDate) throw new Error("Due date must be in the future");
 
-        return new InvoiceAggregate(id, bookingId, userId, discountAmount, issueDate, dueDate);
+        return new InvoiceAggregate(id, bookingId, userId, discountAmount || Money.create(0), issueDate, dueDate);
     }
 
     addItem(item: InvoiceItem): void {
-        // Business Rule: Chỉ được thay đổi hóa đơn nếu đang ở trạng thái DRAFT
         if (this.status !== InvoiceStatus.DRAFT) {
             throw new Error("Cannot add items to an invoice that is already issued or paid");
         }
@@ -61,7 +59,6 @@ export class InvoiceAggregate {
     }
 
     removeItem(itemToRemove: InvoiceItem): void {
-        // Business Rule: Chỉ được thay đổi hóa đơn nếu đang ở trạng thái DRAFT
         if (this.status !== InvoiceStatus.DRAFT) {
             throw new Error("Cannot remove items from an invoice that is already issued or paid");
         }
@@ -69,19 +66,25 @@ export class InvoiceAggregate {
     }
 
     // Tính tổng tiền chưa thuế (Tổng cộng các items)
-    getSubtotal(): number {
-        return this.items.reduce((sum, item) => sum + item.total, 0);
+    getSubtotal(): Money {
+        return this.items.reduce((sum, item) => sum.add(item.total), Money.create(0));
     }
 
 
-    getTaxAmount(): number {
+    getTaxAmount(): Money {
         return this.taxAmount;
     }
 
 
-    getTotalAmount(): number {
-        const total = this.getSubtotal() + this.getTaxAmount() - this.discountAmount;
-        return total > 0 ? total : 0;
+    getTotalAmount(): Money {
+        const subtotal = this.getSubtotal();
+        const tax = this.getTaxAmount();
+        const totalBeforeDiscount = subtotal.add(tax);
+        try {
+            return totalBeforeDiscount.subtract(this.discountAmount);
+        } catch (e) {
+            return Money.create(0);
+        }
     }
 
     issueInvoice(taxPolicy: ITaxPolicy): void {

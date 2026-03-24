@@ -2,30 +2,33 @@ export enum PaymentMethod {
     CREDIT_CARD = "CREDIT_CARD",
     BANK_TRANSFER = "BANK_TRANSFER",
     E_WALLET = "E_WALLET",   // Momo, ZaloPay, v.v.
+    VNPAY = "VNPAY",
     CASH = "CASH"
 }
 
 export enum PaymentStatus {
-    PENDING = "PENDING",     // Đang chờ thanh toán
-    SUCCESS = "SUCCESS",     // Toán hoàn tất
-    FAILED = "FAILED",       // Thanh toán thất bại
-    REFUNDED = "REFUNDED"    // Đã hoàn tiền
+    PENDING = "PENDING",
+    SUCCESS = "SUCCESS",
+    FAILED = "FAILED",
+    REFUNDED = "REFUNDED"
 }
 
+import { Money } from "../../../../common/domain/value-object/money.vo";
+
 export class Payment {
-    id: number;
-    bookingId: number;       // Thanh toán cho một giao dịch Booking cụ thể
-    amount: number;
+    id: string;
+    bookingId: string;
+    amount: Money;
     method: PaymentMethod;
     status: PaymentStatus;
-    transactionId?: string;  // Mã giao dịch từ bên phía Third-Party (VnPay, Momo)
+    transactionId?: string;
     createdAt: Date;
     updatedAt: Date;
 
     constructor(
-        id: number,
-        bookingId: number,
-        amount: number,
+        id: string,
+        bookingId: string,
+        amount: Money,
         method: PaymentMethod,
         status: PaymentStatus,
         createdAt: Date,
@@ -42,9 +45,8 @@ export class Payment {
         this.transactionId = transactionId;
     }
 
-    static create(id: number, bookingId: number, amount: number, method: PaymentMethod): Payment {
+    static create(id: string, bookingId: string, amount: Money, method: PaymentMethod): Payment {
         if (!bookingId) throw new Error("Booking ID is required for a Payment");
-        if (amount < 0) throw new Error("Payment amount cannot be negative");
 
         const now = new Date();
         return new Payment(id, bookingId, amount, method, PaymentStatus.PENDING, now, now);

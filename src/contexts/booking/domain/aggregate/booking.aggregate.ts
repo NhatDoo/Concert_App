@@ -7,6 +7,7 @@ import { BookingId } from '../VO/booking-id.vo';
 import { UserId } from '../../../identity/domain/VO/user-id.vo';
 import { ConcertId } from '../../../concert/domain/VO/concert-id.vo';
 import { InvalidBookingStateException } from '../exception/invalid-booking-state.exception';
+import { Money } from '../../../../common/domain/value-object/money.vo';
 
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 
@@ -15,18 +16,20 @@ export class Booking extends AggregateRoot {
     private readonly userId: UserId;
     private readonly concertId: ConcertId;
     private tickets: Ticket[];
-    private totalAmount: number;
+    private totalAmount: Money;
     private status: BookingStatus;
     private readonly createdAt: Date;
+    private version: number;
 
     private constructor(
         id: BookingId,
         userId: UserId,
         concertId: ConcertId,
         tickets: Ticket[],
-        totalAmount: number,
+        totalAmount: Money,
         status: BookingStatus,
-        createdAt: Date
+        createdAt: Date,
+        version: number = 1
     ) {
         super();
         this.id = id;
@@ -36,6 +39,7 @@ export class Booking extends AggregateRoot {
         this.totalAmount = totalAmount;
         this.status = status;
         this.createdAt = createdAt;
+        this.version = version;
     }
 
 
@@ -49,7 +53,8 @@ export class Booking extends AggregateRoot {
             throw new Error("All tickets in a booking must belong to the same concert.");
         }
 
-        const totalAmount = tickets.reduce((sum, ticket) => sum + ticket.getPrice(), 0);
+        const initialAmount = Money.create(0);
+        const totalAmount = tickets.reduce((sum, ticket) => sum.add(ticket.getPrice()), initialAmount);
 
         const booking = new Booking(
             id,
@@ -58,16 +63,39 @@ export class Booking extends AggregateRoot {
             tickets,
             totalAmount,
             'PENDING',
-            new Date()
+            new Date(),
+            1
         );
 
         booking.apply(new BookingCreatedEvent(
             id.getString(),
             userId.getString(),
             concertId.getString(),
-            totalAmount
+            totalAmount.getAmount()
         ));
         return booking;
+    }
+
+    static reconstruct(
+        id: BookingId,
+        userId: UserId,
+        concertId: ConcertId,
+        tickets: Ticket[],
+        totalAmount: Money,
+        status: BookingStatus,
+        createdAt: Date,
+        version: number
+    ): Booking {
+        return new Booking(
+            id,
+            userId,
+            concertId,
+            tickets,
+            totalAmount,
+            status,
+            createdAt,
+            version
+        );
     }
 
 
@@ -79,7 +107,7 @@ export class Booking extends AggregateRoot {
             throw new InvalidBookingStateException('confirm', this.status);
         }
         this.status = 'CONFIRMED';
-        this.apply(new BookingConfirmedEvent(this.id.getString(), this.totalAmount));
+        this.apply(new BookingConfirmedEvent(this.id.getString(), this.totalAmount.getAmount()));
     }
 
     cancel(): void {
@@ -105,8 +133,10 @@ export class Booking extends AggregateRoot {
 
 
     private recalculateTotalAmount(): void {
-        this.totalAmount = this.tickets.reduce((sum, ticket) => sum + ticket.getPrice(), 0);
+        const initialAmount = Money.create(0);
+        this.totalAmount = this.tickets.reduce((sum, ticket) => sum.add(ticket.getPrice()), initialAmount);
     }
+
     getId(): BookingId {
         return this.id;
     }
@@ -123,7 +153,7 @@ export class Booking extends AggregateRoot {
         return [...this.tickets];
     }
 
-    getTotalAmount(): number {
+    getTotalAmount(): Money {
         return this.totalAmount;
     }
 
@@ -133,5 +163,9 @@ export class Booking extends AggregateRoot {
 
     getCreatedAt(): Date {
         return this.createdAt;
+    }
+
+    getVersion(): number {
+        return this.version;
     }
 }

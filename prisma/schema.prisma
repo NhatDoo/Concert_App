@@ -22,10 +22,11 @@ model User {
   name        String
   phoneNumber String
   email       String    @unique
-  password    String
-  role        String    // Mapped from Role VO (e.g. "USER", "ORGANIZER", "ADMIN")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  password     String
+  refreshToken String?
+  role         String    // Mapped from Role VO (e.g. "USER", "ORGANIZER", "ADMIN")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   bookings    Booking[]
   invoices    Invoice[]
