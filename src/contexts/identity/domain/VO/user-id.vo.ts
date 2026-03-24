@@ -1,17 +1,15 @@
 import { UniqueEntityID } from "../../../../common/domain/value-object/unique-entity-id.vo";
 
 export class UserId extends UniqueEntityID {
-    private constructor(id: number) {
+    private constructor(id: string) {
         super(id);
     }
 
-    private _type = 'UserId';
-
-    static create(id: number): UserId {
+    static create(id: string): UserId {
         return new UserId(id);
     }
 
-    getNumber(): number {
-        return this.getValue() as number;
+    getString(): string {
+        return this.getValue() as string;
     }
 }

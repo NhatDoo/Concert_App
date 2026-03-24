@@ -5,13 +5,13 @@ import { Logistics, LogisticsStatus } from "../entity/logistics.entity";
 import { LocationAssignedEvent } from "../events/location-assigned.event";
 
 export class OrganizeAggregate extends AggregateRoot {
-    private readonly id: number;
-    private readonly concertId: number;
+    private readonly id: string;
+    private readonly concertId: string;
     private location: Location | null;
     private equipments: Divide[];
     private logistics: Logistics[];
 
-    private constructor(id: number, concertId: number, location: Location | null = null, equipments: Divide[] = [], logistics: Logistics[] = []) {
+    private constructor(id: string, concertId: string, location: Location | null = null, equipments: Divide[] = [], logistics: Logistics[] = []) {
         super();
         this.id = id;
         this.concertId = concertId;
@@ -20,7 +20,7 @@ export class OrganizeAggregate extends AggregateRoot {
         this.logistics = logistics;
     }
 
-    static create(id: number, concertId: number): OrganizeAggregate {
+    static create(id: string, concertId: string): OrganizeAggregate {
         if (!concertId) throw new Error("Concert ID is required for organization");
         return new OrganizeAggregate(id, concertId, null, [], []);
     }
@@ -37,11 +37,11 @@ export class OrganizeAggregate extends AggregateRoot {
         return this.location;
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
 
-    getConcertId(): number {
+    getConcertId(): string {
         return this.concertId;
     }
 
@@ -55,7 +55,7 @@ export class OrganizeAggregate extends AggregateRoot {
         }
     }
 
-    removeEquipment(equipmentId: number): void {
+    removeEquipment(equipmentId: string): void {
         this.equipments = this.equipments.filter(e => e.getId() !== equipmentId);
     }
 
@@ -73,7 +73,7 @@ export class OrganizeAggregate extends AggregateRoot {
         }
     }
 
-    updateLogisticsStatus(taskId: number, status: LogisticsStatus): void {
+    updateLogisticsStatus(taskId: string, status: LogisticsStatus): void {
         const task = this.logistics.find(l => l.id === taskId);
         if (!task) {
             throw new Error("Logistics task not found");

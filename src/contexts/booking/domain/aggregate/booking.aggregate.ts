@@ -44,7 +44,7 @@ export class Booking extends AggregateRoot {
             throw new Error("A booking must contain at least one ticket.");
         }
 
-        const allSameConcert = tickets.every(t => t.getConcertId() === concertId.getNumber());
+        const allSameConcert = tickets.every(t => t.getConcertId() === concertId.getString());
         if (!allSameConcert) {
             throw new Error("All tickets in a booking must belong to the same concert.");
         }
@@ -62,9 +62,9 @@ export class Booking extends AggregateRoot {
         );
 
         booking.apply(new BookingCreatedEvent(
-            id.getNumber(),
-            userId.getNumber(),
-            concertId.getNumber(),
+            id.getString(),
+            userId.getString(),
+            concertId.getString(),
             totalAmount
         ));
         return booking;
@@ -79,7 +79,7 @@ export class Booking extends AggregateRoot {
             throw new InvalidBookingStateException('confirm', this.status);
         }
         this.status = 'CONFIRMED';
-        this.apply(new BookingConfirmedEvent(this.id.getNumber(), this.totalAmount));
+        this.apply(new BookingConfirmedEvent(this.id.getString(), this.totalAmount));
     }
 
     cancel(): void {
@@ -87,7 +87,7 @@ export class Booking extends AggregateRoot {
             throw new InvalidBookingStateException('cancel', this.status);
         }
         this.status = 'CANCELLED';
-        this.apply(new BookingCancelledEvent(this.id.getNumber()));
+        this.apply(new BookingCancelledEvent(this.id.getString()));
     }
 
 
@@ -95,7 +95,7 @@ export class Booking extends AggregateRoot {
         if (this.status !== 'PENDING') {
             throw new InvalidBookingStateException('add ticket', this.status);
         }
-        if (ticket.getConcertId() !== this.concertId.getNumber()) {
+        if (ticket.getConcertId() !== this.concertId.getString()) {
             throw new Error("Cannot add ticket from a different concert.");
         }
 

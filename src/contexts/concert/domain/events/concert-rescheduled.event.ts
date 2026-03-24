@@ -1,6 +1,6 @@
 export class ConcertRescheduledEvent {
     constructor(
-        public readonly concertId: number,
+        public readonly concertId: string,
         public readonly newDate: Date,
     ) { }
 }

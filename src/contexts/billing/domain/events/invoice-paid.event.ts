@@ -1,6 +1,6 @@
 export class InvoicePaidEvent {
     constructor(
-        public readonly invoiceId: number,
-        public readonly paymentId: number,
+        public readonly invoiceId: string,
+        public readonly paymentId: string,
     ) { }
 }

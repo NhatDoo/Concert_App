@@ -5,14 +5,14 @@ import { Password } from "../VO/password.vo";
 import { Role } from "../VO/role.vo";
 
 export class User extends AggregateRoot {
-    private readonly id: number;
+    private readonly id: string;
     private name: string;
     private phoneNumber: phoneNumber;
     private email: Email;
     private role: Role;
     private password: Password;
 
-    private constructor(id: number, name: string, phoneNumber: phoneNumber, email: Email, password: Password, role: Role) {
+    private constructor(id: string, name: string, phoneNumber: phoneNumber, email: Email, password: Password, role: Role) {
         super();
         this.id = id;
         this.name = name;
@@ -23,7 +23,7 @@ export class User extends AggregateRoot {
     }
 
     static create(
-        id: number,
+        id: string,
         name: string,
         phoneNumber: phoneNumber,
         email: Email,
@@ -34,7 +34,7 @@ export class User extends AggregateRoot {
         return new User(id, name, phoneNumber, email, password, role);
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
     getRole(): Role {

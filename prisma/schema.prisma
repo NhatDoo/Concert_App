@@ -1,0 +1,165 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------
+//  IDENTITY CONTEXT
+// ---------------------------------------------------------
+model User {
+  id          String    @id @default(uuid())
+  name        String
+  phoneNumber String
+  email       String    @unique
+  password    String
+  role        String    // Mapped from Role VO (e.g. "USER", "ORGANIZER", "ADMIN")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  bookings    Booking[]
+  invoices    Invoice[]
+  concerts    Concert[] 
+
+  @@index([role])
+}
+
+// ---------------------------------------------------------
+//  CONCERT CONTEXT
+// ---------------------------------------------------------
+model Concert {
+  id          String   @id @default(uuid())
+  organizerId String
+  organizer   User     @relation(fields: [organizerId], references: [id])
+  name        String
+  startDate   DateTime
+  location    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings    Booking[]
+  tickets     Ticket[]
+  organize    Organize? 
+
+  @@index([organizerId])
+  @@index([startDate])
+}
+
+// ---------------------------------------------------------
+//  BOOKING CONTEXT
+// ---------------------------------------------------------
+model Booking {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  concertId   String
+  concert     Concert   @relation(fields: [concertId], references: [id])
+  totalAmount Float
+  status      String    
+  createdAt   DateTime  @default(now())
+  version     Int       @default(1) 
+
+  tickets     Ticket[]
+  invoices    Invoice[] 
+
+  @@index([userId])
+  @@index([concertId])
+  @@index([status])
+}
+
+model Ticket {
+  id          String    @id @default(uuid())
+  bookingId   String?     
+  booking     Booking?  @relation(fields: [bookingId], references: [id])
+  concertId   String
+  concert     Concert   @relation(fields: [concertId], references: [id])
+  userId      String?     
+  ticketType  String    
+  price       Float
+  version     Int       @default(1) 
+
+  @@index([bookingId])
+  @@index([concertId])
+}
+
+// ---------------------------------------------------------
+//  BILLING CONTEXT
+// ---------------------------------------------------------
+model Invoice {
+  id             String    @id @default(uuid())
+  bookingId      String
+  booking        Booking   @relation(fields: [bookingId], references: [id])
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  taxAmount      Float     @default(0)
+  discountAmount Float     @default(0)
+  status         String    
+  issueDate      DateTime  @default(now())
+  dueDate        DateTime
+  paymentId      String?   
+  version        Int       @default(1)
+
+  items          InvoiceItem[]
+
+  @@index([bookingId])
+  @@index([userId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+
+  @@index([invoiceId])
+}
+
+// ---------------------------------------------------------
+//  ORGANIZING CONTEXT
+// ---------------------------------------------------------
+model Organize {
+  id          String    @id @default(uuid())
+  concertId   String    @unique
+  concert     Concert   @relation(fields: [concertId], references: [id])
+  locationId  String?   
+
+  equipments  Divide[]
+  logistics   Logistics[]
+
+  @@index([locationId])
+}
+
+model Divide {
+  id          String    @id @default(uuid())
+  organizeId  String
+  organize    Organize  @relation(fields: [organizeId], references: [id])
+  name        String
+  quantity    Int
+  status      String    
+
+  @@index([organizeId])
+}
+
+model Logistics {
+  id          String    @id @default(uuid())
+  organizeId  String
+  organize    Organize  @relation(fields: [organizeId], references: [id])
+  taskName    String
+  status      String    
+
+  @@index([organizeId])
+}

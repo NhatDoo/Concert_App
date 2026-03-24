@@ -1,13 +1,13 @@
 import { Tickettype } from "../VO/tickettype.vo"
 
 export class Ticket {
-    private readonly id: number;
-    private readonly concertId: number;
-    private readonly userId: number;
+    private readonly id: string;
+    private readonly concertId: string;
+    private readonly userId: string;
     private ticketType: Tickettype;
     private price: number;
 
-    private constructor(id: number, concertId: number, userId: number, price: number, ticketType: Tickettype) {
+    private constructor(id: string, concertId: string, userId: string, price: number, ticketType: Tickettype) {
         if (price < 0) throw new Error("Ticket price cannot be negative");
         this.id = id;
         this.concertId = concertId;
@@ -16,20 +16,20 @@ export class Ticket {
         this.ticketType = ticketType;
     }
 
-    static create(id: number, concertId: number, userId: number, price: number, ticket: Tickettype): Ticket {
+    static create(id: string, concertId: string, userId: string, price: number, ticket: Tickettype): Ticket {
         return new Ticket(id, concertId, userId, price, ticket);
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
-    getConcertId(): number {
+    getConcertId(): string {
         return this.concertId;
     }
     getTicketType(): Tickettype {
         return this.ticketType;
     }
-    getUserId(): number {
+    getUserId(): string {
         return this.userId;
     }
     getPrice(): number {

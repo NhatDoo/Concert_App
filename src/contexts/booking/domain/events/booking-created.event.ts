@@ -1,8 +1,8 @@
 export class BookingCreatedEvent {
     constructor(
-        public readonly bookingId: number,
-        public readonly userId: number,
-        public readonly concertId: number,
+        public readonly bookingId: string,
+        public readonly userId: string,
+        public readonly concertId: string,
         public readonly totalAmount: number,
     ) { }
 }

@@ -1,6 +1,6 @@
 export class InvoiceIssuedEvent {
     constructor(
-        public readonly invoiceId: number,
+        public readonly invoiceId: string,
         public readonly totalAmount: number,
     ) { }
 }

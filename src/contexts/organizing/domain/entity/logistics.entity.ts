@@ -1,13 +1,13 @@
 export type LogisticsStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 export class Logistics {
-    id: number;
+    id: string;
     taskName: string;
     vendor: string;
     cost: number;
     status: LogisticsStatus;
 
-    constructor(id: number, taskName: string, vendor: string, cost: number, status: LogisticsStatus) {
+    constructor(id: string, taskName: string, vendor: string, cost: number, status: LogisticsStatus) {
         this.id = id;
         this.taskName = taskName;
         this.vendor = vendor;
@@ -15,7 +15,7 @@ export class Logistics {
         this.status = status;
     }
 
-    static create(id: number, taskName: string, vendor: string, cost: number): Logistics {
+    static create(id: string, taskName: string, vendor: string, cost: number): Logistics {
         if (!taskName) throw new Error("Task name is required");
         return new Logistics(id, taskName, vendor, cost, 'PENDING');
     }

@@ -1,5 +1,5 @@
 export class BookingCancelledEvent {
     constructor(
-        public readonly bookingId: number,
+        public readonly bookingId: string,
     ) { }
 }

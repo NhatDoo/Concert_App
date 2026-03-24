@@ -1,39 +1,35 @@
-import { AggregateRoot } from "@nestjs/cqrs";
 import { InvoiceItem } from "../VO/invode.vo";
 import { ITaxPolicy } from "../policy/tax.policy";
-import { InvoiceIssuedEvent } from "../events/invoice-issued.event";
-import { InvoicePaidEvent } from "../events/invoice-paid.event";
 
 export enum InvoiceStatus {
-    DRAFT = "DRAFT",        
-    ISSUED = "ISSUED",       
-    PAID = "PAID",           
-    CANCELLED = "CANCELLED"  
+    DRAFT = "DRAFT",         // Bản nháp (chưa chốt)
+    ISSUED = "ISSUED",       // Đã xuất/phát hành (chờ người dùng thanh toán)
+    PAID = "PAID",           // Đã thanh toán (thành công)
+    CANCELLED = "CANCELLED"  // Bị hủy
 }
 
 
 // Aggregate Root bao trọn toàn bộ khái niệm "Hóa đơn"
-export class InvoiceAggregate extends AggregateRoot {
-    private readonly id: number;
-    private readonly bookingId: number;
-    private readonly userId: number;
-    private items: InvoiceItem[];    // Danh sách dòng tiền
-    private taxAmount: number;
-    private discountAmount: number;
-    private status: InvoiceStatus;
-    private readonly issueDate: Date;
-    private dueDate: Date;
-    private paymentId?: number;
+export class InvoiceAggregate {
+    id: string;
+    bookingId: string;
+    userId: string;
+    items: InvoiceItem[];    // Danh sách dòng tiền
+    taxAmount: number;
+    discountAmount: number;
+    status: InvoiceStatus;
+    issueDate: Date;
+    dueDate: Date;
+    paymentId?: string;
 
     constructor(
-        id: number,
-        bookingId: number,
-        userId: number,
+        id: string,
+        bookingId: string,
+        userId: string,
         discountAmount: number = 0,
         issueDate: Date,
         dueDate: Date
     ) {
-        super();
         this.id = id;
         this.bookingId = bookingId;
         this.userId = userId;
@@ -45,7 +41,8 @@ export class InvoiceAggregate extends AggregateRoot {
         this.dueDate = dueDate;
     }
 
-    static create(id: number, bookingId: number, userId: number, dueDate: Date, discountAmount: number = 0): InvoiceAggregate {
+    // Factory method tạo mới Hóa đơn
+    static create(id: string, bookingId: string, userId: string, dueDate: Date, discountAmount: number = 0): InvoiceAggregate {
         if (!bookingId) throw new Error("Booking Id is required to generate an invoice");
         if (!userId) throw new Error("User Id is required to generate an invoice");
 
@@ -56,7 +53,7 @@ export class InvoiceAggregate extends AggregateRoot {
     }
 
     addItem(item: InvoiceItem): void {
-     
+        // Business Rule: Chỉ được thay đổi hóa đơn nếu đang ở trạng thái DRAFT
         if (this.status !== InvoiceStatus.DRAFT) {
             throw new Error("Cannot add items to an invoice that is already issued or paid");
         }
@@ -64,12 +61,14 @@ export class InvoiceAggregate extends AggregateRoot {
     }
 
     removeItem(itemToRemove: InvoiceItem): void {
+        // Business Rule: Chỉ được thay đổi hóa đơn nếu đang ở trạng thái DRAFT
         if (this.status !== InvoiceStatus.DRAFT) {
             throw new Error("Cannot remove items from an invoice that is already issued or paid");
         }
         this.items = this.items.filter(item => !item.equals(itemToRemove));
     }
 
+    // Tính tổng tiền chưa thuế (Tổng cộng các items)
     getSubtotal(): number {
         return this.items.reduce((sum, item) => sum + item.total, 0);
     }
@@ -92,20 +91,17 @@ export class InvoiceAggregate extends AggregateRoot {
         if (this.status !== InvoiceStatus.DRAFT) {
             throw new Error("Only draft invoices can be issued");
         }
+        // Gọi Policy được truyền từ ngoài vào để đánh giá và chốt thuế
         this.taxAmount = taxPolicy.calculateTax(this.items);
         this.status = InvoiceStatus.ISSUED;
-
-        this.apply(new InvoiceIssuedEvent(this.id, this.getTotalAmount()));
     }
 
-    markAsPaid(paymentId: number): void {
+    markAsPaid(paymentId: string): void {
         if (this.status !== InvoiceStatus.ISSUED) {
             throw new Error("Only ISSUED invoices can be marked as paid");
         }
         this.status = InvoiceStatus.PAID;
         this.paymentId = paymentId;
-
-        this.apply(new InvoicePaidEvent(this.id, paymentId));
     }
 
     cancelInvoice(): void {

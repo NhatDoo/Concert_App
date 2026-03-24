@@ -4,13 +4,13 @@ import { ConcertCreatedEvent } from "../events/concert-created.event";
 import { ConcertRescheduledEvent } from "../events/concert-rescheduled.event";
 
 export class Concert extends AggregateRoot {
-    private readonly id: number;
-    private readonly organizerId: number;
+    private readonly id: string;
+    private readonly organizerId: string;
     private name: string;
     private startdate: StartDate;
     private location: string;
 
-    private constructor(id: number, name: string, date: StartDate, location: string) {
+    private constructor(id: string, name: string, date: StartDate, location: string) {
         super();
         this.id = id;
         this.name = name;
@@ -19,7 +19,7 @@ export class Concert extends AggregateRoot {
 
     }
 
-    static create(id: number, name: string, startdate: StartDate, location: string): Concert {
+    static create(id: string, name: string, startdate: StartDate, location: string): Concert {
         if (!name) throw new Error("Name is required");
 
         const concert = new Concert(id, name, startdate, location);
@@ -27,7 +27,7 @@ export class Concert extends AggregateRoot {
         return concert;
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
     getName(): string {

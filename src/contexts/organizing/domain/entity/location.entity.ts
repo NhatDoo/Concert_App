@@ -1,23 +1,23 @@
 export class Location {
-    id: number;
+    id: string;
     name: string;
     address: string;
     capacity: number;
 
-    constructor(id: number, name: string, address: string, capacity: number) {
+    constructor(id: string, name: string, address: string, capacity: number) {
         this.id = id;
         this.name = name;
         this.address = address;
         this.capacity = capacity;
     }
 
-    static create(id: number, name: string, address: string, capacity: number): Location {
+    static create(id: string, name: string, address: string, capacity: number): Location {
         if (!name) throw new Error("Location name is required");
         if (!address) throw new Error("Address is required");
         return new Location(id, name, address, capacity);
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
 
