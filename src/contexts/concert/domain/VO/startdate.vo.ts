@@ -9,6 +9,10 @@ export class StartDate {
     return new StartDate(date);
   }
 
+  static hydrate(date: Date): StartDate {
+    return new StartDate(date);
+  }
+
   getValue(): Date {
     return this.value;
   }

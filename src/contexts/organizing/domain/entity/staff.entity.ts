@@ -1,13 +1,13 @@
 import { StaffRole } from "../VO/staff.role";
 
 export class Staff {
-    id: number;
-    userId: number;       
-    name: string;         
-    role: StaffRole;      
-    concertId: number;    
+    id: string;
+    userId: string;
+    name: string;
+    role: StaffRole;
+    concertId: string;
 
-    constructor(id: number, userId: number, name: string, role: StaffRole, concertId: number) {
+    constructor(id: string, userId: string, name: string, role: StaffRole, concertId: string) {
         this.id = id;
         this.userId = userId;
         this.name = name;
@@ -15,7 +15,7 @@ export class Staff {
         this.concertId = concertId;
     }
 
-    static create(id: number, userId: number, name: string, role: StaffRole, concertId: number): Staff {
+    static create(id: string, userId: string, name: string, role: StaffRole, concertId: string): Staff {
         if (!userId) throw new Error("User ID is required for a Staff member");
         if (!name) throw new Error("Staff name is required");
         if (!role) throw new Error("Staff Role is required");
@@ -24,11 +24,11 @@ export class Staff {
         return new Staff(id, userId, name, role, concertId);
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
 
-    getUserId(): number {
+    getUserId(): string {
         return this.userId;
     }
 
@@ -40,7 +40,7 @@ export class Staff {
         return this.role;
     }
 
-    getConcertId(): number {
+    getConcertId(): string {
         return this.concertId;
     }
 
@@ -48,7 +48,7 @@ export class Staff {
         this.role = newRole;
     }
 
-    assignToConcert(newConcertId: number): void {
+    assignToConcert(newConcertId: string): void {
         this.concertId = newConcertId;
     }
 }

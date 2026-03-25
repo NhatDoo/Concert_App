@@ -25,6 +25,10 @@ export class OrganizeAggregate extends AggregateRoot {
         return new OrganizeAggregate(id, concertId, null, [], []);
     }
 
+    static hydrate(id: string, concertId: string, location: Location | null, equipments: Divide[], logistics: Logistics[]): OrganizeAggregate {
+        return new OrganizeAggregate(id, concertId, location, equipments, logistics);
+    }
+
     // --- Location Management (Địa điểm) ---
     assignLocation(location: Location): void {
         this.location = location;

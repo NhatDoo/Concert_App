@@ -10,25 +10,33 @@ export class Concert extends AggregateRoot {
     private startdate: StartDate;
     private location: string;
 
-    private constructor(id: string, name: string, date: StartDate, location: string) {
+    private constructor(id: string, organizerId: string, name: string, date: StartDate, location: string) {
         super();
         this.id = id;
+        this.organizerId = organizerId;
         this.name = name;
         this.startdate = date;
         this.location = location;
 
     }
 
-    static create(id: string, name: string, startdate: StartDate, location: string): Concert {
+    static create(id: string, organizerId: string, name: string, startdate: StartDate, location: string): Concert {
         if (!name) throw new Error("Name is required");
 
-        const concert = new Concert(id, name, startdate, location);
+        const concert = new Concert(id, organizerId, name, startdate, location);
         concert.apply(new ConcertCreatedEvent(id, name, startdate.getValue(), location));
         return concert;
     }
 
+    static hydrate(id: string, organizerId: string, name: string, startdate: StartDate, location: string): Concert {
+        return new Concert(id, organizerId, name, startdate, location);
+    }
+
     getId(): string {
         return this.id;
+    }
+    getOrganizerId(): string {
+        return this.organizerId;
     }
     getName(): string {
         return this.name;

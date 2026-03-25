@@ -7,6 +7,8 @@ import { PrismaService } from './prisma.service';
 import { BillingInfrastructureModule } from './contexts/billing/infrastructure/billing-infrastructure.module';
 import { BookingModule } from './contexts/booking/booking.module';
 import { IdentityModule } from './contexts/identity/identity.module';
+import { ConcertModule } from './contexts/concert/concert.module';
+import { OrganizingModule } from './contexts/organizing/organizing.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { IdentityModule } from './contexts/identity/identity.module';
     BillingInfrastructureModule,
     BookingModule,
     IdentityModule,
+    ConcertModule,
+    OrganizingModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
