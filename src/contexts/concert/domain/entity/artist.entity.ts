@@ -1,22 +1,22 @@
 export class Artist {
-    id: number;
+    id: string;
     name: string;
     bio: string;
     contactInfo: string;
 
-    constructor(id: number, name: string, bio: string, contactInfo: string) {
+    constructor(id: string, name: string, bio: string, contactInfo: string) {
         this.id = id;
         this.name = name;
         this.bio = bio;
         this.contactInfo = contactInfo;
     }
 
-    static create(id: number, name: string, bio: string = "", contactInfo: string = ""): Artist {
+    static create(id: string, name: string, bio: string = "", contactInfo: string = ""): Artist {
         if (!name) throw new Error("Artist name is required");
         return new Artist(id, name, bio, contactInfo);
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
 

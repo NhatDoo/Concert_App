@@ -1,4 +1,5 @@
 import { StaffRole } from "../VO/staff.role";
+import { StaffTask } from "./staff-task.entity";
 
 export class Staff {
     id: string;
@@ -6,13 +7,15 @@ export class Staff {
     name: string;
     role: StaffRole;
     concertId: string;
+    private tasks: StaffTask[];
 
-    constructor(id: string, userId: string, name: string, role: StaffRole, concertId: string) {
+    constructor(id: string, userId: string, name: string, role: StaffRole, concertId: string, tasks: StaffTask[] = []) {
         this.id = id;
         this.userId = userId;
         this.name = name;
         this.role = role;
         this.concertId = concertId;
+        this.tasks = tasks;
     }
 
     static create(id: string, userId: string, name: string, role: StaffRole, concertId: string): Staff {
@@ -21,7 +24,7 @@ export class Staff {
         if (!role) throw new Error("Staff Role is required");
         if (!concertId) throw new Error("Concert ID is required for a Staff member");
 
-        return new Staff(id, userId, name, role, concertId);
+        return new Staff(id, userId, name, role, concertId, []);
     }
 
     getId(): string {
@@ -50,5 +53,19 @@ export class Staff {
 
     assignToConcert(newConcertId: string): void {
         this.concertId = newConcertId;
+    }
+
+    getTasks(): StaffTask[] {
+        return this.tasks;
+    }
+
+    addTask(task: StaffTask): void {
+        this.tasks.push(task);
+    }
+
+    updateTaskStatus(taskId: string, status: any): void {
+        const task = this.tasks.find(t => t.getId() === taskId);
+        if (!task) throw new Error("Task not found for this staff member");
+        task.updateStatus(status);
     }
 }

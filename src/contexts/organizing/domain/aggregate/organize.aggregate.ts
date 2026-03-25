@@ -2,7 +2,9 @@ import { AggregateRoot } from "@nestjs/cqrs";
 import { Divide } from "../entity/devide.entity";
 import { Location } from "../entity/location.entity";
 import { Logistics, LogisticsStatus } from "../entity/logistics.entity";
+import { Staff } from "../entity/staff.entity"; // Import Staff
 import { LocationAssignedEvent } from "../events/location-assigned.event";
+import { StaffTask } from "../entity/staff-task.entity";
 
 export class OrganizeAggregate extends AggregateRoot {
     private readonly id: string;
@@ -10,23 +12,25 @@ export class OrganizeAggregate extends AggregateRoot {
     private location: Location | null;
     private equipments: Divide[];
     private logistics: Logistics[];
+    private staffs: Staff[]; // Added staffs array
 
-    private constructor(id: string, concertId: string, location: Location | null = null, equipments: Divide[] = [], logistics: Logistics[] = []) {
+    private constructor(id: string, concertId: string, location: Location | null = null, equipments: Divide[] = [], logistics: Logistics[] = [], staffs: Staff[] = []) {
         super();
         this.id = id;
         this.concertId = concertId;
         this.location = location;
         this.equipments = equipments;
         this.logistics = logistics;
+        this.staffs = staffs;
     }
 
     static create(id: string, concertId: string): OrganizeAggregate {
         if (!concertId) throw new Error("Concert ID is required for organization");
-        return new OrganizeAggregate(id, concertId, null, [], []);
+        return new OrganizeAggregate(id, concertId, null, [], [], []);
     }
 
-    static hydrate(id: string, concertId: string, location: Location | null, equipments: Divide[], logistics: Logistics[]): OrganizeAggregate {
-        return new OrganizeAggregate(id, concertId, location, equipments, logistics);
+    static hydrate(id: string, concertId: string, location: Location | null, equipments: Divide[], logistics: Logistics[], staffs: Staff[]): OrganizeAggregate {
+        return new OrganizeAggregate(id, concertId, location, equipments, logistics, staffs);
     }
 
     // --- Location Management (Địa điểm) ---
@@ -89,10 +93,37 @@ export class OrganizeAggregate extends AggregateRoot {
         return this.logistics;
     }
 
+    // --- Staff Management (Nhân sự) ---
+    addStaff(staff: Staff): void {
+        const exists = this.staffs.find(s => s.getId() === staff.getId());
+        if (!exists) {
+            this.staffs.push(staff);
+        } else {
+            throw new Error("Staff member already assigned to this organization");
+        }
+    }
+
+    getStaffs(): Staff[] {
+        return this.staffs;
+    }
+
+    assignTaskToStaff(staffId: string, task: StaffTask): void {
+        const staff = this.staffs.find(s => s.getId() === staffId);
+        if (!staff) throw new Error("Staff member not found in this organization");
+        staff.addTask(task);
+    }
+
+    updateStaffTaskStatus(staffId: string, taskId: string, status: any): void {
+        const staff = this.staffs.find(s => s.getId() === staffId);
+        if (!staff) throw new Error("Staff member not found in this organization");
+        staff.updateTaskStatus(taskId, status);
+    }
+
     // --- Organization Business Logic ---
     isFullyOrganized(): boolean {
-        // Tổ chức hoàn tất nếu đã phân bổ địa điểm và tất cả hậu cần phải 'COMPLETED'
+        // Tổ chức hoàn tất nếu đã phân bổ địa điểm, có ít nhất 1 staff, và tất cả hậu cần phải 'COMPLETED'
         if (!this.location) return false;
+        if (this.staffs.length === 0) return false;
 
         if (this.logistics.length > 0) {
             const allCompleted = this.logistics.every(l => l.status === 'COMPLETED');

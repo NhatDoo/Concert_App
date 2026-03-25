@@ -48,13 +48,40 @@ model Concert {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  bookings    Booking[]
-  tickets     Ticket[]
-  organize    Organize? 
-  staffs      Staff[]
+  bookings     Booking[]
+  tickets      Ticket[]
+  organize     Organize? 
+  staffs       Staff[]
+  performances Performance[]
 
   @@index([organizerId])
   @@index([startDate])
+}
+
+model Artist {
+  id          String   @id @default(uuid())
+  name        String
+  bio         String   @default("")
+  contactInfo String   @default("")
+  createdAt   DateTime @default(now())
+
+  performances Performance[]
+
+  @@index([name])
+}
+
+model Performance {
+  id              String   @id @default(uuid())
+  concertId       String
+  concert         Concert  @relation(fields: [concertId], references: [id])
+  artistId        String
+  artist          Artist   @relation(fields: [artistId], references: [id])
+  name            String
+  durationMinutes Int
+  startTime       DateTime
+
+  @@index([concertId])
+  @@index([artistId])
 }
 
 // ---------------------------------------------------------
@@ -197,6 +224,18 @@ model Staff {
   concertId String
   concert   Concert  @relation(fields: [concertId], references: [id])
 
+  tasks     StaffTask[]
+
   @@index([concertId])
   @@index([userId])
+}
+
+model StaffTask {
+  id          String   @id @default(uuid())
+  staffId     String
+  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  description String
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+
+  @@index([staffId])
 }

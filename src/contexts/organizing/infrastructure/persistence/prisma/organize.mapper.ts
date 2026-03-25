@@ -3,6 +3,9 @@ import { Location } from '../../../domain/entity/location.entity';
 import { Divide } from '../../../domain/entity/devide.entity';
 import { DetailDivide } from '../../../domain/entity/detail_devide';
 import { Logistics, LogisticsStatus } from '../../../domain/entity/logistics.entity';
+import { Staff } from '../../../domain/entity/staff.entity';
+import { StaffRole } from '../../../domain/VO/staff.role';
+import { StaffTask, StaffTaskStatus } from '../../../domain/entity/staff-task.entity';
 
 export class OrganizeMapper {
     static toDomain(raw: any): OrganizeAggregate | null {
@@ -27,12 +30,18 @@ export class OrganizeMapper {
             new Logistics(l.id, l.taskName, l.vendor, l.cost, l.status as LogisticsStatus)
         );
 
+        const staffs: Staff[] = (raw.concert?.staffs || []).map((s: any) => {
+            const tasks = (s.tasks || []).map((t: any) => new StaffTask(t.id, t.description, t.status as StaffTaskStatus, t.staffId));
+            return new Staff(s.id, s.userId, s.name, StaffRole.create(s.role), s.concertId, tasks);
+        });
+
         return OrganizeAggregate.hydrate(
             raw.id,
             raw.concertId,
             locationVal,
             equipments,
-            logistics
+            logistics,
+            staffs
         );
     }
 
@@ -63,6 +72,18 @@ export class OrganizeMapper {
                 vendor: l.vendor,
                 cost: l.cost,
                 status: l.status
+            })),
+            staffs: organize.getStaffs().map(s => ({
+                id: s.getId(),
+                userId: s.getUserId(),
+                name: s.getName(),
+                role: s.getRole().getValue(),
+                concertId: s.getConcertId(),
+                tasks: s.getTasks().map(t => ({
+                    id: t.getId(),
+                    description: t.getDescription(),
+                    status: t.getStatus()
+                }))
             }))
         };
     }

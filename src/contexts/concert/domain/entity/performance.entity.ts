@@ -1,14 +1,14 @@
 import { Artist } from "./artist.entity";
 
 export class Performance {
-    id: number;
-    concertId: number;
-    artist: Artist | number; // Có thể lưu object Artist hoặc chỉ ID của Artist
-    name: string;            
-    durationMinutes: number; 
-    startTime: Date;         
+    id: string;
+    concertId: string;
+    artist: Artist | string; // Có thể lưu object Artist hoặc chỉ ID (artistId)
+    name: string;
+    durationMinutes: number;
+    startTime: Date;
 
-    constructor(id: number, concertId: number, artist: Artist | number, name: string, durationMinutes: number, startTime: Date) {
+    constructor(id: string, concertId: string, artist: Artist | string, name: string, durationMinutes: number, startTime: Date) {
         this.id = id;
         this.concertId = concertId;
         this.artist = artist;
@@ -17,22 +17,27 @@ export class Performance {
         this.startTime = startTime;
     }
 
-    static create(id: number, concertId: number, artist: Artist | number, name: string, durationMinutes: number, startTime: Date): Performance {
+    static create(id: string, concertId: string, artist: Artist | string, name: string, durationMinutes: number, startTime: Date): Performance {
         if (!name) throw new Error("Performance name is required");
         if (durationMinutes <= 0) throw new Error("Duration must be greater than 0");
         return new Performance(id, concertId, artist, name, durationMinutes, startTime);
     }
 
-    getId(): number {
+    getId(): string {
         return this.id;
     }
 
-    getConcertId(): number {
+    getConcertId(): string {
         return this.concertId;
     }
 
-    getArtist(): Artist | number {
+    getArtist(): Artist | string {
         return this.artist;
+    }
+
+    getArtistId(): string {
+        if (typeof this.artist === 'string') return this.artist;
+        return this.artist.getId();
     }
 
     getName(): string {

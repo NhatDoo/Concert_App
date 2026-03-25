@@ -16,7 +16,14 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                 equipments: {
                     include: { detail_divide: true }
                 },
-                logistics: true
+                logistics: true,
+                concert: {
+                    include: {
+                        staffs: {
+                            include: { tasks: true }
+                        }
+                    }
+                }
             }
         });
 
@@ -32,7 +39,14 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                 equipments: {
                     include: { detail_divide: true }
                 },
-                logistics: true
+                logistics: true,
+                concert: {
+                    include: {
+                        staffs: {
+                            include: { tasks: true }
+                        }
+                    }
+                }
             }
         });
 
@@ -107,6 +121,30 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                         }
                     }
                 });
+            }
+
+            // 5. Resync Staff (Staff is connected to Concert, not Organize directly in Schema)
+            // But OrganizeAggregate manages it.
+            await tx.staff.deleteMany({ where: { concertId: persistence.concertId } });
+            if (persistence.staffs.length > 0) {
+                for (const s of persistence.staffs) {
+                    await tx.staff.create({
+                        data: {
+                            id: s.id,
+                            userId: s.userId,
+                            name: s.name,
+                            role: s.role,
+                            concertId: persistence.concertId,
+                            tasks: {
+                                create: s.tasks.map(t => ({
+                                    id: t.id,
+                                    description: t.description,
+                                    status: t.status
+                                }))
+                            }
+                        }
+                    });
+                }
             }
         });
     }
