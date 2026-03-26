@@ -10,7 +10,8 @@ export class ConcertMapper {
             raw.organizerId,
             raw.name,
             StartDate.hydrate(raw.startDate),
-            raw.location
+            raw.location,
+            raw.imageUrl ?? null,
         );
     }
 
@@ -21,6 +22,7 @@ export class ConcertMapper {
             name: concert.getName(),
             startDate: concert.getDate().getValue(),
             location: concert.getLocation(),
+            imageUrl: concert.getImageUrl(),
         };
     }
 }

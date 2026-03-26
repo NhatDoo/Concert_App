@@ -9,27 +9,28 @@ export class Concert extends AggregateRoot {
     private name: string;
     private startdate: StartDate;
     private location: string;
+    private imageUrl: string | null;
 
-    private constructor(id: string, organizerId: string, name: string, date: StartDate, location: string) {
+    private constructor(id: string, organizerId: string, name: string, date: StartDate, location: string, imageUrl: string | null) {
         super();
         this.id = id;
         this.organizerId = organizerId;
         this.name = name;
         this.startdate = date;
         this.location = location;
-
+        this.imageUrl = imageUrl;
     }
 
-    static create(id: string, organizerId: string, name: string, startdate: StartDate, location: string): Concert {
+    static create(id: string, organizerId: string, name: string, startdate: StartDate, location: string, imageUrl: string | null = null): Concert {
         if (!name) throw new Error("Name is required");
 
-        const concert = new Concert(id, organizerId, name, startdate, location);
+        const concert = new Concert(id, organizerId, name, startdate, location, imageUrl);
         concert.apply(new ConcertCreatedEvent(id, name, startdate.getValue(), location));
         return concert;
     }
 
-    static hydrate(id: string, organizerId: string, name: string, startdate: StartDate, location: string): Concert {
-        return new Concert(id, organizerId, name, startdate, location);
+    static hydrate(id: string, organizerId: string, name: string, startdate: StartDate, location: string, imageUrl: string | null): Concert {
+        return new Concert(id, organizerId, name, startdate, location, imageUrl);
     }
 
     getId(): string {
@@ -47,6 +48,9 @@ export class Concert extends AggregateRoot {
     getLocation(): string {
         return this.location;
     }
+    getImageUrl(): string | null {
+        return this.imageUrl;
+    }
 
     // --- Domain Behaviors ---
     rename(newName: string): void {
@@ -62,5 +66,9 @@ export class Concert extends AggregateRoot {
     changeLocation(newLocation: string): void {
         if (!newLocation) throw new Error("Location cannot be empty");
         this.location = newLocation;
+    }
+
+    updateImageUrl(newImageUrl: string): void {
+        this.imageUrl = newImageUrl;
     }
 }

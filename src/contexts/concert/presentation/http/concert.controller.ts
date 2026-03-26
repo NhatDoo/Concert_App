@@ -1,6 +1,7 @@
-import { Controller, Post, Put, Body, HttpCode, HttpStatus, Param, Get, Inject } from '@nestjs/common';
+import { Controller, Post, Put, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { CommandBus } from '@nestjs/cqrs';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateConcertCommand } from '../../application/commands/create-concert.command';
 import { GenerateTicketsCommand } from '../../application/commands/generate-tickets.command';
 import { CreateArtistCommand, UpdateArtistCommand } from '../../application/commands/artist.command';
@@ -28,17 +29,23 @@ export class ConcertController {
     // ==================== CONCERT ====================
     @Post()
     @HttpCode(HttpStatus.CREATED)
+    @UseInterceptors(FileInterceptor('image'))
     @ApiOperation({ summary: 'Create a new concert' })
+    @ApiConsumes('multipart/form-data')
     @ApiResponse({ status: 201, description: 'Concert successfully created, returning concert ID' })
     @ApiResponse({ status: 400, description: 'Validation error (e.g. date in the past)' })
-    async createConcert(@Body() dto: CreateConcertDto): Promise<{ message: string, concertId: string }> {
+    async createConcert(
+        @Body() dto: CreateConcertDto,
+        @UploadedFile() image?: Express.Multer.File,
+    ): Promise<{ message: string, concertId: string }> {
         const parsedDate = new Date(dto.startDate);
 
         const command = new CreateConcertCommand(
             dto.organizerId,
             dto.name,
             parsedDate,
-            dto.location
+            dto.location,
+            image,
         );
 
         const concertId = await this.commandBus.execute(command);

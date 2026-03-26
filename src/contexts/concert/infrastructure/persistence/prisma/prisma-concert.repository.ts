@@ -26,14 +26,16 @@ export class PrismaConcertRepository implements IConcertRepository {
             update: {
                 name: persistence.name,
                 startDate: persistence.startDate,
-                location: persistence.location
+                location: persistence.location,
+                imageUrl: persistence.imageUrl,
             },
             create: {
                 id: persistence.id,
                 organizerId: persistence.organizerId,
                 name: persistence.name,
                 startDate: persistence.startDate,
-                location: persistence.location
+                location: persistence.location,
+                imageUrl: persistence.imageUrl,
             }
         });
     }

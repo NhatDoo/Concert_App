@@ -3,6 +3,7 @@ export class CreateConcertCommand {
         public readonly organizerId: string,
         public readonly name: string,
         public readonly startDate: Date,
-        public readonly location: string
+        public readonly location: string,
+        public readonly imageFile?: Express.Multer.File,
     ) { }
 }
