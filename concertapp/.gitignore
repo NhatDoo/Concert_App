@@ -1,8 +1,7 @@
-# Node
-node_modules/
-.next/
-dist/
-build/
+# compiled output
+/dist
+/node_modules
+/build
 
 # Logs
 logs
@@ -17,17 +16,19 @@ lerna-debug.log*
 .DS_Store
 
 # Tests
-coverage/
-.nyc_output/
+/coverage
+/.nyc_output
 
 # IDEs and editors
-.idea/
+/.idea
 .project
 .classpath
 .c9/
 *.launch
 .settings/
 *.sublime-workspace
+
+# IDE - VSCode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -51,11 +52,11 @@ pids
 *.seed
 *.pid.lock
 
-# Diagnostic reports
+# Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Backend specific
-concertapp/generated/prisma
-concertapp/src/generated
-concertapp/prisma.config.js
-concertapp/prisma.config.d.ts
+/generated/prisma
+/src/generated
+.env
+prisma.config.js
+prisma.config.d.ts
