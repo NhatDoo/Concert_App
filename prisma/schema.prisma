@@ -140,6 +140,7 @@ model Invoice {
   version        Int       @default(1)
 
   items          InvoiceItem[]
+  payments       Payment[]
 
   @@index([bookingId])
   @@index([userId])
@@ -156,6 +157,23 @@ model InvoiceItem {
   total       Float
 
   @@index([invoiceId])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+  bookingId     String
+  amount        Float
+  method        String   // CREDIT_CARD, BANK_TRANSFER, E_WALLET, VNPAY, CASH
+  status        String   // PENDING, SUCCESS, FAILED, REFUNDED
+  transactionId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([bookingId])
+  @@index([status])
 }
 
 // ---------------------------------------------------------

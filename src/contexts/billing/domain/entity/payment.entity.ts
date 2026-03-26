@@ -17,6 +17,7 @@ import { Money } from "../../../../common/domain/value-object/money.vo";
 
 export class Payment {
     id: string;
+    invoiceId: string;
     bookingId: string;
     amount: Money;
     method: PaymentMethod;
@@ -27,6 +28,7 @@ export class Payment {
 
     constructor(
         id: string,
+        invoiceId: string,
         bookingId: string,
         amount: Money,
         method: PaymentMethod,
@@ -36,6 +38,7 @@ export class Payment {
         transactionId?: string
     ) {
         this.id = id;
+        this.invoiceId = invoiceId;
         this.bookingId = bookingId;
         this.amount = amount;
         this.method = method;
@@ -45,11 +48,12 @@ export class Payment {
         this.transactionId = transactionId;
     }
 
-    static create(id: string, bookingId: string, amount: Money, method: PaymentMethod): Payment {
+    static create(id: string, invoiceId: string, bookingId: string, amount: Money, method: PaymentMethod): Payment {
         if (!bookingId) throw new Error("Booking ID is required for a Payment");
+        if (!invoiceId) throw new Error("Invoice ID is required for a Payment");
 
         const now = new Date();
-        return new Payment(id, bookingId, amount, method, PaymentStatus.PENDING, now, now);
+        return new Payment(id, invoiceId, bookingId, amount, method, PaymentStatus.PENDING, now, now);
     }
 
     markAsSuccess(transactionId: string): void {
