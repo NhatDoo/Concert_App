@@ -9,6 +9,7 @@ import { IPERFORMANCE_REPOSITORY } from '../domain/repository/performance.reposi
 import { PrismaPerformanceRepository } from './persistence/prisma/prisma-performance.repository';
 import { ISTORAGE_SERVICE } from '../domain/service/storage.service.interface';
 import { MinioStorageService } from './storage/minio-storage.service';
+import { RedisService } from './redis/redis.service';
 
 @Module({
     imports: [ConfigModule],
@@ -30,7 +31,8 @@ import { MinioStorageService } from './storage/minio-storage.service';
             provide: ISTORAGE_SERVICE,
             useClass: MinioStorageService,
         },
+        RedisService,
     ],
-    exports: [ICONCERT_REPOSITORY, IARTIST_REPOSITORY, IPERFORMANCE_REPOSITORY, ISTORAGE_SERVICE, PrismaService],
+    exports: [ICONCERT_REPOSITORY, IARTIST_REPOSITORY, IPERFORMANCE_REPOSITORY, ISTORAGE_SERVICE, PrismaService, RedisService],
 })
 export class ConcertInfrastructureModule { }

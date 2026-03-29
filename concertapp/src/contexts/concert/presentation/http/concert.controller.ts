@@ -1,9 +1,14 @@
-import { Controller, Post, Put, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
+import { Controller, Post, Put, Delete, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateConcertCommand } from '../../application/commands/create-concert.command';
 import { GenerateTicketsCommand } from '../../application/commands/generate-tickets.command';
+import { GetAllConcertsQuery } from '../../application/queries/get-all-concerts.query';
+import { GetConcertByIdQuery } from '../../application/queries/get-concert-by-id.query';
+import { GetTicketsByConcertQuery } from '../../application/queries/get-tickets-by-concert.query';
+import { DeleteTicketTypeCommand } from '../../application/commands/delete-ticket-type.command';
+import { UpdateTicketPriceCommand } from '../../application/commands/update-ticket-price.command';
 import { CreateArtistCommand, UpdateArtistCommand } from '../../application/commands/artist.command';
 import { AddPerformanceCommand, UpdatePerformanceScheduleCommand } from '../../application/commands/performance.command';
 import { CreateConcertDto } from './dto/create-concert.dto';
@@ -22,11 +27,27 @@ import type { IPerformanceRepository } from '../../domain/repository/performance
 export class ConcertController {
     constructor(
         private readonly commandBus: CommandBus,
+        private readonly queryBus: QueryBus,
         @Inject(IARTIST_REPOSITORY) private readonly artistRepo: IArtistRepository,
         @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
     ) { }
 
     // ==================== CONCERT ====================
+    @Get()
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get all concerts (with Redis caching)' })
+    @ApiResponse({ status: 200, description: 'Return all concerts' })
+    async getAllConcerts() {
+        return this.queryBus.execute(new GetAllConcertsQuery());
+    }
+
+    @Get(':id')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get concert details & tickets by ID' })
+    async getConcertById(@Param('id') id: string) {
+        return this.queryBus.execute(new GetConcertByIdQuery(id));
+    }
+
     @Post()
     @HttpCode(HttpStatus.CREATED)
     @UseInterceptors(FileInterceptor('image'))
@@ -77,6 +98,37 @@ export class ConcertController {
         return {
             message: 'Tickets successfully generated for the concert'
         };
+    }
+
+    @Get(':id/tickets')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get all ticket types & stats for a concert (organizer view)' })
+    async getTicketsByConcert(@Param('id') concertId: string) {
+        return this.queryBus.execute(new GetTicketsByConcertQuery(concertId));
+    }
+
+    @Put(':id/tickets/:ticketType')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update price and/or quantity of a ticket type' })
+    @ApiBody({ schema: { properties: { price: { type: 'number' }, quantity: { type: 'number' } } } })
+    async updateTicket(
+        @Param('id') concertId: string,
+        @Param('ticketType') ticketType: string,
+        @Body() body: { price: number; quantity?: number }
+    ) {
+        await this.commandBus.execute(new UpdateTicketPriceCommand(concertId, ticketType, body.price, body.quantity));
+        return { message: 'Ticket type updated successfully' };
+    }
+
+    @Delete(':id/tickets/:ticketType')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Delete all unsold tickets of a type for a concert' })
+    async deleteTicketType(
+        @Param('id') concertId: string,
+        @Param('ticketType') ticketType: string
+    ) {
+        await this.commandBus.execute(new DeleteTicketTypeCommand(concertId, ticketType));
+        return { message: `Ticket type "${ticketType}" deleted` };
     }
 
     // ==================== ARTIST ====================
