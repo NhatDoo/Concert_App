@@ -47,9 +47,8 @@ export class InvoiceMapper {
         };
     }
 
-    static itemsToPersistence(invoiceId: string, items: InvoiceItem[]) {
+    static itemsToPersistence(items: InvoiceItem[]) {
         return items.map(item => ({
-            invoiceId,
             description: item.description,
             quantity: item.quantity,
             unitPrice: item.unitPrice.getAmount(),

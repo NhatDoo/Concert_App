@@ -15,3 +15,9 @@ export class UpdatePerformanceScheduleCommand {
         public readonly durationMinutes: number
     ) { }
 }
+
+export class RemovePerformanceCommand {
+    constructor(
+        public readonly performanceId: string
+    ) { }
+}

@@ -7,15 +7,59 @@ import { LocationId } from '../../types';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../stores/store';
 import { logout } from '../../features/auth';
+import { fetchConcerts, searchConcerts } from '../../features/concerts';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export const Header = () => {
     const { currentLocation, setCurrentLocation } = useLocation();
     const { user } = useSelector((state: RootState) => state.auth);
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<any>();
+    const router = useRouter();
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [suggestions, setSuggestions] = React.useState<any[]>([]);
+    const [isFocused, setIsFocused] = React.useState(false);
+
+    // Debounce tìm kiếm khi gõ
+    React.useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            if (searchTerm.length > 2) {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                try {
+                    const response = await fetch(`${apiUrl}/concerts/search?query=${encodeURIComponent(searchTerm)}`);
+                    const data = await response.json();
+                    setSuggestions(data.map((item: any) => ({
+                        id: item.id?.toString(),
+                        title: item.name,
+                        location: item.location,
+                        imageUrl: item.imageUrl,
+                        minPrice: item.minPrice,
+                        artists: item.artists
+                    })));
+                } catch (error) {
+                    console.error("Gợi ý tìm kiếm thất bại:", error);
+                }
+            } else {
+                setSuggestions([]);
+            }
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
 
     const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setCurrentLocation(e.target.value as LocationId);
+    };
+
+    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            if (searchTerm.trim()) {
+                dispatch(searchConcerts(searchTerm));
+                router.push('/'); // Chuyển về trang chủ để xem kết quả
+            } else {
+                dispatch(fetchConcerts());
+            }
+        }
     };
 
     return (
@@ -27,13 +71,80 @@ export const Header = () => {
                         CONCERTMUSIC
                     </Link>
 
-                    <div className="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-2 w-72">
-                        <Search className="w-5 h-5 text-gray-500 mr-2" />
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm sự kiện, ban tổ chức..."
-                            className="bg-transparent border-none outline-none text-sm w-full text-gray-800"
-                        />
+                    <div className="hidden md:block relative group">
+                        <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 w-96 group-focus-within:bg-white group-focus-within:ring-2 group-focus-within:ring-red-500 transition-all shadow-sm">
+                            <Search className="w-5 h-5 text-gray-400 mr-2" />
+                            <input
+                                type="text"
+                                placeholder="Tìm theo tên buổi nhạc, địa điểm..."
+                                className="bg-transparent border-none outline-none text-sm w-full text-gray-800 placeholder:text-gray-400"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={handleSearch}
+                                onFocus={() => setIsFocused(true)}
+                                onBlur={() => setTimeout(() => setIsFocused(false), 200)} // Delay to allow clicks
+                            />
+                        </div>
+
+                        {/* Dropdown gợi ý thông minh */}
+                        {isFocused && (suggestions.length > 0 || searchTerm.length > 2) && (
+                            <div className="absolute top-12 left-0 w-full bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-300">
+                                {suggestions.length > 0 ? (
+                                    <>
+                                        <div className="p-3">
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">Kết quả tìm kiếm</p>
+                                            {suggestions.slice(0, 5).map((item) => (
+                                                <Link
+                                                    key={item.id}
+                                                    href={`/concerts/${item.id}`}
+                                                    className="flex items-center gap-3 p-2 hover:bg-red-50 rounded-xl transition-colors group/item"
+                                                >
+                                                    <div className="w-12 h-12 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0 shadow-sm border border-gray-100">
+                                                        <img
+                                                            src={item.imageUrl || "https://images.unsplash.com/photo-1470229722913-7c090be5c524?auto=format&fit=crop&w=200&q=80"}
+                                                            alt={item.title}
+                                                            className="w-full h-full object-cover group-hover/item:scale-110 transition-transform"
+                                                        />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-bold text-gray-800 truncate group-hover/item:text-red-600 transition-colors">
+                                                            {item.title}
+                                                        </p>
+                                                        <p className="text-[11px] text-gray-500 truncate flex items-center gap-1">
+                                                            <MapPin className="w-3 h-3" /> {item.location}
+                                                        </p>
+                                                        {item.artists?.length > 0 && (
+                                                            <p className="text-[10px] text-red-500 font-medium truncate mt-0.5">
+                                                                Nghệ sĩ: {item.artists.join(", ")}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-right flex-shrink-0">
+                                                        <p className="text-[11px] font-bold text-gray-800">
+                                                            {item.minPrice > 0 ? `Từ ${item.minPrice.toLocaleString('vi-VN')}đ` : 'Free'}
+                                                        </p>
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                        <div
+                                            className="bg-gray-50 p-3 text-center border-t border-gray-100 hover:bg-red-50 cursor-pointer transition-colors"
+                                            onClick={() => {
+                                                dispatch(searchConcerts(searchTerm));
+                                                router.push('/');
+                                                setIsFocused(false);
+                                            }}
+                                        >
+                                            <p className="text-xs font-bold text-red-600">Xem tất cả kết quả</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="p-8 text-center">
+                                        <p className="text-gray-400 text-sm">Đang tìm kiếm "{searchTerm}"...</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -53,6 +164,12 @@ export const Header = () => {
                         </select>
                     </div>
 
+                    {user && (
+                        <Link href="/bookings" className="hidden sm:flex text-gray-700 hover:text-black transition items-center gap-1 font-bold text-sm bg-gray-100 px-4 py-2 rounded-full">
+                            Vé của tôi
+                        </Link>
+                    )}
+
                     {user?.role === 'ORGANIZER' && (
                         <Link href="/organizer" className="hidden sm:flex text-red-600 hover:text-red-700 transition items-center gap-1 font-bold text-sm bg-red-50 px-4 py-2 rounded-full">
                             Quản lý sự kiện
@@ -66,7 +183,7 @@ export const Header = () => {
                         {user ? (
                             <div className="flex items-center gap-4">
                                 <div className="text-sm font-semibold text-gray-800 hidden sm:block">
-                                    Chào, {user.name}
+                                    Chào,{user.email}
                                 </div>
                                 <button
                                     onClick={() => dispatch(logout())}

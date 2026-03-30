@@ -87,4 +87,15 @@ export class BillingController {
 
         return result;
     }
+
+    @Post('payments/booking/:bookingId/initiate')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Initiate a payment directly from a booking ID' })
+    async initiatePaymentFromBooking(@Param('bookingId') bookingId: string, @Body() dto: InitiatePaymentDto, @Req() req: Request) {
+
+        // This is a special helper endpoint to ensure backwards compatibility with bookings
+        // that were created before the invoice auto-generation logic was added.
+
+        throw new Error('This booking is too old, or invoice has not been created yet. Please create a new booking for payment.');
+    }
 }

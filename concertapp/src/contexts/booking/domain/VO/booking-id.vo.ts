@@ -5,9 +5,6 @@ export class BookingId extends UniqueEntityID {
         super(id);
     }
 
-    // For TypeScript to correctly distinguish types
-    private _type = 'BookingId';
-
     static create(id: string): BookingId {
         return new BookingId(id);
     }

@@ -39,7 +39,7 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
 
     async save(invoice: InvoiceAggregate): Promise<void> {
         const persistence = InvoiceMapper.toPersistence(invoice);
-        const itemsData = InvoiceMapper.itemsToPersistence(invoice.id, invoice.items);
+        const itemsData = InvoiceMapper.itemsToPersistence(invoice.items);
 
         await this.prisma.$transaction(async (tx) => {
             const existing = await tx.invoice.findUnique({
@@ -93,7 +93,7 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
 
                 if (itemsData.length > 0) {
                     await tx.invoiceItem.createMany({
-                        data: itemsData,
+                        data: itemsData.map(item => ({ ...item, invoiceId: persistence.id })),
                     });
                 }
             }

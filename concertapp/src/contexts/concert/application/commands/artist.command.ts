@@ -14,3 +14,9 @@ export class UpdateArtistCommand {
         public readonly contactInfo: string
     ) { }
 }
+
+export class DeleteArtistCommand {
+    constructor(
+        public readonly artistId: string
+    ) { }
+}

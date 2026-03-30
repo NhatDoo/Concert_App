@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RootState } from '../../src/stores/store';
-import { PlusCircle, Music, Ticket, Calendar, DollarSign, Settings, Trash2, Edit } from 'lucide-react';
+import { PlusCircle, Music, Ticket, Calendar, DollarSign, Trash2, Edit, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 export default function OrganizerDashboard() {
     const { user } = useSelector((state: RootState) => state.auth);
@@ -13,6 +13,16 @@ export default function OrganizerDashboard() {
 
     const [events, setEvents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+
+    const [showModal, setShowModal] = useState(false);
+    const [createForm, setCreateForm] = useState({ name: '', startDate: '', location: '', image: null as File | null });
+    const [isCreating, setIsCreating] = useState(false);
+
+    const notify = (type: 'success' | 'error', msg: string) => {
+        setNotification({ type, msg });
+        setTimeout(() => setNotification(null), 3000);
+    };
 
     useEffect(() => {
         // Bảo vệ route: Nếu chưa đăng nhập hoặc không phải ORGANIZE thì đá về trang chủ
@@ -41,10 +51,59 @@ export default function OrganizerDashboard() {
         fetchMyConcerts();
     }, [user, router]);
 
+    const handleCreateConcert = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!createForm.name || !createForm.startDate || !createForm.location) return;
+
+        setIsCreating(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const formData = new FormData();
+            formData.append('organizerId', user!.id);
+            formData.append('name', createForm.name);
+            formData.append('startDate', createForm.startDate);
+            formData.append('location', createForm.location);
+            if (createForm.image) {
+                formData.append('image', createForm.image);
+            }
+
+            const response = await fetch(`${apiUrl}/concerts`, {
+                method: 'POST',
+                body: formData, // No Content-Type header, browser will set it with boundary
+            });
+
+            if (response.ok) {
+                setShowModal(false);
+                setCreateForm({ name: '', startDate: '', location: '', image: null });
+                notify('success', 'Đã tạo sự kiện mới thành công!');
+                // Refresh list
+                const res = await fetch(`${apiUrl}/concerts`);
+                const data = await res.json();
+                setEvents(data.filter((item: any) => item.organizerId === user!.id));
+            } else {
+                const error = await response.json();
+                notify('error', error.message || 'Lỗi khi tạo sự kiện');
+            }
+        } catch (error) {
+            notify('error', 'Không thể kết nối đến máy chủ');
+            console.error('Failed to create concert', error);
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
     if (!user || user.role !== 'ORGANIZER') return null;
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
+            {/* Notification */}
+            {notification && (
+                <div className={`fixed top-20 right-6 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl text-white font-bold transition-all animate-in fade-in slide-in-from-right-10 ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+                    {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                    {notification.msg}
+                </div>
+            )}
+
             {/* Header Dashboard */}
             <div className="bg-white border-b border-gray-200">
                 <div className="container mx-auto px-4 py-8">
@@ -53,7 +112,10 @@ export default function OrganizerDashboard() {
                             <h1 className="text-3xl font-bold text-gray-900">Dashboard Ban Tổ Chức</h1>
                             <p className="text-gray-500 mt-2">Chào mừng {user.name}, quản lý sự kiện của bạn hiệu quả hơn.</p>
                         </div>
-                        <button className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg w-full md:w-auto justify-center">
+                        <button
+                            onClick={() => setShowModal(true)}
+                            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg w-full md:w-auto justify-center"
+                        >
                             <PlusCircle className="w-5 h-5" />
                             Tạo sự kiện mới
                         </button>
@@ -124,7 +186,10 @@ export default function OrganizerDashboard() {
                         </div>
                         <h3 className="text-lg font-bold text-gray-900 mb-2">Chưa có sự kiện nào</h3>
                         <p className="text-gray-500 mb-6">Bạn chưa tạo bất kỳ sự kiện nào. Hãy bắt đầu ngay để thu hút khán giả.</p>
-                        <button className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-lg font-semibold transition shadow">
+                        <button
+                            onClick={() => setShowModal(true)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-lg font-semibold transition shadow"
+                        >
                             Tạo sự kiện ngay
                         </button>
                     </div>
@@ -161,7 +226,10 @@ export default function OrganizerDashboard() {
                                                 <div className="flex items-center justify-end gap-3 text-gray-400">
                                                     <button className="hover:text-amber-500 transition" title="Chỉnh sửa"><Edit className="w-5 h-5" /></button>
                                                     <Link href={`/organizer/concerts/${event.id}/tickets`} className="hover:text-blue-500 transition" title="Quản lý vé">
-                                                        <Settings className="w-5 h-5" />
+                                                        <Ticket className="w-5 h-5" />
+                                                    </Link>
+                                                    <Link href={`/organizer/concerts/${event.id}/program`} className="hover:text-purple-500 transition" title="Lịch diễn (Line-up)">
+                                                        <Music className="w-5 h-5" />
                                                     </Link>
                                                     <button className="hover:text-red-500 transition" title="Xóa"><Trash2 className="w-5 h-5" /></button>
                                                 </div>
@@ -174,6 +242,85 @@ export default function OrganizerDashboard() {
                     </div>
                 )}
             </div>
+
+            {/* Create Concert Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="bg-gray-900 p-6 text-white flex justify-between items-center">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <PlusCircle className="w-6 h-6 text-red-500" />
+                                Tạo sự kiện mới
+                            </h2>
+                            <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white transition">
+                                <PlusCircle className="w-6 h-6 rotate-45" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateConcert} className="p-8 space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest mb-2">Tên sự kiện</label>
+                                <input
+                                    required
+                                    type="text"
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-500 transition text-black"
+                                    placeholder="VD: Sky Tour 2026"
+                                    value={createForm.name}
+                                    onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest mb-2">Ngày diễn ra</label>
+                                    <input
+                                        required
+                                        type="datetime-local"
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-500 transition text-black"
+                                        value={createForm.startDate}
+                                        onChange={e => setCreateForm({ ...createForm, startDate: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest mb-2">Địa điểm</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-red-500 transition text-black"
+                                        placeholder="VD: Sân vận động Mỹ Đình"
+                                        value={createForm.location}
+                                        onChange={e => setCreateForm({ ...createForm, location: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest mb-2">Ảnh bìa (Thumbnail)</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                                    onChange={e => setCreateForm({ ...createForm, image: e.target.files?.[0] || null })}
+                                />
+                            </div>
+
+                            <div className="pt-4 flex gap-4">
+                                <button
+                                    type="submit"
+                                    disabled={isCreating}
+                                    className="flex-1 bg-red-600 hover:bg-black text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 disabled:bg-gray-400"
+                                >
+                                    {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Bắt đầu tạo sự kiện'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="px-6 py-4 font-bold text-gray-500 hover:text-gray-900 transition"
+                                >
+                                    Hủy
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { CommandBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { LoginCommand } from '../../application/commands/login.command';
 import { RegisterCommand } from '../../application/commands/register.command';
+import { RefreshTokenCommand } from '../../application/commands/refresh-token.command';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AuthTokens } from '../../domain/service/token.service.interface';
@@ -40,5 +41,12 @@ export class IdentityController {
 
         // Expected return: AuthTokens object { accessToken: string, refreshToken: string }
         return this.commandBus.execute(command);
+    }
+
+    @Post('refresh-token')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Refresh access token using refresh token' })
+    async refreshToken(@Body('refreshToken') refreshToken: string): Promise<AuthTokens> {
+        return this.commandBus.execute(new RefreshTokenCommand(refreshToken));
     }
 }

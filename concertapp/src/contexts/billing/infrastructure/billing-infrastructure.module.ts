@@ -25,6 +25,6 @@ import { PrismaService } from '../../../prisma.service';
             useClass: PrismaPaymentRepository,
         },
     ],
-    exports: [IPAYMENT_GATEWAY, IINVOICE_REPOSITORY, IPAYMENT_REPOSITORY],
+    exports: [IPAYMENT_GATEWAY, IINVOICE_REPOSITORY, IPAYMENT_REPOSITORY, PrismaService],
 })
 export class BillingInfrastructureModule { }

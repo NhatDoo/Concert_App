@@ -130,7 +130,7 @@ export const RegisterForm = () => {
                             onChange={(e) => setRole(e.target.value)}
                         >
                             <option value="USER">Người dùng (Mua vé)</option>
-                            <option value="ORGANIZE">Nhà tổ chức sự kiện</option>
+                            <option value="ORGANIZER">Nhà tổ chức sự kiện</option>
                         </select>
                     </div>
                 </div>

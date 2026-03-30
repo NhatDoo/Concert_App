@@ -42,4 +42,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     async del(key: string): Promise<void> {
         await this.redisClient.del(key);
     }
+
+    // ==================== RedisBloom Commands ====================
+    // NOTE: Requires Redis server with RedisBloom module (or Redis Stack)
+    async bfAdd(filter: string, item: string): Promise<number> {
+        return (await this.redisClient.call('BF.ADD', filter, item)) as number;
+    }
+
+    async bfExists(filter: string, item: string): Promise<boolean> {
+        const result = await this.redisClient.call('BF.EXISTS', filter, item);
+        return result === 1;
+    }
+
+    async bfReserve(filter: string, errorRate: number, capacity: number): Promise<void> {
+        await this.redisClient.call('BF.RESERVE', filter, errorRate, capacity);
+    }
 }

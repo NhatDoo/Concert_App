@@ -1,7 +1,7 @@
 import { Inject, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
-import { AddPerformanceCommand, UpdatePerformanceScheduleCommand } from '../performance.command';
+import { AddPerformanceCommand, UpdatePerformanceScheduleCommand, RemovePerformanceCommand } from '../performance.command';
 import { IPERFORMANCE_REPOSITORY } from '../../../domain/repository/performance.repository.interface';
 import type { IPerformanceRepository } from '../../../domain/repository/performance.repository.interface';
 import { IARTIST_REPOSITORY } from '../../../domain/repository/artist.repository.interface';
@@ -51,5 +51,20 @@ export class UpdatePerformanceScheduleHandler implements ICommandHandler<UpdateP
 
         performance.updateSchedule(new Date(startTime), durationMinutes);
         await this.performanceRepo.save(performance);
+    }
+}
+
+@CommandHandler(RemovePerformanceCommand)
+export class RemovePerformanceHandler implements ICommandHandler<RemovePerformanceCommand, void> {
+    constructor(
+        @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
+    ) { }
+
+    async execute(command: RemovePerformanceCommand): Promise<void> {
+        const { performanceId } = command;
+        const performance = await this.performanceRepo.findById(performanceId);
+        if (!performance) throw new NotFoundException('Performance not found');
+
+        await this.performanceRepo.delete(performanceId);
     }
 }

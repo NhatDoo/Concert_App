@@ -11,6 +11,6 @@ import { PrismaService } from '../../../prisma.service';
             useClass: PrismaBookingRepository,
         },
     ],
-    exports: [IBOOKING_REPOSITORY],
+    exports: [IBOOKING_REPOSITORY, PrismaService],
 })
 export class BookingInfrastructureModule { }

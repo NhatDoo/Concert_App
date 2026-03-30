@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { VNPay, ProductCode, VnpLocale, HashAlgorithm } from 'vnpay';
+import { VNPay, ProductCode, VnpLocale, HashAlgorithm, dateFormat } from 'vnpay';
 import { IPaymentGateway, PaymentRequest, PaymentVerificationResult } from '../../domain/service/payment-gateway.interface';
 import { Money } from '../../../../common/domain/value-object/money.vo';
 import * as crypto from 'crypto';
@@ -14,8 +14,8 @@ export class VnpayGateway implements IPaymentGateway {
     constructor(
         private readonly configService: ConfigService,
     ) {
-        this.vnp_TmnCode = this.configService.get<string>('VNP_TMN_CODE') || '';
-        this.vnp_SecureSecret = this.configService.get<string>('VNP_HASH_SECRET') || '';
+        this.vnp_TmnCode = (this.configService.get<string>('VNP_TMN_CODE') || '').trim();
+        this.vnp_SecureSecret = (this.configService.get<string>('VNP_HASH_SECRET') || '').trim();
 
         this.vnpay = new VNPay({
             tmnCode: this.vnp_TmnCode,
@@ -26,22 +26,13 @@ export class VnpayGateway implements IPaymentGateway {
         });
     }
 
-    private getFormattedDate(): number {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hour = String(now.getHours()).padStart(2, '0');
-        const minute = String(now.getMinutes()).padStart(2, '0');
-        const second = String(now.getSeconds()).padStart(2, '0');
-        return Number(`${year}${month}${day}${hour}${minute}${second}`);
-    }
-
     async generatePaymentUrl(request: PaymentRequest): Promise<string> {
         try {
             const attemptKey = crypto.randomBytes(4).toString('hex');
-            const amount = request.amount.getAmount() * 100;
+            // VNPay npm library handles amount * 100
+            const amount = Math.floor(request.amount.getAmount());
             const vnpTxnRef = `${request.orderId}_${attemptKey}`;
+            const createDate = dateFormat(new Date());
 
             const paymentUrl = this.vnpay.buildPaymentUrl({
                 vnp_Amount: amount,
@@ -51,11 +42,12 @@ export class VnpayGateway implements IPaymentGateway {
                 vnp_OrderType: ProductCode.Other,
                 vnp_ReturnUrl: request.returnUrl,
                 vnp_Locale: VnpLocale.VN,
-                vnp_CreateDate: this.getFormattedDate(),
+                vnp_CreateDate: createDate as any, // Library types might expect number but it returns string YYYYMMDDHHmmss
             });
 
             return paymentUrl;
         } catch (error: any) {
+            console.error('VNPay generation error:', error);
             throw new InternalServerErrorException({
                 message: 'Error generating VNPay URL',
                 error: error.message,

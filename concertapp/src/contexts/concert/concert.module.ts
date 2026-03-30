@@ -4,18 +4,22 @@ import { ConcertInfrastructureModule } from './infrastructure/concert-infrastruc
 import { ConcertController } from './presentation/http/concert.controller';
 import { CreateConcertHandler } from './application/commands/handlers/create-concert.handler';
 import { GenerateTicketsHandler } from './application/commands/handlers/generate-tickets.handler';
-import { CreateArtistHandler, UpdateArtistHandler } from './application/commands/handlers/artist.handler';
-import { AddPerformanceHandler, UpdatePerformanceScheduleHandler } from './application/commands/handlers/performance.handler';
+import { CreateArtistHandler, UpdateArtistHandler, DeleteArtistHandler } from './application/commands/handlers/artist.handler';
+import { AddPerformanceHandler, UpdatePerformanceScheduleHandler, RemovePerformanceHandler } from './application/commands/handlers/performance.handler';
 import { GetAllConcertsHandler } from './application/queries/handlers/get-all-concerts.handler';
 import { GetConcertByIdHandler } from './application/queries/handlers/get-concert-by-id.handler';
 import { GetTicketsByConcertHandler } from './application/queries/handlers/get-tickets-by-concert.handler';
+import { SearchConcertHandler } from './application/queries/handlers/search-concert.handler';
 import { DeleteTicketTypeHandler } from './application/commands/handlers/delete-ticket-type.handler';
 import { UpdateTicketPriceHandler } from './application/commands/handlers/update-ticket-price.handler';
+import { SyncElasticsearchHandler } from './application/commands/handlers/sync-elasticsearch.handler';
+import { ConcertSearchHandler } from './application/events/handlers/concert-search.handler';
 
 export const QueryHandlers = [
     GetAllConcertsHandler,
     GetConcertByIdHandler,
-    GetTicketsByConcertHandler
+    GetTicketsByConcertHandler,
+    SearchConcertHandler
 ];
 
 export const CommandHandlers = [
@@ -23,10 +27,17 @@ export const CommandHandlers = [
     GenerateTicketsHandler,
     CreateArtistHandler,
     UpdateArtistHandler,
+    DeleteArtistHandler,
     AddPerformanceHandler,
     UpdatePerformanceScheduleHandler,
+    RemovePerformanceHandler,
     DeleteTicketTypeHandler,
-    UpdateTicketPriceHandler
+    UpdateTicketPriceHandler,
+    SyncElasticsearchHandler
+];
+
+export const EventHandlers = [
+    ConcertSearchHandler
 ];
 
 @Module({
@@ -39,7 +50,8 @@ export const CommandHandlers = [
     ],
     providers: [
         ...CommandHandlers,
-        ...QueryHandlers
+        ...QueryHandlers,
+        ...EventHandlers
     ]
 })
 export class ConcertModule { }

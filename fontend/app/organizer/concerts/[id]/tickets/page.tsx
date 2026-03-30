@@ -145,6 +145,44 @@ export default function ManageTicketsPage() {
             )}
 
             <div className="container mx-auto px-4 mt-8">
+                {tickets.some(t => t.price >= 5000000) && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-amber-100 p-2 rounded-lg text-amber-600">
+                                <span className="text-xl font-bold">!</span>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-amber-900">Phát hiện giá vé bất thường (đơn vị 5tr+)</h4>
+                                <p className="text-amber-700 text-sm">Có vẻ một số loại vé đang bị sai đơn vị. Bạn có muốn tự động chia tất cả giá vé cho 100 không?</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (!confirm("Hệ thống sẽ thử chia tất cả giá vé cho 100. Tiếp tục?")) return;
+                                setSubmitting(true);
+                                try {
+                                    for (const t of tickets) {
+                                        if (t.price >= 100000) {
+                                            await fetch(`${API_URL}/concerts/${concertId}/tickets/${t.ticketType}`, {
+                                                method: 'PUT',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ price: Math.round(t.price / 100) })
+                                            });
+                                        }
+                                    }
+                                    notify('success', "Đã điều chỉnh lại toàn bộ bảng giá chuẩn (÷100)!");
+                                    fetchTickets();
+                                } catch (e: any) { notify('error', "Có lỗi khi sửa hàng loạt"); }
+                                finally { setSubmitting(false); }
+                            }}
+                            disabled={submitting}
+                            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition disabled:opacity-50"
+                        >
+                            {submitting ? "Đang sửa..." : "Sửa toàn bộ giá (÷100)"}
+                        </button>
+                    </div>
+                )}
+
                 {/* Add Ticket Button */}
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-gray-900">Các loại vé hiện có</h2>

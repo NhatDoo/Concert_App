@@ -10,9 +10,17 @@ export class CreateBookingDto {
     @IsString()
     concertId: string;
 
-    @ApiProperty({ type: [String], example: ['ticket1', 'ticket2'], description: 'List of ticket IDs to book' })
+    @ApiProperty({
+        type: 'array',
+        items: {
+            type: 'object',
+            properties: {
+                ticketType: { type: 'string', example: 'VIP' },
+                quantity: { type: 'number', example: 1 }
+            }
+        }
+    })
     @IsArray()
     @ArrayNotEmpty()
-    @IsString({ each: true })
-    ticketIds: string[];
+    items: { ticketType: string; quantity: number }[];
 }

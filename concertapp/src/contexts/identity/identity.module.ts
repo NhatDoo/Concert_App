@@ -4,8 +4,9 @@ import { IdentityInfrastructureModule } from './infrastructure/identity-infrastr
 import { IdentityController } from './presentation/http/identity.controller';
 import { LoginHandler } from './application/commands/handlers/login.handler';
 import { RegisterHandler } from './application/commands/handlers/register.handler';
+import { RefreshTokenHandler } from './application/commands/handlers/refresh-token.handler';
 
-export const CommandHandlers = [LoginHandler, RegisterHandler];
+export const CommandHandlers = [LoginHandler, RegisterHandler, RefreshTokenHandler];
 
 @Module({
     imports: [

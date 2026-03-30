@@ -1,6 +1,7 @@
 import { Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, ICommandHandler, CommandBus } from '@nestjs/cqrs';
 import { ConfirmPaymentCommand } from '../confirm-payment.command';
+import { ConfirmBookingCommand } from '../../../../booking/application/commands/confirm-booking.command';
 import { IINVOICE_REPOSITORY } from '../../../domain/repository/invoice.repository.interface';
 import type { IInvoiceRepository } from '../../../domain/repository/invoice.repository.interface';
 import { IPAYMENT_REPOSITORY } from '../../../domain/repository/payment.repository.interface';
@@ -14,9 +15,10 @@ export class ConfirmPaymentHandler implements ICommandHandler<ConfirmPaymentComm
         @Inject(IINVOICE_REPOSITORY) private readonly invoiceRepo: IInvoiceRepository,
         @Inject(IPAYMENT_REPOSITORY) private readonly paymentRepo: IPaymentRepository,
         @Inject(IPAYMENT_GATEWAY) private readonly paymentGateway: IPaymentGateway,
+        private readonly commandBus: CommandBus,
     ) { }
 
-    async execute(command: ConfirmPaymentCommand): Promise<{ success: boolean; message: string }> {
+    async execute(command: ConfirmPaymentCommand): Promise<{ isSuccess: boolean; message: string }> {
         const { query } = command;
 
         // 1. Verify the payment callback with gateway
@@ -40,15 +42,18 @@ export class ConfirmPaymentHandler implements ICommandHandler<ConfirmPaymentComm
                 await this.invoiceRepo.save(invoice);
             }
 
+            // 5. Confirm the booking
+            await this.commandBus.execute(new ConfirmBookingCommand(payment.bookingId));
+
             console.log(`Payment ${payment.id} confirmed successfully`);
-            return { success: true, message: 'Payment confirmed successfully' };
+            return { isSuccess: true, message: 'Payment confirmed successfully' };
         } else {
             // 3b. Mark payment as failed
             payment.markAsFailed();
             await this.paymentRepo.save(payment);
 
             console.log(`Payment ${payment.id} failed: ${result.message}`);
-            return { success: false, message: result.message };
+            return { isSuccess: false, message: result.message };
         }
     }
 }

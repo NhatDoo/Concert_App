@@ -10,9 +10,12 @@ import { PrismaPerformanceRepository } from './persistence/prisma/prisma-perform
 import { ISTORAGE_SERVICE } from '../domain/service/storage.service.interface';
 import { MinioStorageService } from './storage/minio-storage.service';
 import { RedisService } from './redis/redis.service';
+import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
+import { ConcertSearchService } from './elasticsearch/elasticsearch.service';
+
 
 @Module({
-    imports: [ConfigModule],
+    imports: [ConfigModule, ElasticsearchModule],
     providers: [
         PrismaService,
         {
@@ -33,6 +36,6 @@ import { RedisService } from './redis/redis.service';
         },
         RedisService,
     ],
-    exports: [ICONCERT_REPOSITORY, IARTIST_REPOSITORY, IPERFORMANCE_REPOSITORY, ISTORAGE_SERVICE, PrismaService, RedisService],
+    exports: [ICONCERT_REPOSITORY, IARTIST_REPOSITORY, IPERFORMANCE_REPOSITORY, ISTORAGE_SERVICE, PrismaService, RedisService, ElasticsearchModule],
 })
 export class ConcertInfrastructureModule { }

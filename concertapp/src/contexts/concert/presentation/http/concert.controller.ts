@@ -1,4 +1,4 @@
-import { Controller, Post, Put, Delete, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Put, Delete, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -7,10 +7,12 @@ import { GenerateTicketsCommand } from '../../application/commands/generate-tick
 import { GetAllConcertsQuery } from '../../application/queries/get-all-concerts.query';
 import { GetConcertByIdQuery } from '../../application/queries/get-concert-by-id.query';
 import { GetTicketsByConcertQuery } from '../../application/queries/get-tickets-by-concert.query';
+import { SearchConcertQuery } from '../../application/queries/search-concert.query';
 import { DeleteTicketTypeCommand } from '../../application/commands/delete-ticket-type.command';
 import { UpdateTicketPriceCommand } from '../../application/commands/update-ticket-price.command';
-import { CreateArtistCommand, UpdateArtistCommand } from '../../application/commands/artist.command';
-import { AddPerformanceCommand, UpdatePerformanceScheduleCommand } from '../../application/commands/performance.command';
+import { CreateArtistCommand, UpdateArtistCommand, DeleteArtistCommand } from '../../application/commands/artist.command';
+import { AddPerformanceCommand, UpdatePerformanceScheduleCommand, RemovePerformanceCommand } from '../../application/commands/performance.command';
+import { SyncElasticsearchCommand } from '../../application/commands/sync-elasticsearch.command';
 import { CreateConcertDto } from './dto/create-concert.dto';
 import { GenerateTicketsDto } from './dto/generate-tickets.dto';
 import { CreateArtistDto, UpdateArtistDto } from './dto/artist.dto';
@@ -32,6 +34,70 @@ export class ConcertController {
         @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
     ) { }
 
+    // ==================== ARTIST ====================
+    @Post('artists')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create a new artist' })
+    @ApiResponse({ status: 201, description: 'Artist created' })
+    async createArtist(@Body() dto: CreateArtistDto) {
+        const command = new CreateArtistCommand(dto.name, dto.bio ?? '', dto.contactInfo ?? '');
+        const artistId = await this.commandBus.execute(command);
+        return { message: 'Artist created', artistId };
+    }
+
+    @Get('artists')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get all artists' })
+    async getAllArtists() {
+        const artists = await this.artistRepo.findAll();
+        return artists.map(a => ({
+            id: a.getId(),
+            name: a.getName(),
+            bio: a.getBio(),
+            contactInfo: a.getContactInfo()
+        }));
+    }
+
+    @Get('artists/:artistId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get artist by ID' })
+    async getArtistById(@Param('artistId') artistId: string) {
+        const artist = await this.artistRepo.findById(artistId);
+        if (!artist) return { message: 'Artist not found' };
+        return {
+            id: artist.getId(),
+            name: artist.getName(),
+            bio: artist.getBio(),
+            contactInfo: artist.getContactInfo()
+        };
+    }
+
+    @Put('artists/:artistId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update artist details' })
+    async updateArtist(@Param('artistId') artistId: string, @Body() dto: UpdateArtistDto) {
+        const command = new UpdateArtistCommand(artistId, dto.name, dto.bio ?? '', dto.contactInfo ?? '');
+        await this.commandBus.execute(command);
+        return { message: 'Artist updated' };
+    }
+
+    @Delete('artists/:artistId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Delete an artist' })
+    async deleteArtist(@Param('artistId') artistId: string) {
+        await this.commandBus.execute(new DeleteArtistCommand(artistId));
+        return { message: 'Artist deleted' };
+    }
+
+    // ==================== SYNC ====================
+    @Post('sync-es')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Trigger a manual sync of all concerts to Elasticsearch' })
+    async syncElasticsearch() {
+        const count = await this.commandBus.execute(new SyncElasticsearchCommand());
+        return { message: 'Elasticsearch sync completed', count };
+    }
+
     // ==================== CONCERT ====================
     @Get()
     @HttpCode(HttpStatus.OK)
@@ -39,6 +105,13 @@ export class ConcertController {
     @ApiResponse({ status: 200, description: 'Return all concerts' })
     async getAllConcerts() {
         return this.queryBus.execute(new GetAllConcertsQuery());
+    }
+
+    @Get('search')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Search concerts by name or location (Optimized with Bloom Filter)' })
+    async searchConcerts(@Query('query') searchTerm: string) {
+        return this.queryBus.execute(new SearchConcertQuery(searchTerm));
     }
 
     @Get(':id')
@@ -131,52 +204,6 @@ export class ConcertController {
         return { message: `Ticket type "${ticketType}" deleted` };
     }
 
-    // ==================== ARTIST ====================
-    @Post('artists')
-    @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Create a new artist' })
-    @ApiResponse({ status: 201, description: 'Artist created' })
-    async createArtist(@Body() dto: CreateArtistDto) {
-        const command = new CreateArtistCommand(dto.name, dto.bio ?? '', dto.contactInfo ?? '');
-        const artistId = await this.commandBus.execute(command);
-        return { message: 'Artist created', artistId };
-    }
-
-    @Get('artists')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all artists' })
-    async getAllArtists() {
-        const artists = await this.artistRepo.findAll();
-        return artists.map(a => ({
-            id: a.getId(),
-            name: a.getName(),
-            bio: a.getBio(),
-            contactInfo: a.getContactInfo()
-        }));
-    }
-
-    @Get('artists/:artistId')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get artist by ID' })
-    async getArtistById(@Param('artistId') artistId: string) {
-        const artist = await this.artistRepo.findById(artistId);
-        if (!artist) return { message: 'Artist not found' };
-        return {
-            id: artist.getId(),
-            name: artist.getName(),
-            bio: artist.getBio(),
-            contactInfo: artist.getContactInfo()
-        };
-    }
-
-    @Put('artists/:artistId')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Update artist details' })
-    async updateArtist(@Param('artistId') artistId: string, @Body() dto: UpdateArtistDto) {
-        const command = new UpdateArtistCommand(artistId, dto.name, dto.bio ?? '', dto.contactInfo ?? '');
-        await this.commandBus.execute(command);
-        return { message: 'Artist updated' };
-    }
 
     // ==================== PERFORMANCE ====================
     @Post(':id/performances')
@@ -224,5 +251,13 @@ export class ConcertController {
         );
         await this.commandBus.execute(command);
         return { message: 'Performance schedule updated' };
+    }
+
+    @Delete(':concertId/performances/:performanceId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Remove a performance from a concert' })
+    async removePerformance(@Param('performanceId') performanceId: string) {
+        await this.commandBus.execute(new RemovePerformanceCommand(performanceId));
+        return { message: 'Performance removed from concert' };
     }
 }

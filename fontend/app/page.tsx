@@ -3,9 +3,9 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "../src/stores/store";
-import { fetchConcerts, EventCard } from "../src/features/concerts";
+import { fetchConcerts, EventCard, clearSearch } from "../src/features/concerts";
 import { useLocation } from "../src/contexts/LocationContext";
-import { Music, Map, Ticket, Star, Mic2, Tv } from "lucide-react";
+import { Music, Map, Ticket, Star, Mic2, Tv, Search, X } from "lucide-react";
 
 const BANNERS = [
   "https://img.freepik.com/psd-mien-phi/mau-banner-le-hoi-am-nhac_23-2148911142.jpg"
@@ -20,11 +20,9 @@ const CATEGORIES = [
   { id: "more", name: "Khác", icon: Ticket, color: "bg-gray-50 text-gray-600" },
 ];
 
-
-
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>();
-  const { events, loading, error } = useSelector((state: RootState) => state.concerts);
+  const { events, searchResults, searchQuery, loading, error } = useSelector((state: RootState) => state.concerts);
   const { currentLocation } = useLocation();
 
   useEffect(() => {
@@ -33,9 +31,10 @@ export default function Home() {
   }, [dispatch]);
 
   // Lọc event dựa theo Location Context "Tất cả địa điểm", "Hồ Chí Minh", "Hà Nội", "Đà Nẵng"
+  const allEvents = searchResults || events;
   const displayEvents = currentLocation === 'all'
-    ? events
-    : events.filter(e => (e as any).city === currentLocation);
+    ? allEvents
+    : allEvents.filter(e => (e as any).city === currentLocation);
 
   return (
     <div className="pb-16">
@@ -49,8 +48,6 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent"></div>
         <div className="absolute bottom-10 left-10 md:left-24 text-white">
           <h1 className="text-3xl md:text-5xl font-bold mb-4 w-2/3">Đêm Nhạc Bùng Nổ Cảm Xúc</h1>
-
-
         </div>
       </div>
 
@@ -74,21 +71,39 @@ export default function Home() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="text-2xl font-bold text-red-600">
-                Sự Kiện Nổi Bật
-                {currentLocation === 'mn' && ' Tại Hồ Chí Minh'}
-                {currentLocation === 'mb' && ' Tại Hà Nội'}
-                {currentLocation === 'mt' && ' Tại Đà Nẵng'}
+                {searchResults ? (
+                  <>Kết quả cho: <span className="text-black italic">"{searchQuery}"</span></>
+                ) : (
+                  <>
+                    Sự Kiện Nổi Bật
+                    {currentLocation === 'mn' && ' Tại Hồ Chí Minh'}
+                    {currentLocation === 'mb' && ' Tại Hà Nội'}
+                    {currentLocation === 'mt' && ' Tại Đà Nẵng'}
+                  </>
+                )}
               </h2>
-              <p className="text-gray-500 mt-2">Khám phá các sự kiện hot nhất đang diễn ra</p>
+              <p className="text-gray-500 mt-2">
+                {searchResults ? `Tìm thấy ${searchResults.length} sự kiện` : 'Khám phá các sự kiện hot nhất đang diễn ra'}
+              </p>
             </div>
-            <a href="#" className="hidden md:inline-block text-red-600 font-semibold hover:underline">
-              Xem tất cả
-            </a>
+            {searchResults ? (
+              <button
+                onClick={() => dispatch(clearSearch())}
+                className="text-red-600 font-semibold hover:underline flex items-center gap-1"
+              >
+                <X className="w-4 h-4" /> Quay lại tất cả
+              </button>
+            ) : (
+              <a href="#" className="hidden md:inline-block text-red-600 font-semibold hover:underline">
+                Xem tất cả
+              </a>
+            )}
           </div>
 
           {loading ? (
-            <div className="text-center py-20 text-gray-500 font-medium tracking-wide">
-              Đang tải sự kiện từ hệ thống...
+            <div className="text-center py-20 text-gray-500 font-medium tracking-wide flex flex-col items-center gap-4">
+              <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+              <span>Đang tải sự kiện từ hệ thống...</span>
             </div>
           ) : error ? (
             <div className="text-center py-20 text-red-500 font-medium bg-red-50 rounded-xl">
@@ -103,7 +118,17 @@ export default function Home() {
           ) : (
             <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
               <Music className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-gray-500 font-medium">Hiện tại không có sự kiện nào tại khu vực này.</h3>
+              <h3 className="text-gray-500 font-medium">
+                {searchResults ? "Không tìm thấy sự kiện nào khớp với từ khóa của bạn." : "Hiện tại không có sự kiện nào tại khu vực này."}
+              </h3>
+              {searchResults && (
+                <button
+                  onClick={() => dispatch(clearSearch())}
+                  className="mt-4 text-red-600 font-bold hover:underline"
+                >
+                  Thử tìm từ khóa khác
+                </button>
+              )}
             </div>
           )}
         </div>

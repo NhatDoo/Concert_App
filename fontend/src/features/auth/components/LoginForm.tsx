@@ -21,10 +21,12 @@ export const LoginForm = () => {
         if (error) dispatch(clearError());
     }, [email, password, dispatch]);
 
-    // Chuyển hướng về trang chủ khi đăng nhập thành công
+    // Chuyển hướng sau khi đăng nhập thành công
     useEffect(() => {
         if (user) {
-            router.push('/');
+            const params = new URLSearchParams(window.location.search);
+            const redirectPath = params.get('redirect') || '/';
+            router.push(redirectPath);
         }
     }, [user, router]);
 

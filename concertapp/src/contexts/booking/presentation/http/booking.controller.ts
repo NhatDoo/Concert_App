@@ -1,14 +1,18 @@
-import { Body, Controller, Post, HttpCode, HttpStatus, Param } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
+import { Body, Controller, Post, Get, HttpCode, HttpStatus, Param } from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateBookingCommand } from '../../application/commands/create-booking.command';
 import { CancelBookingCommand } from '../../application/commands/cancel-booking.command';
+import { GetBookingsByUserQuery } from '../../application/queries/get-bookings-by-user.query';
 import { CreateBookingDto } from './dto/create-booking.dto';
 
 @ApiTags('Bookings')
 @Controller('bookings')
 export class BookingController {
-    constructor(private readonly commandBus: CommandBus) { }
+    constructor(
+        private readonly commandBus: CommandBus,
+        private readonly queryBus: QueryBus
+    ) { }
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
@@ -20,7 +24,7 @@ export class BookingController {
         const command = new CreateBookingCommand(
             dto.userId,
             dto.concertId,
-            dto.ticketIds
+            dto.items
         );
 
         const bookingId = await this.commandBus.execute(command);
@@ -47,5 +51,12 @@ export class BookingController {
         return {
             message: 'Booking successfully cancelled'
         };
+    }
+
+    @Get('user/:userId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get all bookings for a user' })
+    async getMyBookings(@Param('userId') userId: string) {
+        return this.queryBus.execute(new GetBookingsByUserQuery(userId));
     }
 }

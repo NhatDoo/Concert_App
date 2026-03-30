@@ -52,6 +52,7 @@ export const loginUser = createAsyncThunk(
             if (!token) throw new Error('Không nhận được token từ server');
 
             localStorage.setItem('ticketbox_token', token);
+            localStorage.setItem('ticketbox_refresh_token', data.refreshToken);
 
             // Decode JWT payload (phần thứ 2, base64)
             const payloadBase64 = token.split('.')[1];
@@ -59,6 +60,7 @@ export const loginUser = createAsyncThunk(
 
             return {
                 token,
+                refreshToken: data.refreshToken,
                 user: {
                     id: decodedPayload.sub,
                     email: decodedPayload.email,
@@ -72,6 +74,69 @@ export const loginUser = createAsyncThunk(
     }
 );
 
+// Thunk để khôi phục session khi reload trang
+export const rehydrateUser = createAsyncThunk(
+    'auth/rehydrate',
+    async (_, { rejectWithValue }) => {
+        try {
+            const token = localStorage.getItem('ticketbox_token');
+            const refreshToken = localStorage.getItem('ticketbox_refresh_token');
+
+            if (!token) return null;
+
+            // Decode token để lấy thông tin user
+            const payloadBase64 = token.split('.')[1];
+            const decodedPayload = JSON.parse(atob(payloadBase64));
+
+            // Kiểm tra hết hạn (exp là giây)
+            const currentTime = Date.now() / 1000;
+            if (decodedPayload.exp < currentTime) {
+                // Access Token hết hạn, thử refresh
+                if (refreshToken) {
+                    const response = await fetch(`${API_URL}/auth/refresh-token`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken }),
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        localStorage.setItem('ticketbox_token', data.accessToken);
+                        localStorage.setItem('ticketbox_refresh_token', data.refreshToken);
+
+                        const newPayload = JSON.parse(atob(data.accessToken.split('.')[1]));
+                        return {
+                            token: data.accessToken,
+                            refreshToken: data.refreshToken,
+                            user: {
+                                id: newPayload.sub,
+                                email: newPayload.email,
+                                name: newPayload.name,
+                                role: newPayload.role,
+                            }
+                        };
+                    }
+                }
+                localStorage.removeItem('ticketbox_token');
+                localStorage.removeItem('ticketbox_refresh_token');
+                return null;
+            }
+
+            return {
+                token,
+                refreshToken,
+                user: {
+                    id: decodedPayload.sub,
+                    email: decodedPayload.email,
+                    name: decodedPayload.name,
+                    role: decodedPayload.role,
+                }
+            };
+        } catch (error) {
+            return null;
+        }
+    }
+);
 
 // Async thunk cho đăng ký
 export const registerUser = createAsyncThunk(
@@ -100,6 +165,7 @@ export const registerUser = createAsyncThunk(
     }
 );
 
+
 export const authSlice = createSlice({
     name: 'auth',
     initialState,
@@ -109,6 +175,7 @@ export const authSlice = createSlice({
             state.token = null;
             state.error = null;
             localStorage.removeItem('ticketbox_token');
+            localStorage.removeItem('ticketbox_refresh_token');
         },
         clearError: (state) => {
             state.error = null;
@@ -126,12 +193,23 @@ export const authSlice = createSlice({
             })
             .addCase(loginUser.fulfilled, (state, action) => {
                 state.loading = false;
-                state.user = action.payload.user;
-                state.token = action.payload.token;
+                if (action.payload) {
+                    state.user = action.payload.user;
+                    state.token = action.payload.token;
+                }
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
+            });
+
+        // Rehydrate
+        builder
+            .addCase(rehydrateUser.fulfilled, (state, action) => {
+                if (action.payload) {
+                    state.user = action.payload.user;
+                    state.token = action.payload.token;
+                }
             });
 
         // Register

@@ -1,7 +1,7 @@
 import { Inject, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
-import { CreateArtistCommand, UpdateArtistCommand } from '../artist.command';
+import { CreateArtistCommand, UpdateArtistCommand, DeleteArtistCommand } from '../artist.command';
 import { IARTIST_REPOSITORY } from '../../../domain/repository/artist.repository.interface';
 import type { IArtistRepository } from '../../../domain/repository/artist.repository.interface';
 import { Artist } from '../../../domain/entity/artist.entity';
@@ -37,5 +37,20 @@ export class UpdateArtistHandler implements ICommandHandler<UpdateArtistCommand,
 
         artist.updateDetails(name, bio, contactInfo);
         await this.repository.save(artist);
+    }
+}
+
+@CommandHandler(DeleteArtistCommand)
+export class DeleteArtistHandler implements ICommandHandler<DeleteArtistCommand, void> {
+    constructor(
+        @Inject(IARTIST_REPOSITORY) private readonly repository: IArtistRepository,
+    ) { }
+
+    async execute(command: DeleteArtistCommand): Promise<void> {
+        const { artistId } = command;
+        const artist = await this.repository.findById(artistId);
+        if (!artist) throw new NotFoundException('Artist not found');
+
+        await this.repository.delete(artistId);
     }
 }

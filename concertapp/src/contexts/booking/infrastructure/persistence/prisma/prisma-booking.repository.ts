@@ -36,7 +36,7 @@ export class PrismaBookingRepository implements IBookingRepository {
         await this.prisma.$transaction(async (tx) => {
             const existing = await tx.booking.findUnique({
                 where: { id: persistence.id },
-                select: { id: true, version: true }
+                select: { id: true, status: true, version: true }
             });
 
             if (!existing) {
@@ -62,6 +62,21 @@ export class PrismaBookingRepository implements IBookingRepository {
                         }
                     }
                 });
+
+                // Update TicketPool soldCount
+                for (const ticket of tickets) {
+                    await tx.ticketPool.update({
+                        where: {
+                            concertId_ticketType: {
+                                concertId: ticket.getConcertId(),
+                                ticketType: ticket.getTicketType().getValue()
+                            }
+                        },
+                        data: {
+                            soldCount: { increment: 1 }
+                        }
+                    });
+                }
             } else {
                 // Optimistic Locking Check
                 if (existing.version !== persistence.version) {
@@ -85,6 +100,23 @@ export class PrismaBookingRepository implements IBookingRepository {
 
                 if (updateResult.count === 0) {
                     throw new BookingConcurrencyException(persistence.id);
+                }
+
+                // If status changed to CANCELLED, decrement TicketPool sold counts
+                if (existing?.status !== 'CANCELLED' && persistence.status === 'CANCELLED') {
+                    for (const t of tickets) {
+                        await tx.ticketPool.update({
+                            where: {
+                                concertId_ticketType: {
+                                    concertId: t.getConcertId(),
+                                    ticketType: t.getTicketType().getValue()
+                                }
+                            },
+                            data: {
+                                soldCount: { decrement: 1 }
+                            }
+                        });
+                    }
                 }
 
                 // Sync tickets (Recreate approach for aggregate consistency)
