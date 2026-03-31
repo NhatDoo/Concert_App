@@ -18,7 +18,7 @@ export class StaffRole {
             throw new Error("Staff role name is too long (max 50 characters)");
         }
 
-        // Tự động chuẩn hóa chuỗi (Ví dụ: "  manager  " -> "MANAGER")
+      
         const normalizedRole = roleName.trim().toUpperCase();
 
         return new StaffRole(normalizedRole);

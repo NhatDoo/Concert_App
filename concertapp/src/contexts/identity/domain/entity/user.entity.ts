@@ -89,7 +89,6 @@ export class User extends AggregateRoot {
     }
 
     changePassword(newPassword: Password): void {
-        // Here you might emit a UserPasswordChangedEvent if you had one.
         this.password = newPassword;
     }
 

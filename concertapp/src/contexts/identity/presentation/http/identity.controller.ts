@@ -20,12 +20,15 @@ export class IdentityController {
     @ApiResponse({ status: 400, description: 'Format error in payload' })
     @ApiResponse({ status: 409, description: 'Email already in use' })
     async register(@Body() dto: RegisterDto): Promise<AuthTokens> {
+        console.log('[DEBUG] IdentityController.register - dto:', JSON.stringify(dto, null, 2));
         const command = new RegisterCommand(
             dto.name,
             dto.phoneNumber,
             dto.email,
             dto.password,
-            dto.role
+            dto.role,
+            dto.staffRole,
+            dto.inviteToken
         );
         return this.commandBus.execute(command);
     }
@@ -36,10 +39,7 @@ export class IdentityController {
     @ApiResponse({ status: 200, description: 'Login successful, tokens returned' })
     @ApiResponse({ status: 401, description: 'Invalid credentials' })
     async login(@Body() dto: LoginDto): Promise<AuthTokens> {
-        // Compose command -> CommandBus dispatches to LoginHandler
         const command = new LoginCommand(dto.email, dto.password);
-
-        // Expected return: AuthTokens object { accessToken: string, refreshToken: string }
         return this.commandBus.execute(command);
     }
 

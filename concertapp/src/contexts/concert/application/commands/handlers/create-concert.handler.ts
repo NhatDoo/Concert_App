@@ -57,15 +57,11 @@ export class CreateConcertHandler implements ICommandHandler<CreateConcertComman
             await this.concertRepository.save(concert);
         }
 
-        // Bloom Filter: Add to filter
+        // 4. Clear Cache trang chủ để đảm bảo dữ liệu mới được fetch ngay
         try {
-            await this.redisService.bfAdd('concert_search_filter', name.toLowerCase());
-            const keywords = name.toLowerCase().split(/\s+/).filter(k => k.length > 2);
-            for (const kw of keywords) {
-                await this.redisService.bfAdd('concert_search_filter', kw);
-            }
+            await this.redisService.del('concerts:all:v2');
         } catch (e) {
-            console.warn('[BloomFilter] Error adding keywords:', e.message);
+            console.warn('[Cache] Error clearing home page cache:', e.message);
         }
 
         // 4. Commit all events (including ConcertCreatedEvent)

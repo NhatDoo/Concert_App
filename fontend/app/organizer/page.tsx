@@ -5,13 +5,14 @@ import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RootState } from '../../src/stores/store';
-import { PlusCircle, Music, Ticket, Calendar, DollarSign, Trash2, Edit, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { PlusCircle, Music, Ticket, Calendar, DollarSign, Trash2, Edit, Loader2, CheckCircle, XCircle, Users } from 'lucide-react';
 
 export default function OrganizerDashboard() {
     const { user } = useSelector((state: RootState) => state.auth);
     const router = useRouter();
 
     const [events, setEvents] = useState<any[]>([]);
+    const [stats, setStats] = useState({ totalTicketsSold: 0, totalRevenue: 0, totalConcerts: 0, activeConcerts: 0 });
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
@@ -37,12 +38,18 @@ export default function OrganizerDashboard() {
                 const response = await fetch(`${apiUrl}/concerts`);
                 if (response.ok) {
                     const data = await response.json();
-
                     const myConcerts = data.filter((item: any) => item.organizerId === user.id);
                     setEvents(myConcerts);
                 }
+
+                // Fetch stats
+                const statsRes = await fetch(`${apiUrl}/organize/stats/${user.id}`);
+                if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    setStats(statsData);
+                }
             } catch (error) {
-                console.error('Failed to fetch concerts', error);
+                console.error('Failed to fetch dashboard data', error);
             } finally {
                 setLoading(false);
             }
@@ -137,7 +144,7 @@ export default function OrganizerDashboard() {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                     <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">Vé đã bán</p>
-                        <p className="text-3xl font-bold text-gray-900">0</p>
+                        <p className="text-3xl font-bold text-gray-900">{stats.totalTicketsSold.toLocaleString('vi-VN')}</p>
                     </div>
                     <div className="w-12 h-12 bg-purple-50 text-purple-600 flex items-center justify-center rounded-xl">
                         <Ticket className="w-6 h-6" />
@@ -146,7 +153,7 @@ export default function OrganizerDashboard() {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                     <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">Sắp diễn ra</p>
-                        <p className="text-3xl font-bold text-gray-900">0</p>
+                        <p className="text-3xl font-bold text-gray-900">{stats.activeConcerts}</p>
                     </div>
                     <div className="w-12 h-12 bg-orange-50 text-orange-600 flex items-center justify-center rounded-xl">
                         <Calendar className="w-6 h-6" />
@@ -155,7 +162,7 @@ export default function OrganizerDashboard() {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                     <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">Doanh thu</p>
-                        <p className="text-3xl font-bold text-gray-900">0 ₫</p>
+                        <p className="text-3xl font-bold text-gray-900">{stats.totalRevenue.toLocaleString('vi-VN')} ₫</p>
                     </div>
                     <div className="w-12 h-12 bg-green-50 text-green-600 flex items-center justify-center rounded-xl">
                         <DollarSign className="w-6 h-6" />
@@ -230,6 +237,9 @@ export default function OrganizerDashboard() {
                                                     </Link>
                                                     <Link href={`/organizer/concerts/${event.id}/program`} className="hover:text-purple-500 transition" title="Lịch diễn (Line-up)">
                                                         <Music className="w-5 h-5" />
+                                                    </Link>
+                                                    <Link href={`/organizer/concerts/${event.id}/staff`} className="hover:text-cyan-500 transition" title="Quản lý nhân sự">
+                                                        <Users className="w-5 h-5" />
                                                     </Link>
                                                     <button className="hover:text-red-500 transition" title="Xóa"><Trash2 className="w-5 h-5" /></button>
                                                 </div>

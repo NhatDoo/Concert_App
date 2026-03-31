@@ -2,6 +2,8 @@ import { AggregateRoot } from "@nestjs/cqrs";
 import { StartDate } from "../VO/startdate.vo";
 import { ConcertCreatedEvent } from "../events/concert-created.event";
 import { ConcertRescheduledEvent } from "../events/concert-rescheduled.event";
+import { PerformanceAddedEvent } from "../events/performance-added.event";
+import { TicketPriceUpdatedEvent } from "../events/ticket-price-updated.event";
 
 export class Concert extends AggregateRoot {
     private readonly id: string;
@@ -70,5 +72,13 @@ export class Concert extends AggregateRoot {
 
     updateImageUrl(newImageUrl: string): void {
         this.imageUrl = newImageUrl;
+    }
+
+    addPerformance(performanceName: string): void {
+        this.apply(new PerformanceAddedEvent(this.id, performanceName));
+    }
+
+    updateTicketPrice(): void {
+        this.apply(new TicketPriceUpdatedEvent(this.id));
     }
 }

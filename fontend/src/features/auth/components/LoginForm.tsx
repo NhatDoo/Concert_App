@@ -25,8 +25,21 @@ export const LoginForm = () => {
     useEffect(() => {
         if (user) {
             const params = new URLSearchParams(window.location.search);
-            const redirectPath = params.get('redirect') || '/';
-            router.push(redirectPath);
+            const redirectParam = params.get('redirect');
+
+            if (redirectParam) {
+                router.push(redirectParam);
+                return;
+            }
+
+            // Mặc định dựa trên Role
+            if (user.role === 'ORGANIZER') {
+                router.push('/organizer');
+            } else if (user.role === 'STAFF') {
+                router.push('/staff');
+            } else {
+                router.push('/');
+            }
         }
     }, [user, router]);
 

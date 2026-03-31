@@ -31,6 +31,8 @@ model User {
   bookings    Booking[]
   invoices    Invoice[]
   concerts    Concert[] 
+  staffs      Staff[]
+ 
 
   @@index([role])
 }
@@ -55,6 +57,7 @@ model Concert {
   organize     Organize? 
   staffs       Staff[]
   performances Performance[]
+
 
   @@index([organizerId])
   @@index([startDate])
@@ -250,17 +253,98 @@ model Logistics {
 }
 
 model Staff {
-  id        String   @id @default(uuid())
-  userId    String
-  name      String
-  role      String
-  concertId String
-  concert   Concert  @relation(fields: [concertId], references: [id])
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  name        String
+  role        String
+  organizerId String?  // ID của Nhà tổ chức mời nhân viên này
+  concertId   String?
+  concert     Concert? @relation(fields: [concertId], references: [id])
+
+  // Hồ sơ nghề nghiệp
+  cvUrl       String?
+  bio         String?
+
+
+  // Phân cấp nhân sự (Hierarchy)
+  managerId   String?
+  manager     Staff?   @relation("StaffToManager", fields: [managerId], references: [id])
+  reportsTo   Staff[]  @relation("StaffToManager")
+
+  // Quan hệ với tuyển dụng
+  jobPosts     JobPost[]         @relation("ManagerJobPosts")
+  applications StaffApplication[] @relation("ApplicantStaff")
 
   tasks     StaffTask[]
 
   @@index([concertId])
   @@index([userId])
+  @@index([organizerId])
+  @@index([managerId])
+}
+
+model JobPost {
+  id               String   @id @default(uuid())
+  title            String
+  description      String   @db.Text
+  requirements     String   @db.Text
+  status           String   @default("OPEN") // OPEN, CLOSED
+  
+  // Thông tin thương hiệu (Dựa theo JobsGO)
+  companyName      String?
+  companyLogo      String?
+  location         String?
+  salary           String?
+  
+  // Liên kết
+  organizerId      String
+  authorId         String
+  author           Staff    @relation("ManagerJobPosts", fields: [authorId], references: [id])
+  
+  applications     StaffApplication[] @relation("JobApplications")
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizerId])
+  @@index([authorId])
+  @@index([status])
+}
+
+model StaffApplication {
+  id               String   @id @default(uuid())
+  applicantId      String
+  applicant        Staff    @relation("ApplicantStaff", fields: [applicantId], references: [id])
+  
+  jobPostId        String
+  jobPost          JobPost  @relation("JobApplications", fields: [jobPostId], references: [id])
+  
+  cvUrl            String   // Link CV cho lần ứng tuyển này
+  message          String?
+  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([applicantId])
+  @@index([jobPostId])
+  @@index([status])
+}
+
+model StaffInvitation {
+  id          String   @id @default(uuid())
+  email       String
+  role        String   // Ví dụ: EVENT_MANAGER, PRODUCTION_MANAGER, v.v.
+  organizerId String
+  token       String   @unique
+  status      String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  managerId   String?  // Gán quản lý trực tiếp cho nhân sự này ngay khi họ join
+
+  @@index([email])
+  @@index([token])
 }
 
 model StaffTask {
@@ -269,6 +353,7 @@ model StaffTask {
   staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
   description String
   status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  createdAt   DateTime @default(now())
 
   @@index([staffId])
 }

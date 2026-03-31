@@ -171,9 +171,14 @@ export const Header = () => {
                     )}
 
                     {user?.role === 'ORGANIZER' && (
-                        <Link href="/organizer" className="hidden sm:flex text-red-600 hover:text-red-700 transition items-center gap-1 font-bold text-sm bg-red-50 px-4 py-2 rounded-full">
-                            Quản lý sự kiện
-                        </Link>
+                        <div className="hidden sm:flex gap-2">
+                            <Link href="/organizer" className="text-red-600 hover:text-red-700 transition items-center gap-1 font-bold text-sm bg-red-50 px-4 py-2 rounded-full">
+                                Quản lý sự kiện
+                            </Link>
+                            <Link href="/organizer/staff" className="text-blue-600 hover:text-blue-700 transition items-center gap-1 font-bold text-sm bg-blue-50 px-4 py-2 rounded-full">
+                                Quản lý nhân sự
+                            </Link>
+                        </div>
                     )}
 
                     <div className="flex items-center gap-4">

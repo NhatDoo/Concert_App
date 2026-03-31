@@ -18,10 +18,11 @@ export class Role {
     return new Role(normalizedRole);
   }
 
-  // Cung cấp sẵn các Getter cho những Role cốt lõi của hệ thống, giúp dễ gọi (eg: Role.USER)
+
   static get USER(): Role { return Role.from("USER"); }
   static get ORGANIZER(): Role { return Role.from("ORGANIZER"); }
   static get ADMIN(): Role { return Role.from("ADMIN"); }
+  static get STAFF(): Role { return Role.from("STAFF"); }
 
   equals(role: Role): boolean {
     if (!role) return false;

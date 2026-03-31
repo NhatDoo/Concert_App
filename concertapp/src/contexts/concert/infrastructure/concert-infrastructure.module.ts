@@ -12,12 +12,22 @@ import { MinioStorageService } from './storage/minio-storage.service';
 import { RedisService } from './redis/redis.service';
 import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
 import { ConcertSearchService } from './elasticsearch/elasticsearch.service';
+import { BullModule } from '@nestjs/bull';
+import { ES_SYNC_QUEUE } from './elasticsearch/elasticsearch.constants';
+import { ElasticsearchProcessor } from './elasticsearch/elasticsearch.processor';
 
 
 @Module({
-    imports: [ConfigModule, ElasticsearchModule],
+    imports: [
+        ConfigModule,
+        ElasticsearchModule,
+        BullModule.registerQueue({
+            name: ES_SYNC_QUEUE
+        }),
+    ],
     providers: [
         PrismaService,
+        ElasticsearchProcessor,
         {
             provide: ICONCERT_REPOSITORY,
             useClass: PrismaConcertRepository,
@@ -36,6 +46,6 @@ import { ConcertSearchService } from './elasticsearch/elasticsearch.service';
         },
         RedisService,
     ],
-    exports: [ICONCERT_REPOSITORY, IARTIST_REPOSITORY, IPERFORMANCE_REPOSITORY, ISTORAGE_SERVICE, PrismaService, RedisService, ElasticsearchModule],
+    exports: [ICONCERT_REPOSITORY, IARTIST_REPOSITORY, IPERFORMANCE_REPOSITORY, ISTORAGE_SERVICE, PrismaService, RedisService, ElasticsearchModule, BullModule, ElasticsearchProcessor],
 })
 export class ConcertInfrastructureModule { }

@@ -6,6 +6,12 @@ import { AssignLocationHandler } from './application/commands/handlers/assign-lo
 import { AddLogisticsTaskHandler, UpdateLogisticsStatusHandler } from './application/commands/handlers/logistics.handler';
 import { AddEquipmentHandler, AddStaffHandler } from './application/commands/handlers/equipment-staff.handler';
 import { AssignStaffTaskHandler, UpdateStaffTaskHandler } from './application/commands/handlers/staff-task.handler';
+import { BulkAddStaffHandler } from './application/commands/handlers/bulk-add-staff.handler';
+import { InviteStaffHandler } from './application/commands/handlers/invite-staff.handler';
+import { CreateJobPostHandler } from './application/commands/handlers/create-job-post.handler';
+import { GetOrganizerStatsHandler } from './application/queries/handlers/get-organizer-stats.handler';
+import { GetConcertStaffHandler } from './application/queries/handlers/get-concert-staff.handler';
+import { CreateStaffOnRegistrationHandler } from './application/events/handlers/create-staff-on-registration.handler';
 
 export const CommandHandlers = [
     AssignLocationHandler,
@@ -14,7 +20,19 @@ export const CommandHandlers = [
     AddEquipmentHandler,
     AddStaffHandler,
     AssignStaffTaskHandler,
-    UpdateStaffTaskHandler
+    UpdateStaffTaskHandler,
+    BulkAddStaffHandler,
+    InviteStaffHandler,
+    CreateJobPostHandler
+];
+
+export const QueryHandlers = [
+    GetOrganizerStatsHandler,
+    GetConcertStaffHandler
+];
+
+export const EventHandlers = [
+    CreateStaffOnRegistrationHandler
 ];
 
 @Module({
@@ -26,7 +44,9 @@ export const CommandHandlers = [
         OrganizingController
     ],
     providers: [
-        ...CommandHandlers
+        ...CommandHandlers,
+        ...QueryHandlers,
+        ...EventHandlers
     ]
 })
 export class OrganizingModule { }

@@ -1,5 +1,5 @@
 import { Inject, NotFoundException } from '@nestjs/common';
-import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { CommandHandler, ICommandHandler, EventPublisher } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
 import { AddPerformanceCommand, UpdatePerformanceScheduleCommand, RemovePerformanceCommand } from '../performance.command';
 import { IPERFORMANCE_REPOSITORY } from '../../../domain/repository/performance.repository.interface';
@@ -16,6 +16,7 @@ export class AddPerformanceHandler implements ICommandHandler<AddPerformanceComm
         @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
         @Inject(ICONCERT_REPOSITORY) private readonly concertRepo: IConcertRepository,
         @Inject(IARTIST_REPOSITORY) private readonly artistRepo: IArtistRepository,
+        private readonly publisher: EventPublisher,
     ) { }
 
     async execute(command: AddPerformanceCommand): Promise<string> {
@@ -33,6 +34,12 @@ export class AddPerformanceHandler implements ICommandHandler<AddPerformanceComm
         const performance = Performance.create(id, concertId, artistId, name, durationMinutes, new Date(startTime));
 
         await this.performanceRepo.save(performance);
+
+        // Notify concert aggregate for ES Sync
+        const concertAggregate = this.publisher.mergeObjectContext(concert);
+        concertAggregate.addPerformance(name);
+        concertAggregate.commit();
+
         return id;
     }
 }
@@ -58,6 +65,8 @@ export class UpdatePerformanceScheduleHandler implements ICommandHandler<UpdateP
 export class RemovePerformanceHandler implements ICommandHandler<RemovePerformanceCommand, void> {
     constructor(
         @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
+        @Inject(ICONCERT_REPOSITORY) private readonly concertRepo: IConcertRepository,
+        private readonly publisher: EventPublisher,
     ) { }
 
     async execute(command: RemovePerformanceCommand): Promise<void> {
@@ -65,6 +74,14 @@ export class RemovePerformanceHandler implements ICommandHandler<RemovePerforman
         const performance = await this.performanceRepo.findById(performanceId);
         if (!performance) throw new NotFoundException('Performance not found');
 
+        const concert = await this.concertRepo.findById(performance.getConcertId());
+
         await this.performanceRepo.delete(performanceId);
+
+        if (concert) {
+            const concertAggregate = this.publisher.mergeObjectContext(concert);
+            concertAggregate.addPerformance('removed'); // Trigger sync
+            concertAggregate.commit();
+        }
     }
 }
