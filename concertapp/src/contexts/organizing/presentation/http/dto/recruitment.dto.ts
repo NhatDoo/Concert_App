@@ -46,6 +46,49 @@ export class CreateJobPostDto {
     authorId: string; // Staff manager ID
 }
 
+export class UpdateJobPostDto {
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    title?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    description?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    requirements?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    companyName?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    companyLogo?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    location?: string;
+
+    @ApiProperty({ required: false })
+    @IsString()
+    @IsOptional()
+    salary?: string;
+
+    @ApiProperty({ required: false, enum: ['OPEN', 'CLOSED'] })
+    @IsString()
+    @IsOptional()
+    status?: 'OPEN' | 'CLOSED';
+}
+
+
 export class CreateApplicationDto {
     @ApiProperty()
     @IsUUID()

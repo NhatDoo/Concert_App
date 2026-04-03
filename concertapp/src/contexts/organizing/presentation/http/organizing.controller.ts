@@ -16,7 +16,7 @@ import { BulkAddStaffCommand } from '../../application/commands/bulk-add-staff.c
 import { InviteStaffCommand } from '../../application/commands/invite-staff.command';
 import { CreateJobPostCommand } from '../../application/commands/create-job-post.command';
 import { InviteStaffDto } from './dto/invite-staff.dto';
-import { CreateJobPostDto, CreateApplicationDto, ReviewApplicationDto } from './dto/recruitment.dto';
+import { CreateJobPostDto, UpdateJobPostDto, CreateApplicationDto, ReviewApplicationDto } from './dto/recruitment.dto';
 import { PrismaService } from '../../../../prisma.service';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
@@ -302,8 +302,15 @@ export class OrganizingController {
     @Get('jobs')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Get active job postings, optionally filtered by author or organizer' })
-    async getJobs(@Query('authorId') authorId?: string, @Query('organizerId') organizerId?: string) {
-        let whereClause: any = { status: 'OPEN' };
+    async getJobs(
+        @Query('authorId') authorId?: string,
+        @Query('organizerId') organizerId?: string,
+        @Query('includeClosed') includeClosed?: string
+    ) {
+        let whereClause: any = {};
+        if (includeClosed !== 'true') {
+            whereClause.status = 'OPEN';
+        }
         if (authorId) whereClause.authorId = authorId;
         if (organizerId) whereClause.organizerId = organizerId;
 
@@ -316,6 +323,38 @@ export class OrganizingController {
             },
             orderBy: { createdAt: 'desc' }
         });
+    }
+
+    @Patch('jobs/:id')
+    @Roles('MANAGER', 'ORGANIZER')
+    @UseGuards(RolesGuard)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update a job posting' })
+    async updateJobPost(@Param('id') id: string, @Body() dto: UpdateJobPostDto) {
+        return await this.prisma.jobPost.update({
+            where: { id },
+            data: {
+                ...(dto.title !== undefined && { title: dto.title }),
+                ...(dto.description !== undefined && { description: dto.description }),
+                ...(dto.requirements !== undefined && { requirements: dto.requirements }),
+                ...(dto.companyName !== undefined && { companyName: dto.companyName }),
+                ...(dto.companyLogo !== undefined && { companyLogo: dto.companyLogo }),
+                ...(dto.location !== undefined && { location: dto.location }),
+                ...(dto.salary !== undefined && { salary: dto.salary }),
+                ...(dto.status !== undefined && { status: dto.status }),
+            }
+        });
+    }
+
+    @Delete('jobs/:id')
+    @Roles('MANAGER', 'ORGANIZER')
+    @UseGuards(RolesGuard)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Delete a job posting and its applications' })
+    async deleteJobPost(@Param('id') id: string) {
+        await this.prisma.staffApplication.deleteMany({ where: { jobPostId: id } });
+        await this.prisma.jobPost.delete({ where: { id } });
+        return { message: 'Tin tuyển dụng đã được xóa thành công' };
     }
 
     @Get('jobs/:id')

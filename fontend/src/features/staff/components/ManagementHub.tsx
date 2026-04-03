@@ -7,7 +7,11 @@ import {
     User as UserIcon,
     Calendar,
     MapPin,
-    Clock
+    Clock,
+    Edit3,
+    Trash2,
+    ToggleLeft,
+    ToggleRight
 } from 'lucide-react';
 
 import { JobPost, Application } from './types';
@@ -19,6 +23,9 @@ interface ManagementHubProps {
     onSelectJob: (id: string) => void;
     onReview: (id: string, status: string) => void;
     onCreateJob: () => void;
+    onEditJob: (job: JobPost) => void;
+    onDeleteJob: (id: string) => void;
+    onToggleStatus: (id: string, currentStatus: string) => void;
 }
 
 export const ManagementHub: React.FC<ManagementHubProps> = ({
@@ -27,7 +34,10 @@ export const ManagementHub: React.FC<ManagementHubProps> = ({
     jobApplications,
     onSelectJob,
     onReview,
-    onCreateJob
+    onCreateJob,
+    onEditJob,
+    onDeleteJob,
+    onToggleStatus,
 }) => {
     return (
         <div className="animate-in slide-in-from-right-10 duration-700 mx-auto flex flex-col md:flex-row gap-12 font-sans">
@@ -56,19 +66,69 @@ export const ManagementHub: React.FC<ManagementHubProps> = ({
                         managerJobPosts.map(j => (
                             <div
                                 key={j.id}
-                                onClick={() => onSelectJob(j.id)}
-                                className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all duration-500 overflow-hidden relative group ${selectedManagerJob?.id === j.id
+                                className={`rounded-[2rem] border-2 transition-all duration-500 overflow-hidden relative group ${selectedManagerJob?.id === j.id
                                     ? 'bg-rose-600 text-white border-rose-600 shadow-[0_20px_40px_-10px_rgba(225,29,72,0.3)]'
                                     : 'bg-white text-slate-600 border-transparent hover:border-rose-100 hover:shadow-xl shadow-sm'
                                     }`}
                             >
-                                {selectedManagerJob?.id === j.id && (
-                                    <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-2xl"></div>
-                                )}
-                                <h3 className="uppercase text-sm font-black mb-1 truncate tracking-tight">{j.title}</h3>
-                                <div className={`flex items-center gap-2 text-[10px] uppercase font-black tracking-widest ${selectedManagerJob?.id === j.id ? 'text-rose-100' : 'text-slate-400'}`}>
-                                    <MapPin className="w-3 h-3" />
-                                    <span>{j.location || 'HCM'}</span>
+                                {/* Clickable area */}
+                                <div
+                                    className="p-6 cursor-pointer"
+                                    onClick={() => onSelectJob(j.id)}
+                                >
+                                    {selectedManagerJob?.id === j.id && (
+                                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-white/10 rounded-full blur-2xl"></div>
+                                    )}
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                        <h3 className="uppercase text-sm font-black truncate tracking-tight flex-1">{j.title}</h3>
+                                        {/* Status badge */}
+                                        <span className={`shrink-0 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${(j as any).status === 'CLOSED'
+                                                ? selectedManagerJob?.id === j.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'
+                                                : selectedManagerJob?.id === j.id ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'
+                                            }`}>
+                                            {(j as any).status === 'CLOSED' ? 'Đã đóng' : 'Đang tuyển'}
+                                        </span>
+                                    </div>
+                                    <div className={`flex items-center gap-2 text-[10px] uppercase font-black tracking-widest ${selectedManagerJob?.id === j.id ? 'text-rose-100' : 'text-slate-400'}`}>
+                                        <MapPin className="w-3 h-3" />
+                                        <span>{j.location || 'Chưa cập nhật'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className={`flex items-center gap-1 px-4 pb-4 ${selectedManagerJob?.id === j.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity duration-300`}>
+                                    {/* Edit */}
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onEditJob(j); }}
+                                        title="Chỉnh sửa"
+                                        className={`p-2 rounded-xl transition-all duration-200 ${selectedManagerJob?.id === j.id
+                                            ? 'hover:bg-white/20 text-white'
+                                            : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'}`}
+                                    >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    {/* Toggle status */}
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onToggleStatus(j.id, (j as any).status || 'OPEN'); }}
+                                        title={(j as any).status === 'CLOSED' ? 'Mở lại tin' : 'Đóng tin'}
+                                        className={`p-2 rounded-xl transition-all duration-200 ${selectedManagerJob?.id === j.id
+                                            ? 'hover:bg-white/20 text-white'
+                                            : 'hover:bg-slate-100 text-slate-400 hover:text-amber-500'}`}
+                                    >
+                                        {(j as any).status === 'CLOSED'
+                                            ? <ToggleLeft className="w-3.5 h-3.5" />
+                                            : <ToggleRight className="w-3.5 h-3.5" />}
+                                    </button>
+                                    {/* Delete */}
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onDeleteJob(j.id); }}
+                                        title="Xóa tin"
+                                        className={`p-2 rounded-xl transition-all duration-200 ${selectedManagerJob?.id === j.id
+                                            ? 'hover:bg-white/20 text-white'
+                                            : 'hover:bg-rose-50 text-slate-400 hover:text-rose-600'}`}
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
                             </div>
                         ))

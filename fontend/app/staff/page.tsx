@@ -82,7 +82,7 @@ export default function StaffDashboard() {
 
             // 4. If Manager, fetch their job posts
             if (staffData[0]) {
-                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${staffData[0].id}`);
+                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${staffData[0].id}&includeClosed=true`);
                 const managerJobsData = await managerJobsRes.json();
                 setManagerJobPosts(managerJobsData);
             }
@@ -328,6 +328,9 @@ export default function StaffDashboard() {
                         onSelectJob={fetchJobApplications}
                         onReview={handleReview}
                         onCreateJob={() => setShowCreateJobModal(true)}
+                        onEditJob={() => { }} // Not implemented in main staff page, use manager dashboard
+                        onDeleteJob={() => { }}
+                        onToggleStatus={() => { }}
                     />
                 )}
             </main>

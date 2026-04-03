@@ -71,25 +71,14 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-3">
-                            <label className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-black ml-2">Địa điểm làm việc</label>
-                            <input
-                                placeholder="VD: SVĐ Mỹ Đình, Hà Nội"
-                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:bg-white focus:border-rose-500 focus:shadow-[0_0_20px_-5px_rgba(225,29,72,0.2)] outline-none transition-all duration-300 font-bold placeholder:text-slate-300"
-                                value={newJob.location}
-                                onChange={e => setNewJob({ ...newJob, location: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-3">
-                            <label className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-black ml-2">Tên Tổ chức / Show</label>
-                            <input
-                                placeholder="VD: Sky Tour 2026"
-                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:bg-white focus:border-rose-500 focus:shadow-[0_0_20px_-5px_rgba(225,29,72,0.2)] outline-none transition-all duration-300 font-bold placeholder:text-slate-300"
-                                value={newJob.companyName}
-                                onChange={e => setNewJob({ ...newJob, companyName: e.target.value })}
-                            />
-                        </div>
+                    <div className="space-y-3">
+                        <label className="text-[10px] text-slate-400 uppercase tracking-[0.2em] font-black ml-2">Địa chỉ công ty</label>
+                        <input
+                            placeholder="VD: SVĐ Mỹ Đình, Hà Nội"
+                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:bg-white focus:border-rose-500 focus:shadow-[0_0_20px_-5px_rgba(225,29,72,0.2)] outline-none transition-all duration-300 font-bold placeholder:text-slate-300"
+                            value={newJob.location}
+                            onChange={e => setNewJob({ ...newJob, location: e.target.value })}
+                        />
                     </div>
 
                     <div className="space-y-3">

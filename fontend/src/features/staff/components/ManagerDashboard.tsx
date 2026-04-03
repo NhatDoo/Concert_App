@@ -23,6 +23,7 @@ import { RootState } from '../../../stores/store';
 import { ManagementHub } from './ManagementHub';
 import { TeamHub } from './TeamHub';
 import { CreateJobModal } from './CreateJobModal';
+import { EditJobModal } from './EditJobModal';
 import { JobPost, Application } from './types';
 
 export const ManagerDashboard = () => {
@@ -36,6 +37,8 @@ export const ManagerDashboard = () => {
     const [jobApplications, setJobApplications] = useState<Application[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+    const [editingJob, setEditingJob] = useState<JobPost | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const [newJob, setNewJob] = useState({
         title: '',
         description: '',
@@ -76,6 +79,60 @@ export const ManagerDashboard = () => {
         } finally { setIsCreating(false); }
     };
 
+    const handleEditJob = async (id: string, data: any) => {
+        setIsSaving(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${apiUrl}/organize/jobs/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                setEditingJob(null);
+                fetchData();
+            } else {
+                const err = await res.json();
+                alert(`Lỗi: ${err.message}`);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteJob = async (id: string) => {
+        if (!confirm('Bạn có chắc muốn xóa tin tuyển dụng này? Tất cả hồ sơ ứng tuyển cũng sẽ bị xóa.')) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${apiUrl}/organize/jobs/${id}`, {
+                method: 'DELETE',
+                headers: { ...(token && { 'Authorization': `Bearer ${token}` }) }
+            });
+            if (res.ok) fetchData();
+        } catch (e) { console.error(e); }
+    };
+
+    const handleToggleStatus = async (id: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'OPEN' ? 'CLOSED' : 'OPEN';
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            await fetch(`${apiUrl}/organize/jobs/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+            fetchData();
+        } catch (e) { console.error(e); }
+    };
+
     // Stats
     const [stats, setStats] = useState({ activeJobs: 0, totalApps: 0, pendingReview: 0 });
 
@@ -93,21 +150,25 @@ export const ManagerDashboard = () => {
 
             // 2. Get Manager's Jobs
             const authorIdToFetch = manager?.id || user.id;
-            const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${authorIdToFetch}`);
+            const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${authorIdToFetch}&includeClosed=true`);
             const jobsData = await jobsRes.json();
             setManagerJobs(Array.isArray(jobsData) ? jobsData : []);
 
-            // 3. Simple Stats Calculation
-            const active = Array.isArray(jobsData) ? jobsData.length : 0;
-            let total = 0;
-            let pending = 0;
+            // 3. Stats Calculation
+            const allJobs = Array.isArray(jobsData) ? jobsData : [];
+            const activeCount = allJobs.filter((j: any) => j.status === 'OPEN').length;
 
-            // For demo/simplicity we'll fetch apps for the first job to populate initial state
-            if (active > 0) {
-                fetchJobApplications(jobsData[0].id);
+            // For total applications, we'd ideally have an endpoint, but we can estimate or leave as is if not available.
+            // Let's at least fix the activeJobs count.
+            setStats({
+                activeJobs: activeCount,
+                totalApps: 0, // This needs a separate query or join in backend to be accurate
+                pendingReview: 0
+            });
+
+            if (allJobs.length > 0) {
+                fetchJobApplications(allJobs[0].id);
             }
-
-            setStats({ activeJobs: active, totalApps: 0, pendingReview: 0 });
         } catch (e) {
             console.error(e);
         } finally {
@@ -265,6 +326,9 @@ export const ManagerDashboard = () => {
                                 onSelectJob={fetchJobApplications}
                                 onReview={handleReview}
                                 onCreateJob={() => setShowCreateModal(true)}
+                                onEditJob={(job) => setEditingJob(job)}
+                                onDeleteJob={handleDeleteJob}
+                                onToggleStatus={handleToggleStatus}
                             />
                         </section>
                     </>
@@ -282,6 +346,13 @@ export const ManagerDashboard = () => {
                 newJob={newJob}
                 setNewJob={setNewJob}
                 isCreatingJob={isCreating}
+            />
+            <EditJobModal
+                show={!!editingJob}
+                job={editingJob}
+                onClose={() => setEditingJob(null)}
+                onSave={handleEditJob}
+                isSaving={isSaving}
             />
         </div>
     );
