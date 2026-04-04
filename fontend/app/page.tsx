@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "../src/stores/store";
+import { useRouter } from "next/navigation";
 import { fetchConcerts, EventCard, clearSearch } from "../src/features/concerts";
 import { useLocation } from "../src/contexts/LocationContext";
 import { Music, Map, Ticket, Star, Mic2, Tv, Search, X } from "lucide-react";
@@ -22,13 +23,31 @@ const CATEGORIES = [
 
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
+  const { user } = useSelector((state: RootState) => state.auth);
   const { events, searchResults, searchQuery, loading, error } = useSelector((state: RootState) => state.concerts);
   const { currentLocation } = useLocation();
 
   useEffect(() => {
+    // Nếu đã đăng nhập, tự động chuyển hướng về dashboard tương ứng
+    if (user) {
+      if (user.role === 'ORGANIZER') {
+        router.push('/organizer');
+      } else if (user.role === 'MANAGER' || user.staffRole === 'MANAGER') {
+        router.push('/staff/manager');
+      } else if (user.role === 'EVENT_MANAGER' || user.staffRole === 'EVENT_MANAGER') {
+        router.push('/staff/manager');
+      } else {
+        router.push('/');
+      }
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+
     // Dispatch action gọi API từ Backend
     dispatch(fetchConcerts() as any);
-  }, [dispatch]);
+  }, [dispatch, user, router]);
 
   // Lọc event dựa theo Location Context "Tất cả địa điểm", "Hồ Chí Minh", "Hà Nội", "Đà Nẵng"
   const allEvents = searchResults || events;

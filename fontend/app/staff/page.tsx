@@ -11,7 +11,8 @@ import {
     CalendarCheck,
     Users,
     XCircle,
-    CheckCircle
+    CheckCircle,
+    ShieldCheck
 } from 'lucide-react';
 import { RootState, AppDispatch } from '../../src/stores/store';
 import { logout } from '../../src/features/auth/stores/authSlice';
@@ -24,6 +25,16 @@ import { MyTasks } from '../../src/features/staff/components/MyTasks';
 import { CreateJobModal } from '../../src/features/staff/components/CreateJobModal';
 
 import { JobPost, Application, Task, StaffRecord } from '../../src/features/staff/components/types';
+
+interface Invitation {
+    id: string;
+    email: string;
+    role: string;
+    token: string;
+    status: string;
+    createdAt: string;
+    organizerId: string;
+}
 
 export default function StaffDashboard() {
     const { user, loading: authLoading } = useSelector((state: RootState) => state.auth);
@@ -57,6 +68,8 @@ export default function StaffDashboard() {
         setTimeout(() => setNotification(null), 3000);
     };
 
+    const [myInvitations, setMyInvitations] = useState<Invitation[]>([]);
+
     const fetchStaffData = async () => {
         if (!user) return;
         setLoading(true);
@@ -66,7 +79,8 @@ export default function StaffDashboard() {
             // 1. Fetch Staff Records (tasks, etc.)
             const staffRes = await fetch(`${apiUrl}/organize/staff/me?userId=${user.id}`);
             const staffData = await staffRes.json();
-            setStaffRecords(Array.isArray(staffData) ? staffData : [staffData]);
+            const staffArray = Array.isArray(staffData) ? staffData : [staffData];
+            setStaffRecords(staffArray);
 
             // 2. Fetch All Jobs
             const jobsRes = await fetch(`${apiUrl}/organize/jobs`);
@@ -74,15 +88,24 @@ export default function StaffDashboard() {
             setAllJobs(jobsData);
 
             // 3. Fetch My Applications
-            const myAppRes = await fetch(`${apiUrl}/organize/applications?applicantId=${staffData[0]?.id || ''}`);
-            if (myAppRes.ok) {
-                const myAppData = await myAppRes.json();
-                setMyApplications(myAppData);
+            if (staffArray[0]?.id) {
+                const myAppRes = await fetch(`${apiUrl}/organize/applications?applicantId=${staffArray[0].id}`);
+                if (myAppRes.ok) {
+                    const myAppData = await myAppRes.json();
+                    setMyApplications(myAppData);
+                }
             }
 
-            // 4. If Manager, fetch their job posts
-            if (staffData[0]) {
-                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${staffData[0].id}&includeClosed=true`);
+            // 4. Fetch My Invitations (Direct invites)
+            const inviteRes = await fetch(`${apiUrl}/organize/staff/invitations?email=${user.email}`);
+            if (inviteRes.ok) {
+                const inviteData = await inviteRes.json();
+                setMyInvitations(inviteData);
+            }
+
+            // 5. If Manager, fetch their job posts
+            if (staffArray[0]?.id) {
+                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${staffArray[0].id}&includeClosed=true`);
                 const managerJobsData = await managerJobsRes.json();
                 setManagerJobPosts(managerJobsData);
             }
@@ -104,10 +127,32 @@ export default function StaffDashboard() {
             r.role === 'MANAGER' ||
             ['EVENT_MANAGER', 'PRODUCTION_MANAGER', 'TECHNICAL_MANAGER', 'MARKETING_MANAGER', 'TALENT_MANAGER'].includes(r.role)
         );
-        if (hasManagerRecord) {
+        // Only redirect if they are not currently on the management tab and actually have a manager role
+        if (hasManagerRecord && activeTab !== 'management') {
             router.push('/staff/manager');
         }
-    }, [staffRecords, router]);
+    }, [staffRecords, router, activeTab]);
+
+    const handleAcceptInvitation = async (invitationId: string) => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${apiUrl}/organize/staff/join`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invitationId, userId: user!.id, name: user!.name })
+            });
+
+            if (res.ok) {
+                notify('success', 'Bạn đã gia nhập tổ chức thành công!');
+                fetchStaffData();
+            } else {
+                const err = await res.json();
+                notify('error', err.message || 'Lỗi khi chấp nhận lời mời');
+            }
+        } catch (e) {
+            notify('error', 'Lỗi kết nối');
+        }
+    };
 
     const handleApply = async () => {
         if (!selectedJob || !staffRecords[0]) return;
@@ -236,8 +281,8 @@ export default function StaffDashboard() {
     );
 
     const filteredJobs = allJobs.filter(j =>
-        j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        j.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+        (j.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (j.companyName?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -306,7 +351,32 @@ export default function StaffDashboard() {
             </header>
 
             <main className="max-w-7xl mx-auto px-6 py-12">
-                {activeTab === 'tasks' && (
+                {/* Invitations Alert */}
+                {myInvitations.length > 0 && (
+                    <div className="mb-10 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2.5rem] p-10 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 group overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-1000"></div>
+                        <div className="flex items-center gap-8 relative z-10">
+                            <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-md">
+                                <ShieldCheck className="w-10 h-10" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black uppercase tracking-tight">Khuynh đảo cùng BTC mới?</h2>
+                                <p className="text-blue-100 text-sm mt-1 font-bold">Bạn có {myInvitations.length} lời mời gia nhập tổ chức đang chờ.</p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-4 relative z-10 font-black">
+                            {myInvitations.map(invite => (
+                                <button
+                                    key={invite.id}
+                                    onClick={() => handleAcceptInvitation(invite.id)}
+                                    className="bg-white text-blue-600 px-8 py-4 rounded-2xl text-xs hover:bg-black hover:text-white transition-all shadow-xl shadow-blue-900/20 uppercase"
+                                >
+                                    Chấp nhận vai {invite.role}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}                {activeTab === 'tasks' && (
                     <MyTasks staffRecords={staffRecords} loading={loading} />
                 )}
 

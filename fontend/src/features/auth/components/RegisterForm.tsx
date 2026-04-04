@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppDispatch, RootState } from '../../../stores/store';
 import { registerUser, clearError, resetRegisterSuccess } from '../stores/authSlice';
-import { User, Lock, Loader2, Eye, EyeOff, Mail, Phone, Users, CheckCircle, ShieldCheck, Briefcase } from 'lucide-react';
+import { User, Lock, Loader2, Eye, EyeOff, Mail, Phone, Users, CheckCircle, ShieldCheck, Briefcase, Award } from 'lucide-react';
 
 export const RegisterForm = () => {
     const searchParams = useSearchParams();
@@ -50,7 +50,7 @@ export const RegisterForm = () => {
     };
 
     return (
-        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 mt-10 mb-10 text-slate-900 animate-in fade-in zoom-in-95 duration-500">
+        <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md border border-slate-100 mt-10 mb-10 text-slate-900 animate-in fade-in zoom-in-95 duration-500 [font-family:var(--font-outfit)]">
             <div className="text-center mb-8">
                 <div className="inline-flex p-3 bg-red-50 rounded-2xl mb-4">
                     <ShieldCheck className="w-8 h-8 text-red-600" />
@@ -157,29 +157,49 @@ export const RegisterForm = () => {
                     </div>
 
                     {role === 'STAFF' && (
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest text-center">Phân loại nhân sự</p>
-                            <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 mb-6 space-y-4 animate-in slide-in-from-top-2 duration-300 shadow-inner">
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest text-center mb-2">Đăng ký làm nhân sự</p>
+                            <div className="grid grid-cols-1 gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => setStaffRole('MANAGER')}
-                                    className={`py-3 rounded-xl border-2 font-black text-xs transition-all ${staffRole === 'MANAGER' ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white text-slate-400 border-slate-100 hover:border-red-200'}`}
+                                    onClick={() => setStaffRole('EVENT_MANAGER')}
+                                    className={`py-4 px-6 rounded-2xl border-2 font-black text-[10px] transition-all flex items-center justify-between group ${staffRole === 'EVENT_MANAGER' ? 'bg-amber-600 text-white border-amber-600 shadow-xl shadow-amber-200' : 'bg-white text-slate-400 border-slate-100 hover:border-amber-200'}`}
                                 >
-                                    MANAGER
+                                    <div className="flex items-center gap-3">
+                                        <Award className={`w-4 h-4 ${staffRole === 'EVENT_MANAGER' ? 'text-white' : 'text-amber-500'}`} />
+                                        <span className="uppercase tracking-widest">Event Manager (Tổng quản)</span>
+                                    </div>
+                                    {staffRole === 'EVENT_MANAGER' && <CheckCircle className="w-4 h-4" />}
                                 </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setStaffRole('APPLICANT')}
-                                    className={`py-3 rounded-xl border-2 font-black text-xs transition-all ${staffRole === 'APPLICANT' ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white text-slate-400 border-slate-100 hover:border-red-200'}`}
-                                >
-                                    WORKER
-                                </button>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStaffRole('MANAGER')}
+                                        className={`py-4 rounded-2xl border-2 font-black text-[10px] transition-all flex items-center justify-center gap-2 ${staffRole === 'MANAGER' ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-200'}`}
+                                    >
+                                        <Briefcase className="w-4 h-4" />
+                                        MANAGER
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setStaffRole('APPLICANT')}
+                                        className={`py-4 rounded-2xl border-2 font-black text-[10px] transition-all flex items-center justify-center gap-2 ${staffRole === 'APPLICANT' ? 'bg-rose-600 text-white border-rose-600 shadow-lg shadow-rose-100' : 'bg-white text-slate-400 border-slate-100 hover:border-rose-200'}`}
+                                    >
+                                        <Users className="w-4 h-4" />
+                                        WORKER
+                                    </button>
+                                </div>
                             </div>
-                            <p className="text-[9px] text-slate-400 text-center italic font-medium">
-                                {staffRole === 'MANAGER'
-                                    ? "* Quyền đăng tuyển và quản lý nhân sự."
-                                    : "* Quyền ứng tuyển và làm việc tại sự kiện."}
-                            </p>
+                            <div className="bg-white/50 p-4 rounded-2xl border border-slate-50 text-center">
+                                <p className="text-[9px] text-slate-500 italic font-bold leading-relaxed px-2">
+                                    {staffRole === 'EVENT_MANAGER'
+                                        ? "⚡ Tổng quản: Điều hành toàn quy trình từ Planning đến On-site."
+                                        : staffRole === 'MANAGER'
+                                            ? "💼 Manager: Quản lý tin tuyển dụng và đội ngũ chuyên môn."
+                                            : "🛠️ Worker: Tìm kiếm việc làm và thực thi tại sự kiện."}
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>

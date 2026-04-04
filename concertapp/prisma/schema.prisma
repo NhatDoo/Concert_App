@@ -1,4 +1,26 @@
-// This is your Prisma schema file,
+
+model EventReport {
+  id               String   @id @default(uuid())
+  organizerId      String
+  authorId         String
+  author           Staff    @relation(fields: [authorId], references: [id])
+  
+  concertId        String?
+  concertName      String?
+
+  budgetAudit      Float    @default(0)
+  marketingReach   Int      @default(0)
+  staffEvaluation  String?  @db.Text
+  finalStatus      String   @default("SUCCESS") // SUCCESS, PARTIAL, FAILURE
+  notes            String?  @db.Text
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([organizerId])
+  @@index([authorId])
+}
+
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
@@ -277,6 +299,7 @@ model Staff {
   applications StaffApplication[] @relation("ApplicantStaff")
 
   tasks     StaffTask[]
+  reports   EventReport[]
 
   @@index([concertId])
   @@index([userId])

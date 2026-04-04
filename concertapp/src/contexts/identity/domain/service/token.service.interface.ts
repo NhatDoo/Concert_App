@@ -6,7 +6,7 @@ export interface AuthTokens {
 }
 
 export interface ITokenService {
-    generateTokens(user: User): AuthTokens;
+    generateTokens(user: User, staffRole?: string): AuthTokens;
     verifyToken(token: string, isRefresh?: boolean): any;
 }
 

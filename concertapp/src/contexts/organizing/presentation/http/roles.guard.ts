@@ -36,15 +36,32 @@ export class RolesGuard implements CanActivate {
         const user = request.user;
         if (!user) return false;
 
-        // 1. Direct match for User role
+        const MANAGERIAL_ROLES = [
+            'EVENT_MANAGER',
+            'MANAGER',
+            'PRODUCTION_MANAGER',
+            'TECHNICAL_MANAGER',
+            'MARKETING_MANAGER',
+            'TALENT_MANAGER'
+        ];
+
+        // 1. Direct match for User role (ORGANIZER, ADMIN, etc.)
         if (requiredRoles.includes(user.role)) return true;
 
-        // 2. Special check for STAFF sub-roles if MANAGER is required
-        if (user.role === 'STAFF' && requiredRoles.includes('MANAGER')) {
+        // 2. Special check for STAFF sub-roles
+        if (user.role === 'STAFF') {
             const staff = await this.prisma.staff.findFirst({
                 where: { userId: user.id }
             });
-            if (staff && staff.role === 'MANAGER') return true;
+            if (!staff) return false;
+
+            // If a specific role is required (e.g., EVENT_MANAGER)
+            if (requiredRoles.includes(staff.role)) return true;
+
+            // If a general MANAGER role is required, any managerial role is allowed
+            if (requiredRoles.includes('MANAGER') && MANAGERIAL_ROLES.includes(staff.role)) {
+                return true;
+            }
         }
 
         return false;

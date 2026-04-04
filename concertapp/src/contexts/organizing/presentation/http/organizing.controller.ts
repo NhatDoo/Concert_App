@@ -169,12 +169,21 @@ export class OrganizingController {
         });
     }
 
-    @Get('staff/invitations/:organizerId')
+    @Get('staff/invitations')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all pending invitations sent by an organizer' })
-    async getInvitations(@Param('organizerId') organizerId: string) {
+    @ApiOperation({ summary: 'Get invitations, filtered by organizerId, managerId or targeted email' })
+    async getInvitations(
+        @Query('organizerId') organizerId?: string,
+        @Query('managerId') managerId?: string,
+        @Query('email') email?: string
+    ) {
+        let whereClause: any = { status: 'PENDING' };
+        if (organizerId) whereClause.organizerId = organizerId;
+        if (managerId) whereClause.managerId = managerId;
+        if (email) whereClause.email = email;
+
         return await this.prisma.staffInvitation.findMany({
-            where: { organizerId: organizerId },
+            where: whereClause,
             orderBy: { createdAt: 'desc' }
         });
     }
@@ -182,13 +191,25 @@ export class OrganizingController {
     @Post('staff/join')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Join an organizers team using an invite key' })
-    async joinStaff(@Body() dto: { inviteKey: string, userId: string, name: string }) {
-        const invitation = await this.prisma.staffInvitation.findUnique({
-            where: { token: dto.inviteKey, status: 'PENDING' }
-        });
+    async joinStaff(@Body() dto: { inviteKey?: string, invitationId?: string, userId: string, name: string }) {
+        if (!dto.inviteKey && !dto.invitationId) {
+            throw new Error('Cần cung cấp mã mời (Invite Key) hoặc ID lời mời');
+        }
+
+        let invitation: any = null;
+
+        if (dto.invitationId) {
+            invitation = await this.prisma.staffInvitation.findUnique({
+                where: { id: dto.invitationId, status: 'PENDING' as any }
+            });
+        } else if (dto.inviteKey) {
+            invitation = await this.prisma.staffInvitation.findFirst({
+                where: { token: dto.inviteKey, status: 'PENDING' }
+            });
+        }
 
         if (!invitation) {
-            throw new Error('Mã mời không chính xác hoặc đã hết hạn');
+            throw new Error('Lời mời không tồn tại hoặc đã được xử lý');
         }
 
         const staff = await this.prisma.staff.create({
@@ -226,6 +247,61 @@ export class OrganizingController {
                 }
             },
             orderBy: { role: 'asc' }
+        });
+    }
+
+    @Get('staff/discover')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Discover potential staff/managers who are not currently joined to any organizer' })
+    async discoverPotentialStaff(
+        @Query('role') role?: string,
+        @Query('filterRole') filterRole?: string
+    ) {
+        let whereClause: any = { organizerId: null };
+
+        if (filterRole) {
+            // Exact role filter - for role-based marketplace (e.g., Organizer sees only EVENT_MANAGERs)
+            whereClause.role = filterRole;
+        } else if (role) {
+            // Fuzzy search by keyword
+            whereClause.role = { contains: role, mode: 'insensitive' };
+        }
+
+        return await this.prisma.staff.findMany({
+            where: whereClause,
+            include: {
+                user: {
+                    select: { name: true, email: true, phoneNumber: true }
+                }
+            }
+        });
+    }
+
+    @Post('staff/:staffId/invite-direct')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Directly invite a specific staff member in-app' })
+    async inviteDirect(@Param('staffId') staffId: string, @Body() dto: { organizerId: string, role: string, managerId?: string }) {
+        const staff = await this.prisma.staff.findUnique({
+            where: { id: staffId },
+            include: { user: true }
+        });
+
+        if (!staff) throw new Error('Staff member not found');
+
+        const token = uuidv4();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
+        return await this.prisma.staffInvitation.create({
+            data: {
+                id: uuidv4(),
+                email: staff.user.email,
+                role: dto.role || staff.role,
+                organizerId: dto.organizerId,
+                token: token,
+                expiresAt: expiresAt,
+                managerId: dto.managerId
+            }
         });
     }
 
@@ -496,6 +572,37 @@ export class OrganizingController {
                     orderBy: { createdAt: 'desc' }
                 }
             }
+        });
+    }
+    @Post('reports')
+    @Roles('EVENT_MANAGER', 'MANAGER')
+    @UseGuards(RolesGuard)
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Submit final event report' })
+    async submitReport(@Body() dto: any) {
+        return this.prisma.eventReport.create({
+            data: {
+                organizerId: dto.organizerId,
+                authorId: dto.authorId,
+                concertId: dto.concertId,
+                concertName: dto.concertName,
+                budgetAudit: parseFloat(dto.budgetAudit) || 0,
+                marketingReach: parseInt(dto.marketingReach) || 0,
+                staffEvaluation: dto.staffEvaluation,
+                finalStatus: dto.finalStatus || 'SUCCESS',
+                notes: dto.notes
+            }
+        });
+    }
+
+    @Get('reports/:organizerId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get all event reports for an organizer' })
+    async getReports(@Param('organizerId') organizerId: string) {
+        return this.prisma.eventReport.findMany({
+            where: { organizerId },
+            include: { author: true },
+            orderBy: { createdAt: 'desc' }
         });
     }
 }

@@ -5,6 +5,7 @@ interface User {
     email: string;
     name: string;
     role?: string;
+    staffRole?: string;
     phoneNumber?: string;
 }
 
@@ -66,6 +67,7 @@ export const loginUser = createAsyncThunk(
                     email: decodedPayload.email,
                     name: decodedPayload.name || credentials.email.split('@')[0],
                     role: decodedPayload.role,
+                    staffRole: decodedPayload.staffRole,
                 }
             };
         } catch (error: any) {
@@ -113,6 +115,7 @@ export const rehydrateUser = createAsyncThunk(
                                 email: newPayload.email,
                                 name: newPayload.name,
                                 role: newPayload.role,
+                                staffRole: newPayload.staffRole,
                             }
                         };
                     }
@@ -130,6 +133,7 @@ export const rehydrateUser = createAsyncThunk(
                     email: decodedPayload.email,
                     name: decodedPayload.name,
                     role: decodedPayload.role,
+                    staffRole: decodedPayload.staffRole,
                 }
             };
         } catch (error) {

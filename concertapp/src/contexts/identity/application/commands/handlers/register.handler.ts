@@ -49,8 +49,8 @@ export class RegisterHandler implements ICommandHandler<RegisterCommand, AuthTok
             roleVO
         );
 
-        // 5. Generate token
-        const tokens = this.tokenService.generateTokens(user);
+        // 5. Generate token with staffRole if provided
+        const tokens = this.tokenService.generateTokens(user, staffRole);
 
         // 6. Cập nhật refreshToken
         user.updateRefreshToken(tokens.refreshToken);

@@ -34,6 +34,6 @@ import { JwtTokenService } from './auth/jwt-token.service';
             useClass: JwtTokenService,
         }
     ],
-    exports: [IUSER_REPOSITORY, ITOKEN_SERVICE, JwtModule],
+    exports: [IUSER_REPOSITORY, ITOKEN_SERVICE, JwtModule, PrismaService],
 })
 export class IdentityInfrastructureModule { }

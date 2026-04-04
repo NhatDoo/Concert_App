@@ -36,7 +36,11 @@ export const LoginForm = () => {
             if (user.role === 'ORGANIZER') {
                 router.push('/organizer');
             } else if (user.role === 'STAFF') {
-                router.push('/staff');
+                if (user.staffRole === 'MANAGER' || user.staffRole === 'EVENT_MANAGER') {
+                    router.push('/staff/manager');
+                } else {
+                    router.push('/staff');
+                }
             } else {
                 router.push('/');
             }

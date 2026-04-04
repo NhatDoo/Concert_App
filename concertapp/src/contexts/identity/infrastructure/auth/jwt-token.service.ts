@@ -11,19 +11,22 @@ export class JwtTokenService implements ITokenService {
         private readonly configService: ConfigService
     ) { }
 
-    generateTokens(user: User): AuthTokens {
-        const payload = {
+    generateTokens(user: User, staffRole?: string): AuthTokens {
+        const payload: Record<string, any> = {
             sub: user.getId(),
             email: user.getEmail().value,
             role: user.getRole().getValue()
         };
+
+        if (staffRole) {
+            payload.staffRole = staffRole;
+        }
 
         const accessToken = this.jwtService.sign(payload);
 
         const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || 'defaultRefreshSecret12345';
         const refreshTokenExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
 
-        // Custom signing for refresh token as it uses a different secret/ttl
         const refreshToken = this.jwtService.sign(payload, {
             secret: refreshTokenSecret,
             expiresIn: refreshTokenExpiresIn as any
