@@ -7,24 +7,28 @@ export class Staff {
     name: string;
     role: StaffRole;
     concertId: string;
+    bio?: string;
+    cvUrl?: string;
     private tasks: StaffTask[];
 
-    constructor(id: string, userId: string, name: string, role: StaffRole, concertId: string, tasks: StaffTask[] = []) {
+    constructor(id: string, userId: string, name: string, role: StaffRole, concertId: string, bio?: string, cvUrl?: string, tasks: StaffTask[] = []) {
         this.id = id;
         this.userId = userId;
         this.name = name;
         this.role = role;
         this.concertId = concertId;
+        this.bio = bio;
+        this.cvUrl = cvUrl;
         this.tasks = tasks;
     }
 
-    static create(id: string, userId: string, name: string, role: StaffRole, concertId: string): Staff {
+    static create(id: string, userId: string, name: string, role: StaffRole, concertId: string, bio?: string, cvUrl?: string): Staff {
         if (!userId) throw new Error("User ID is required for a Staff member");
         if (!name) throw new Error("Staff name is required");
         if (!role) throw new Error("Staff Role is required");
         if (!concertId) throw new Error("Concert ID is required for a Staff member");
 
-        return new Staff(id, userId, name, role, concertId, []);
+        return new Staff(id, userId, name, role, concertId, bio, cvUrl, []);
     }
 
     getId(): string {

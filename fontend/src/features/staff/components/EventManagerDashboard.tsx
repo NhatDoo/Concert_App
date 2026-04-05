@@ -28,22 +28,46 @@ import { StaffDiscover } from './StaffDiscover';
 import { TeamHub } from './TeamHub';
 import { CreateJobModal } from './CreateJobModal';
 import { EditJobModal } from './EditJobModal';
-import { JobPost, Application } from './types';
+import { StaffProfile } from './StaffProfile';
+import { JobBoard } from './JobBoard';
+import { JobDetailsDrawer } from './JobDetailsDrawer';
+import { StaffApplyModal } from './StaffApplyModal';
+import { JobPost } from './types';
+import { useJobManagement } from '../hooks/useJobManagement';
 
 export const EventManagerDashboard = () => {
     const { user, token } = useSelector((state: RootState) => state.auth);
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
+
+    const {
+        loading,
+        staffRecords,
+        managerJobs,
+        selectedJob,
+        jobApplications,
+        isCreating,
+        isSaving,
+        discoverJobs,
+        myApplications,
+        isApplying,
+        notification,
+        fetchJobApplications,
+        createJob,
+        updateJob,
+        deleteJob,
+        toggleStatus,
+        reviewApplication,
+        applyToJob,
+        fetchDiscoverJobs,
+        notify
+    } = useJobManagement(user, token);
+
     const [activeTab, setActiveTab] = useState('overview');
-    const [staffRecords, setStaffRecords] = useState<any[]>([]);
-    const [managerJobs, setManagerJobs] = useState<JobPost[]>([]);
-    const [selectedJob, setSelectedJob] = useState<JobPost | null>(null);
-    const [jobApplications, setJobApplications] = useState<Application[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [isCreating, setIsCreating] = useState(false);
     const [editingJob, setEditingJob] = useState<JobPost | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+    const [selectedDiscoverJob, setSelectedDiscoverJob] = useState<JobPost | null>(null);
+    const [showApplyModal, setShowApplyModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [newJob, setNewJob] = useState({
         title: '',
@@ -55,35 +79,23 @@ export const EventManagerDashboard = () => {
         companyLogo: ''
     });
 
-    const notify = (type: 'success' | 'error', msg: string) => {
-        setNotification({ type, msg });
-        setTimeout(() => setNotification(null), 3000);
+    const handleCreateJob = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await createJob(newJob, () => {
+            setShowCreateModal(false);
+            setNewJob({ title: '', description: '', requirements: '', salary: '', location: '', companyName: '', companyLogo: '' });
+        });
     };
 
-    const fetchData = async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const staffRes = await fetch(`${apiUrl}/organize/staff/me?userId=${user.id}`);
-            const staffData = await staffRes.json();
-            const manager = Array.isArray(staffData) ? staffData[0] : staffData;
-            setStaffRecords([manager]);
-
-            const authorIdToFetch = manager?.id || user.id;
-            const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${authorIdToFetch}&includeClosed=true`);
-            const jobsData = await jobsRes.json();
-            setManagerJobs(Array.isArray(jobsData) ? jobsData : []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
+    const handleEditJob = async (id: string, data: any) => {
+        await updateJob(id, data, () => {
+            setEditingJob(null);
+        });
     };
 
     useEffect(() => {
-        if (user) fetchData();
-    }, [user]);
+        if (activeTab === 'job-board') fetchDiscoverJobs('ORGANIZER');
+    }, [activeTab, fetchDiscoverJobs]);
 
     if (loading) return (
         <div className="h-screen bg-slate-950 flex flex-col items-center justify-center font-bold">
@@ -110,9 +122,10 @@ export const EventManagerDashboard = () => {
                     {[
                         { id: 'overview', icon: LayoutDashboard, label: 'Trung tâm Chỉ huy' },
                         { id: 'phases', icon: ClipboardList, label: 'Lộ trình Concert' },
+                        { id: 'job-board', icon: Briefcase, label: 'Cơ hội cộng tác' },
                         { id: 'marketplace', icon: ShoppingBag, label: 'Sàn nhân sự (Market)' },
                         { id: 'team', icon: Users, label: 'Đối tác & Team' },
-                        { id: 'settings', icon: Settings, label: 'Cấu hình System' },
+                        { id: 'settings', icon: Settings, label: 'Hồ sơ chuyên môn' },
                     ].map((item, i) => (
                         <button key={i} onClick={() => setActiveTab(item.id)} className={`w-full group flex items-center justify-between p-4 rounded-3xl transition-all duration-500 font-bold ${activeTab === item.id ? 'bg-amber-600 text-white shadow-2xl shadow-amber-600/30 -translate-y-1' : 'text-slate-500 hover:bg-amber-50 hover:text-amber-700'}`}>
                             <div className="flex items-center gap-4">
@@ -223,17 +236,15 @@ export const EventManagerDashboard = () => {
                                 managerJobPosts={managerJobs}
                                 selectedManagerJob={selectedJob}
                                 jobApplications={jobApplications}
-                                onSelectJob={(jobId) => {
-                                    const job = managerJobs.find(j => j.id === jobId);
-                                    setSelectedJob(job || null);
-                                    // fetch apps logic...
-                                }}
-                                onReview={() => { }}
+                                onSelectJob={(id) => fetchJobApplications(id)}
+                                onReview={reviewApplication}
                                 onCreateJob={() => setShowCreateModal(true)}
                                 onEditJob={(job) => setEditingJob(job)}
-                                onDeleteJob={() => { }}
-                                onToggleStatus={() => { }}
+                                onDeleteJob={deleteJob}
+                                onToggleStatus={toggleStatus}
+                                accentColor="amber-600"
                             />
+
                         </div>
                     </div>
                 )}
@@ -260,7 +271,69 @@ export const EventManagerDashboard = () => {
                         <TeamHub organizerId={staffRecords[0]?.organizerId || user?.id} token={token} />
                     </div>
                 )}
+
+                {activeTab === 'job-board' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+                        <JobBoard
+                            jobs={discoverJobs.filter(j =>
+                                j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                j.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+                            )}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            onSelectJob={setSelectedDiscoverJob}
+                            loading={loading}
+                        />
+                    </div>
+                )}
+
+                {activeTab === 'settings' && (
+                    <StaffProfile
+                        user={user}
+                        token={token}
+                        accentColor="amber-600"
+                        onUpdateSuccess={(msg) => notify('success', msg)}
+                    />
+                )}
             </main>
+
+            <CreateJobModal
+                show={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                onSubmit={handleCreateJob}
+                newJob={newJob}
+                setNewJob={setNewJob}
+                isCreatingJob={isCreating}
+            />
+            <EditJobModal
+                show={!!editingJob}
+                job={editingJob}
+                onClose={() => setEditingJob(null)}
+                onSave={handleEditJob}
+                isSaving={isSaving}
+            />
+
+            <JobDetailsDrawer
+                job={selectedDiscoverJob}
+                onClose={() => setSelectedDiscoverJob(null)}
+                onApply={() => setShowApplyModal(true)}
+                isAlreadyApplied={myApplications.some(app => app.jobPostId === selectedDiscoverJob?.id)}
+            />
+
+            <StaffApplyModal
+                show={showApplyModal}
+                job={selectedDiscoverJob}
+                onClose={() => setShowApplyModal(false)}
+                isApplying={isApplying}
+                onSubmit={async (cvUrl, msg) => {
+                    if (selectedDiscoverJob) {
+                        await applyToJob(selectedDiscoverJob.id, cvUrl, msg, () => {
+                            setShowApplyModal(false);
+                            setSelectedDiscoverJob(null);
+                        });
+                    }
+                }}
+            />
         </div>
     );
 };

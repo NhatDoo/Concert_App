@@ -9,8 +9,13 @@ import { AssignStaffTaskHandler, UpdateStaffTaskHandler } from './application/co
 import { BulkAddStaffHandler } from './application/commands/handlers/bulk-add-staff.handler';
 import { InviteStaffHandler } from './application/commands/handlers/invite-staff.handler';
 import { CreateJobPostHandler } from './application/commands/handlers/create-job-post.handler';
+import { UpdateJobPostHandler } from './application/commands/handlers/update-job-post.handler';
+import { DeleteJobPostHandler } from './application/commands/handlers/delete-job-post.handler';
+import { UpdateStaffProfileHandler } from './application/commands/handlers/update-staff-profile.handler';
 import { GetOrganizerStatsHandler } from './application/queries/handlers/get-organizer-stats.handler';
 import { GetConcertStaffHandler } from './application/queries/handlers/get-concert-staff.handler';
+import { GetJobsHandler } from './application/queries/handlers/get-jobs.handler';
+import { GetJobByIdHandler } from './application/queries/handlers/get-job-by-id.handler';
 import { CreateStaffOnRegistrationHandler } from './application/events/handlers/create-staff-on-registration.handler';
 
 export const CommandHandlers = [
@@ -23,12 +28,17 @@ export const CommandHandlers = [
     UpdateStaffTaskHandler,
     BulkAddStaffHandler,
     InviteStaffHandler,
-    CreateJobPostHandler
+    CreateJobPostHandler,
+    UpdateJobPostHandler,
+    DeleteJobPostHandler,
+    UpdateStaffProfileHandler
 ];
 
 export const QueryHandlers = [
     GetOrganizerStatsHandler,
-    GetConcertStaffHandler
+    GetConcertStaffHandler,
+    GetJobsHandler,
+    GetJobByIdHandler
 ];
 
 export const EventHandlers = [

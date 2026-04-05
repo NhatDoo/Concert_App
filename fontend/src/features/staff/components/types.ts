@@ -24,6 +24,7 @@ export interface Application {
     message?: string;
     applicant: {
         name: string;
+        role: string;
         cvUrl?: string;
         bio?: string;
         user?: { email: string; phoneNumber: string };

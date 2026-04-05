@@ -15,8 +15,13 @@ import { AssignStaffTaskCommand, UpdateStaffTaskCommand } from '../../applicatio
 import { BulkAddStaffCommand } from '../../application/commands/bulk-add-staff.command';
 import { InviteStaffCommand } from '../../application/commands/invite-staff.command';
 import { CreateJobPostCommand } from '../../application/commands/create-job-post.command';
+import { UpdateJobPostCommand } from '../../application/commands/update-job-post.command';
+import { DeleteJobPostCommand } from '../../application/commands/delete-job-post.command';
+import { GetJobsQuery } from '../../application/queries/get-jobs.query';
+import { GetJobByIdQuery } from '../../application/queries/get-job-by-id.query';
+import { UpdateStaffProfileCommand } from '../../application/commands/update-staff-profile.command';
 import { InviteStaffDto } from './dto/invite-staff.dto';
-import { CreateJobPostDto, UpdateJobPostDto, CreateApplicationDto, ReviewApplicationDto } from './dto/recruitment.dto';
+import { CreateJobPostDto, UpdateJobPostDto, CreateApplicationDto, ReviewApplicationDto, UpdateStaffProfileDto } from './dto';
 import { PrismaService } from '../../../../prisma.service';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
@@ -146,6 +151,43 @@ export class OrganizingController {
         const command = new UpdateStaffTaskCommand(concertId, staffId, taskId, dto.status as StaffTaskStatus);
         await this.commandBus.execute(command);
         return { message: 'Staff task status updated' };
+    }
+
+    @Post('staff/provision-organizer')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Provision an organizer staff record if it does not exist' })
+    async provisionOrganizer(@Body() dto: { userId: string, name: string }) {
+        try {
+            console.log('[Provision] Receiving DTO:', dto);
+            if (!dto.userId || !dto.name) {
+                console.error('[Provision] Missing required fields in DTO');
+                return { error: 'Missing userId or name' };
+            }
+
+            const existing = await this.prisma.staff.findFirst({
+                where: { userId: dto.userId, role: 'ORGANIZER' }
+            });
+
+            if (existing) {
+                console.log('[Provision] Staff record already exists for userId:', dto.userId);
+                return existing;
+            }
+
+            console.log('[Provision] Creating new Staff record for organizer...');
+            const newStaff = await this.prisma.staff.create({
+                data: {
+                    user: { connect: { id: dto.userId } },
+                    name: dto.name,
+                    role: 'ORGANIZER',
+                    organizerId: dto.userId
+                }
+            });
+            console.log('[Provision] Successfully created staff record:', newStaff.id);
+            return newStaff;
+        } catch (error) {
+            console.error('[Provision] Error in provisionOrganizer:', error);
+            throw error;
+        }
     }
 
     @Post('staff/invite')
@@ -325,19 +367,6 @@ export class OrganizingController {
         return { message: 'Nhân sự đã được gỡ bỏ khỏi Team' };
     }
 
-    @Patch('staff/profile/:staffId')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Update staff member professional profile (CV, Bio)' })
-    async updateStaffProfile(@Param('staffId') staffId: string, @Body() dto: { cvUrl: string, bio: string, name?: string }) {
-        return await this.prisma.staff.update({
-            where: { id: staffId },
-            data: {
-                cvUrl: dto.cvUrl,
-                bio: dto.bio,
-                name: dto.name
-            }
-        });
-    }
 
     @Get('staff/me')
     @HttpCode(HttpStatus.OK)
@@ -361,44 +390,42 @@ export class OrganizingController {
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create a new job posting' })
     async createJobPost(@Body() dto: CreateJobPostDto) {
-        const command = new CreateJobPostCommand(
-            dto.title,
-            dto.description,
-            dto.requirements,
-            dto.companyName || '',
-            dto.companyLogo || '',
-            dto.location || '',
-            dto.salary || '',
-            dto.organizerId,
-            dto.authorId
-        );
-        return await this.commandBus.execute(command);
+        try {
+            const command = new CreateJobPostCommand(
+                dto.title,
+                dto.description,
+                dto.requirements,
+                dto.companyName || '',
+                dto.companyLogo || '',
+                dto.location || '',
+                dto.salary || '',
+                dto.organizerId,
+                dto.authorId
+            );
+            const result = await this.commandBus.execute(command);
+            console.log('[Controller] Successfully created job post:', result);
+            return result;
+        } catch (error) {
+            console.error('[Controller] Error creating job post:', error);
+            throw error;
+        }
     }
 
     @Get('jobs')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get active job postings, optionally filtered by author or organizer' })
+    @ApiOperation({ summary: 'Get active job postings, optionally filtered by author, role or organizer' })
     async getJobs(
         @Query('authorId') authorId?: string,
         @Query('organizerId') organizerId?: string,
+        @Query('authorRole') authorRole?: string,
         @Query('includeClosed') includeClosed?: string
     ) {
-        let whereClause: any = {};
-        if (includeClosed !== 'true') {
-            whereClause.status = 'OPEN';
-        }
-        if (authorId) whereClause.authorId = authorId;
-        if (organizerId) whereClause.organizerId = organizerId;
-
-        return await this.prisma.jobPost.findMany({
-            where: whereClause,
-            include: {
-                author: {
-                    select: { name: true, role: true }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
+        return await this.queryBus.execute(new GetJobsQuery({
+            authorId,
+            organizerId,
+            authorRole,
+            includeClosed: includeClosed === 'true'
+        }));
     }
 
     @Patch('jobs/:id')
@@ -407,19 +434,7 @@ export class OrganizingController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Update a job posting' })
     async updateJobPost(@Param('id') id: string, @Body() dto: UpdateJobPostDto) {
-        return await this.prisma.jobPost.update({
-            where: { id },
-            data: {
-                ...(dto.title !== undefined && { title: dto.title }),
-                ...(dto.description !== undefined && { description: dto.description }),
-                ...(dto.requirements !== undefined && { requirements: dto.requirements }),
-                ...(dto.companyName !== undefined && { companyName: dto.companyName }),
-                ...(dto.companyLogo !== undefined && { companyLogo: dto.companyLogo }),
-                ...(dto.location !== undefined && { location: dto.location }),
-                ...(dto.salary !== undefined && { salary: dto.salary }),
-                ...(dto.status !== undefined && { status: dto.status }),
-            }
-        });
+        return await this.commandBus.execute(new UpdateJobPostCommand(id, dto));
     }
 
     @Delete('jobs/:id')
@@ -428,8 +443,7 @@ export class OrganizingController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Delete a job posting and its applications' })
     async deleteJobPost(@Param('id') id: string) {
-        await this.prisma.staffApplication.deleteMany({ where: { jobPostId: id } });
-        await this.prisma.jobPost.delete({ where: { id } });
+        await this.commandBus.execute(new DeleteJobPostCommand(id));
         return { message: 'Tin tuyển dụng đã được xóa thành công' };
     }
 
@@ -437,33 +451,14 @@ export class OrganizingController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Get details of a specific job post' })
     async getJobById(@Param('id') id: string) {
-        return await this.prisma.jobPost.findUnique({
-            where: { id },
-            include: {
-                author: {
-                    select: {
-                        name: true,
-                        role: true,
-                        bio: true,
-                        user: {
-                            select: {
-                                phoneNumber: true,
-                                email: true
-                            }
-                        }
-                    }
-                }
-            }
-        });
+        return await this.queryBus.execute(new GetJobByIdQuery(id));
     }
 
     @Get('organizer/:organizerId/jobs')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Get all job postings for a specific organizer' })
     async getJobsByOrganizer(@Param('organizerId') organizerId: string) {
-        return await this.prisma.jobPost.findMany({
-            where: { organizerId }
-        });
+        return await this.queryBus.execute(new GetJobsQuery({ organizerId, includeClosed: true }));
     }
 
     @Get('applications')
@@ -496,6 +491,22 @@ export class OrganizingController {
         });
     }
 
+    @Patch('staff/profile')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update logged-in staff member profile' })
+    async updateStaffProfile(@Body() dto: UpdateStaffProfileDto, @Query('userId') userId: string) {
+        if (!userId) throw new Error('User ID is required');
+        const command = new UpdateStaffProfileCommand(
+            userId,
+            dto.name,
+            dto.phoneNumber,
+            dto.email,
+            dto.bio,
+            dto.cvUrl
+        );
+        return await this.commandBus.execute(command);
+    }
+
     @Post('applications/upload-cv')
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Upload CV to MinIo CV bucket' })
@@ -517,7 +528,7 @@ export class OrganizingController {
             where: { jobPostId },
             include: {
                 applicant: {
-                    select: { id: true, name: true, bio: true, cvUrl: true }
+                    select: { id: true, name: true, bio: true, cvUrl: true, role: true }
                 }
             }
         });

@@ -1,34 +1,6 @@
-
-model EventReport {
-  id               String   @id @default(uuid())
-  organizerId      String
-  authorId         String
-  author           Staff    @relation(fields: [authorId], references: [id])
-  
-  concertId        String?
-  concertName      String?
-
-  budgetAudit      Float    @default(0)
-  marketingReach   Int      @default(0)
-  staffEvaluation  String?  @db.Text
-  finalStatus      String   @default("SUCCESS") // SUCCESS, PARTIAL, FAILURE
-  notes            String?  @db.Text
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@index([organizerId])
-  @@index([authorId])
-}
-
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -36,62 +8,70 @@ datasource db {
   provider = "postgresql"
 }
 
-// ---------------------------------------------------------
-//  IDENTITY CONTEXT
-// ---------------------------------------------------------
 model User {
-  id          String    @id @default(uuid())
-  name        String
-  phoneNumber String
-  email       String    @unique
+  id           String    @id @default(uuid())
+  name         String
+  phoneNumber  String
+  email        String    @unique
   password     String
-  refreshToken String?
-  role         String    // Mapped from Role VO (e.g. "USER", "ORGANIZER", "ADMIN")
+  role         String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-
-  bookings    Booking[]
-  invoices    Invoice[]
-  concerts    Concert[] 
-  staffs      Staff[]
- 
+  refreshToken String?
+  bookings     Booking[]
+  concerts     Concert[]
+  invoices     Invoice[]
+  staffs       Staff[]
 
   @@index([role])
 }
 
-// ---------------------------------------------------------
-//  CONCERT CONTEXT
-// ---------------------------------------------------------
-model Concert {
-  id          String   @id @default(uuid())
-  organizerId String
-  organizer   User     @relation(fields: [organizerId], references: [id])
-  name        String
-  startDate   DateTime
-  location    String
-  imageUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model EventReport {
+  id              String   @id @default(uuid())
+  organizerId     String
+  authorId        String
+  concertId       String?
+  concertName     String?
+  budgetAudit     Float    @default(0)
+  marketingReach  Int      @default(0)
+  staffEvaluation String?
+  finalStatus     String   @default("SUCCESS")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  author          Staff    @relation(fields: [authorId], references: [id])
 
+  @@index([organizerId])
+  @@index([authorId])
+}
+
+model Concert {
+  id           String        @id @default(uuid())
+  organizerId  String
+  name         String
+  startDate    DateTime
+  location     String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  imageUrl     String?
   bookings     Booking[]
+  organizer    User          @relation(fields: [organizerId], references: [id])
+  organize     Organize?
+  performances Performance[]
+  staffs       Staff[]
   tickets      Ticket[]
   ticketPools  TicketPool[]
-  organize     Organize? 
-  staffs       Staff[]
-  performances Performance[]
-
 
   @@index([organizerId])
   @@index([startDate])
 }
 
 model Artist {
-  id          String   @id @default(uuid())
-  name        String
-  bio         String   @default("")
-  contactInfo String   @default("")
-  createdAt   DateTime @default(now())
-
+  id           String        @id @default(uuid())
+  name         String
+  bio          String        @default("")
+  contactInfo  String        @default("")
+  createdAt    DateTime      @default(now())
   performances Performance[]
 
   @@index([name])
@@ -100,33 +80,29 @@ model Artist {
 model Performance {
   id              String   @id @default(uuid())
   concertId       String
-  concert         Concert  @relation(fields: [concertId], references: [id])
   artistId        String
-  artist          Artist   @relation(fields: [artistId], references: [id])
   name            String
   durationMinutes Int
   startTime       DateTime
+  artist          Artist   @relation(fields: [artistId], references: [id])
+  concert         Concert  @relation(fields: [concertId], references: [id])
 
   @@index([concertId])
   @@index([artistId])
 }
 
-// ---------------------------------------------------------
-//  BOOKING CONTEXT
-// ---------------------------------------------------------
 model Booking {
   id          String    @id @default(uuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id])
   concertId   String
-  concert     Concert   @relation(fields: [concertId], references: [id])
   totalAmount Float
-  status      String    
+  status      String
   createdAt   DateTime  @default(now())
-  version     Int       @default(1) 
-
+  version     Int       @default(1)
+  concert     Concert   @relation(fields: [concertId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+  invoices    Invoice[]
   tickets     Ticket[]
-  invoices    Invoice[] 
 
   @@index([userId])
   @@index([concertId])
@@ -134,50 +110,46 @@ model Booking {
 }
 
 model TicketPool {
-  id              String   @id @default(uuid())
-  concertId       String
-  concert         Concert  @relation(fields: [concertId], references: [id])
-  ticketType      String   // VIP, VVIP, Regular, Discounted
-  price           Float
-  totalQuantity   Int      @default(0)
-  soldCount       Int      @default(0)
+  id            String  @id @default(uuid())
+  concertId     String
+  ticketType    String
+  price         Float
+  totalQuantity Int     @default(0)
+  soldCount     Int     @default(0)
+  concert       Concert @relation(fields: [concertId], references: [id])
 
   @@unique([concertId, ticketType])
   @@index([concertId])
 }
 
 model Ticket {
-  id          String    @id @default(uuid())
-  bookingId   String?
-  booking     Booking?  @relation(fields: [bookingId], references: [id])
-  concertId   String
-  concert     Concert   @relation(fields: [concertId], references: [id])
-  userId      String?
-  ticketType  String
-  price       Float
-  version     Int       @default(1)
+  id         String   @id @default(uuid())
+  bookingId  String?
+  concertId  String
+  userId     String?
+  ticketType String
+  price      Float
+  version    Int      @default(1)
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+  concert    Concert  @relation(fields: [concertId], references: [id])
 
   @@index([bookingId])
   @@index([concertId])
 }
 
-// ---------------------------------------------------------
-//  BILLING CONTEXT
-// ---------------------------------------------------------
 model Invoice {
-  id             String    @id @default(uuid())
+  id             String        @id @default(uuid())
   bookingId      String
-  booking        Booking   @relation(fields: [bookingId], references: [id])
   userId         String
-  user           User      @relation(fields: [userId], references: [id])
-  taxAmount      Float     @default(0)
-  discountAmount Float     @default(0)
-  status         String    
-  issueDate      DateTime  @default(now())
+  taxAmount      Float         @default(0)
+  discountAmount Float         @default(0)
+  status         String
+  issueDate      DateTime      @default(now())
   dueDate        DateTime
-  paymentId      String?   
-  version        Int       @default(1)
-
+  paymentId      String?
+  version        Int           @default(1)
+  booking        Booking       @relation(fields: [bookingId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
   items          InvoiceItem[]
   payments       Payment[]
 
@@ -187,13 +159,13 @@ model Invoice {
 }
 
 model InvoiceItem {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   invoiceId   String
-  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
   description String
   quantity    Int
   unitPrice   Float
   total       Float
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
 
   @@index([invoiceId])
 }
@@ -201,105 +173,89 @@ model InvoiceItem {
 model Payment {
   id            String   @id @default(uuid())
   invoiceId     String
-  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
   bookingId     String
   amount        Float
-  method        String   // CREDIT_CARD, BANK_TRANSFER, E_WALLET, VNPAY, CASH
-  status        String   // PENDING, SUCCESS, FAILED, REFUNDED
+  method        String
+  status        String
   transactionId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
 
   @@index([invoiceId])
   @@index([bookingId])
   @@index([status])
 }
 
-// ---------------------------------------------------------
-//  ORGANIZING CONTEXT
-// ---------------------------------------------------------
 model Location {
-  id          String     @id @default(uuid())
-  name        String
-  address     String
-  capacity    Int
-
-  // One-to-many relationship as a location can host multiple organizations over time
+  id            String     @id @default(uuid())
+  name          String
+  address       String
+  capacity      Int
   organizations Organize[]
 }
 
 model Organize {
-  id          String    @id @default(uuid())
-  concertId   String    @unique
-  concert     Concert   @relation(fields: [concertId], references: [id])
-  locationId  String?
-  location    Location?  @relation(fields: [locationId], references: [id])
-
-  equipments  Divide[]
-  logistics   Logistics[]
+  id         String      @id @default(uuid())
+  concertId  String      @unique
+  locationId String?
+  equipments Divide[]
+  logistics  Logistics[]
+  concert    Concert     @relation(fields: [concertId], references: [id])
+  location   Location?   @relation(fields: [locationId], references: [id])
 
   @@index([locationId])
 }
 
 model Divide {
-  id          String    @id @default(uuid())
-  organizeId  String
-  organize    Organize  @relation(fields: [organizeId], references: [id])
-  name        String
-  // `quantity` and `status` removed as they don't exist in the current Domain Entity.
-
+  id            String         @id @default(uuid())
+  organizeId    String
+  name          String
   detail_divide DetailDivide[]
+  organize      Organize       @relation(fields: [organizeId], references: [id])
 
   @@index([organizeId])
 }
 
 model DetailDivide {
-  id          Int       @id @default(autoincrement())
-  divideId    String    // Notice divideId should link back to Divide string UUID
-  divide      Divide    @relation(fields: [divideId], references: [id])
-  name        String
+  id       Int    @id @default(autoincrement())
+  divideId String
+  name     String
+  divide   Divide @relation(fields: [divideId], references: [id])
 
   @@index([divideId])
 }
 
 model Logistics {
-  id          String    @id @default(uuid())
-  organizeId  String
-  organize    Organize  @relation(fields: [organizeId], references: [id])
-  taskName    String
-  vendor      String    @default("") // Added from domain Logistics Entity
-  cost        Float     @default(0)  // Added from domain Logistics Entity
-  status      String
+  id         String   @id @default(uuid())
+  organizeId String
+  taskName   String
+  status     String
+  cost       Float    @default(0)
+  vendor     String   @default("")
+  organize   Organize @relation(fields: [organizeId], references: [id])
 
   @@index([organizeId])
 }
 
 model Staff {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  name        String
-  role        String
-  organizerId String?  // ID của Nhà tổ chức mời nhân viên này
-  concertId   String?
-  concert     Concert? @relation(fields: [concertId], references: [id])
-
-  // Hồ sơ nghề nghiệp
-  cvUrl       String?
-  bio         String?
-
-
-  // Phân cấp nhân sự (Hierarchy)
-  managerId   String?
-  manager     Staff?   @relation("StaffToManager", fields: [managerId], references: [id])
-  reportsTo   Staff[]  @relation("StaffToManager")
-
-  // Quan hệ với tuyển dụng
-  jobPosts     JobPost[]         @relation("ManagerJobPosts")
+  id           String             @id @default(uuid())
+  userId       String
+  name         String
+  role         String
+  concertId    String?
+  organizerId  String?
+  managerId    String?
+  bio          String?
+  cvUrl        String?
+  reports      EventReport[]
+  jobPosts     JobPost[]          @relation("ManagerJobPosts")
+  concert      Concert?           @relation(fields: [concertId], references: [id])
+  manager      Staff?             @relation("StaffToManager", fields: [managerId], references: [id])
+  reportsTo    Staff[]            @relation("StaffToManager")
+  user         User               @relation(fields: [userId], references: [id])
   applications StaffApplication[] @relation("ApplicantStaff")
-
-  tasks     StaffTask[]
-  reports   EventReport[]
+  tasks        StaffTask[]
 
   @@index([concertId])
   @@index([userId])
@@ -308,27 +264,21 @@ model Staff {
 }
 
 model JobPost {
-  id               String   @id @default(uuid())
-  title            String
-  description      String   @db.Text
-  requirements     String   @db.Text
-  status           String   @default("OPEN") // OPEN, CLOSED
-  
-  // Thông tin thương hiệu (Dựa theo JobsGO)
-  companyName      String?
-  companyLogo      String?
-  location         String?
-  salary           String?
-  
-  // Liên kết
-  organizerId      String
-  authorId         String
-  author           Staff    @relation("ManagerJobPosts", fields: [authorId], references: [id])
-  
-  applications     StaffApplication[] @relation("JobApplications")
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id           String             @id @default(uuid())
+  title        String
+  description  String
+  requirements String
+  status       String             @default("OPEN")
+  companyName  String?
+  companyLogo  String?
+  location     String?
+  salary       String?
+  organizerId  String
+  authorId     String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  author       Staff              @relation("ManagerJobPosts", fields: [authorId], references: [id])
+  applications StaffApplication[] @relation("JobApplications")
 
   @@index([organizerId])
   @@index([authorId])
@@ -336,19 +286,16 @@ model JobPost {
 }
 
 model StaffApplication {
-  id               String   @id @default(uuid())
-  applicantId      String
-  applicant        Staff    @relation("ApplicantStaff", fields: [applicantId], references: [id])
-  
-  jobPostId        String
-  jobPost          JobPost  @relation("JobApplications", fields: [jobPostId], references: [id])
-  
-  cvUrl            String   // Link CV cho lần ứng tuyển này
-  message          String?
-  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id          String   @id @default(uuid())
+  applicantId String
+  cvUrl       String
+  message     String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  jobPostId   String
+  applicant   Staff    @relation("ApplicantStaff", fields: [applicantId], references: [id])
+  jobPost     JobPost  @relation("JobApplications", fields: [jobPostId], references: [id])
 
   @@index([applicantId])
   @@index([jobPostId])
@@ -358,13 +305,13 @@ model StaffApplication {
 model StaffInvitation {
   id          String   @id @default(uuid())
   email       String
-  role        String   // Ví dụ: EVENT_MANAGER, PRODUCTION_MANAGER, v.v.
+  role        String
   organizerId String
   token       String   @unique
-  status      String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED
+  status      String   @default("PENDING")
   createdAt   DateTime @default(now())
   expiresAt   DateTime
-  managerId   String?  // Gán quản lý trực tiếp cho nhân sự này ngay khi họ join
+  managerId   String?
 
   @@index([email])
   @@index([token])
@@ -373,10 +320,10 @@ model StaffInvitation {
 model StaffTask {
   id          String   @id @default(uuid())
   staffId     String
-  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
   description String
-  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  status      String   @default("PENDING")
   createdAt   DateTime @default(now())
+  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId])
 }

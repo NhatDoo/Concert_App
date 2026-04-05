@@ -30,27 +30,46 @@ import { EventPhaseWorkflow } from './EventPhaseWorkflow';
 import { StaffDiscover } from './StaffDiscover';
 import { CreateJobModal } from './CreateJobModal';
 import { EditJobModal } from './EditJobModal';
-import { JobPost, Application } from './types';
+import { StaffProfile } from './StaffProfile';
+import { JobBoard } from './JobBoard';
+import { JobDetailsDrawer } from './JobDetailsDrawer';
+import { StaffApplyModal } from './StaffApplyModal';
+import { JobPost } from './types';
+import { useJobManagement } from '../hooks/useJobManagement';
 
 export const ManagerDashboard = () => {
     const { user, token } = useSelector((state: RootState) => state.auth);
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('overview');
-    const [staffRecords, setStaffRecords] = useState<any[]>([]);
-    const [managerJobs, setManagerJobs] = useState<JobPost[]>([]);
-    const [selectedJob, setSelectedJob] = useState<JobPost | null>(null);
-    const [jobApplications, setJobApplications] = useState<Application[]>([]);
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [isCreating, setIsCreating] = useState(false);
-    const [editingJob, setEditingJob] = useState<JobPost | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
-    const notify = (type: 'success' | 'error', msg: string) => {
-        setNotification({ type, msg });
-        setTimeout(() => setNotification(null), 3000);
-    };
+    const {
+        loading,
+        staffRecords,
+        managerJobs,
+        selectedJob,
+        jobApplications,
+        isCreating,
+        isSaving,
+        discoverJobs,
+        myApplications,
+        isApplying,
+        notification,
+        fetchJobApplications,
+        fetchDiscoverJobs,
+        createJob,
+        updateJob,
+        deleteJob,
+        toggleStatus,
+        reviewApplication,
+        applyToJob,
+        notify
+    } = useJobManagement(user, token);
+
+    const [activeTab, setActiveTab] = useState('overview');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingJob, setEditingJob] = useState<JobPost | null>(null);
+    const [selectedDiscoverJob, setSelectedDiscoverJob] = useState<JobPost | null>(null);
+    const [showApplyModal, setShowApplyModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [newJob, setNewJob] = useState({
         title: '',
@@ -64,164 +83,32 @@ export const ManagerDashboard = () => {
 
     const handleCreateJob = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user) return;
-        setIsCreating(true);
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/jobs`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                body: JSON.stringify({
-                    ...newJob,
-                    organizerId: staffRecords[0]?.organizerId || user?.id,
-                    authorId: staffRecords[0]?.id || user?.id
-                })
-            });
-            if (res.ok) {
-                setShowCreateModal(false);
-                setNewJob({ title: '', description: '', requirements: '', salary: '', location: '', companyName: '', companyLogo: '' });
-                fetchData();
-                notify('success', 'Đã đăng tin tuyển dụng thành công!');
-            } else {
-                const errorData = await res.json();
-                alert(`Không thể tạo tin tuyển dụng: ${Array.isArray(errorData.message) ? errorData.message.join(', ') : errorData.message || 'Lỗi không xác định'}`);
-            }
-        } catch (e) {
-        } finally { setIsCreating(false); }
+        await createJob(newJob, () => {
+            setShowCreateModal(false);
+            setNewJob({ title: '', description: '', requirements: '', salary: '', location: '', companyName: '', companyLogo: '' });
+        });
     };
 
     const handleEditJob = async (id: string, data: any) => {
-        setIsSaving(true);
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/jobs/${id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                body: JSON.stringify(data)
-            });
-            if (res.ok) {
-                setEditingJob(null);
-                fetchData();
-                notify('success', 'Đã cập nhật tin tuyển dụng.');
-            } else {
-                const err = await res.json();
-                alert(`Lỗi: ${err.message}`);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleDeleteJob = async (id: string) => {
-        if (!confirm('Bạn có chắc muốn xóa tin tuyển dụng này? Tất cả hồ sơ ứng tuyển cũng sẽ bị xóa.')) return;
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/jobs/${id}`, {
-                method: 'DELETE',
-                headers: { ...(token && { 'Authorization': `Bearer ${token}` }) }
-            });
-            if (res.ok) {
-                fetchData();
-                notify('success', 'Đã xóa tin tuyển dụng.');
-            }
-        } catch (e) { console.error(e); }
-    };
-
-    const handleToggleStatus = async (id: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'OPEN' ? 'CLOSED' : 'OPEN';
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            await fetch(`${apiUrl}/organize/jobs/${id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-            fetchData();
-        } catch (e) { console.error(e); }
+        await updateJob(id, data, () => {
+            setEditingJob(null);
+        });
     };
 
     const [stats, setStats] = useState({ activeJobs: 0, totalApps: 0, pendingReview: 0 });
 
-    const fetchData = async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-            const staffRes = await fetch(`${apiUrl}/organize/staff/me?userId=${user.id}`);
-            const staffData = await staffRes.json();
-            const manager = Array.isArray(staffData) ? staffData[0] : staffData;
-            setStaffRecords([manager]);
-
-            const authorIdToFetch = manager?.id || user.id;
-            const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${authorIdToFetch}&includeClosed=true`);
-            const jobsData = await jobsRes.json();
-            setManagerJobs(Array.isArray(jobsData) ? jobsData : []);
-
-            const allJobs = Array.isArray(jobsData) ? jobsData : [];
-            const activeCount = allJobs.filter((j: any) => j.status === 'OPEN').length;
-
-            setStats({
-                activeJobs: activeCount,
-                totalApps: 0,
-                pendingReview: 0
-            });
-
-            if (allJobs.length > 0) {
-                fetchJobApplications(allJobs[0].id);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchJobApplications = async (jobId: string) => {
-        const job = managerJobs.find(j => j.id === jobId) || managerJobs[0];
-        setSelectedJob(job);
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/jobs/${jobId}/applications`);
-            if (res.ok) {
-                const data = await res.json();
-                setJobApplications(Array.isArray(data) ? data : []);
-            } else {
-                setJobApplications([]);
-            }
-        } catch (e) { }
-    };
-
-    const handleReview = async (applicationId: string, status: string) => {
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            await fetch(`${apiUrl}/organize/applications/${applicationId}/review`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
-                },
-                body: JSON.stringify({ status })
-            });
-            if (selectedJob) fetchJobApplications(selectedJob.id);
-            notify('success', status === 'APPROVED' ? 'Đã tiếp nhận nhân viên!' : 'Đã từ chối đơn.');
-        } catch (e) { }
-    };
+    useEffect(() => {
+        if (activeTab === 'job-board') fetchDiscoverJobs('EVENT_MANAGER');
+    }, [activeTab, fetchDiscoverJobs]);
 
     useEffect(() => {
-        if (user) fetchData();
-    }, [user]);
+        const activeCount = managerJobs.filter((j: any) => j.status === 'OPEN').length;
+        setStats({
+            activeJobs: activeCount,
+            totalApps: 0,
+            pendingReview: 0
+        });
+    }, [managerJobs]);
 
     if (loading) return (
         <div className="h-screen bg-slate-950 flex flex-col items-center justify-center font-bold">
@@ -246,8 +133,9 @@ export const ManagerDashboard = () => {
                 <nav className="flex-1 space-y-3">
                     {[
                         { id: 'overview', icon: LayoutDashboard, label: 'Tổng quan Hub' },
+                        { id: 'job-board', icon: Briefcase, label: 'Sàn Việc Làm' },
                         { id: 'team', icon: Users, label: 'Nhân sự Team' },
-                        { id: 'settings', icon: Settings, label: 'Cài đặt hệ thống' },
+                        { id: 'settings', icon: Settings, label: 'Hồ sơ & Hệ thống' },
                     ].map((item, i) => (
                         <button
                             key={i}
@@ -345,12 +233,13 @@ export const ManagerDashboard = () => {
                                 managerJobPosts={managerJobs}
                                 selectedManagerJob={selectedJob}
                                 jobApplications={jobApplications}
-                                onSelectJob={fetchJobApplications}
-                                onReview={handleReview}
+                                onSelectJob={(id) => fetchJobApplications(id)}
+                                onReview={reviewApplication}
                                 onCreateJob={() => setShowCreateModal(true)}
                                 onEditJob={(job) => setEditingJob(job)}
-                                onDeleteJob={handleDeleteJob}
-                                onToggleStatus={handleToggleStatus}
+                                onDeleteJob={deleteJob}
+                                onToggleStatus={toggleStatus}
+                                accentColor="rose-600"
                             />
                         </section>
                     </>
@@ -358,6 +247,28 @@ export const ManagerDashboard = () => {
 
                 {activeTab === 'team' && (
                     <TeamHub organizerId={staffRecords[0]?.organizerId || user?.id} token={token} />
+                )}
+
+                {activeTab === 'job-board' && (
+                    <JobBoard
+                        jobs={discoverJobs.filter(j =>
+                            j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            j.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+                        )}
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        onSelectJob={setSelectedDiscoverJob}
+                        loading={loading}
+                    />
+                )}
+
+                {activeTab === 'settings' && (
+                    <StaffProfile
+                        user={user}
+                        token={token}
+                        accentColor="rose-600"
+                        onUpdateSuccess={(msg) => notify('success', msg)}
+                    />
                 )}
             </main>
 
@@ -375,6 +286,28 @@ export const ManagerDashboard = () => {
                 onClose={() => setEditingJob(null)}
                 onSave={handleEditJob}
                 isSaving={isSaving}
+            />
+
+            <JobDetailsDrawer
+                job={selectedDiscoverJob}
+                onClose={() => setSelectedDiscoverJob(null)}
+                onApply={() => setShowApplyModal(true)}
+                isAlreadyApplied={myApplications.some(app => app.jobPostId === selectedDiscoverJob?.id)}
+            />
+
+            <StaffApplyModal
+                show={showApplyModal}
+                job={selectedDiscoverJob}
+                onClose={() => setShowApplyModal(false)}
+                isApplying={isApplying}
+                onSubmit={async (cvUrl, msg) => {
+                    if (selectedDiscoverJob) {
+                        await applyToJob(selectedDiscoverJob.id, cvUrl, msg, () => {
+                            setShowApplyModal(false);
+                            setSelectedDiscoverJob(null);
+                        });
+                    }
+                }}
             />
         </div>
     );

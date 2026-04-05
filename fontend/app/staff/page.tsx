@@ -4,14 +4,22 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import {
-    Loader2,
-    LogOut,
-    Bell,
-    Search,
-    CalendarCheck,
+    LayoutDashboard,
     Users,
-    XCircle,
+    Briefcase,
+    Settings,
+    Search,
+    Bell,
+    LogOut,
     CheckCircle,
+    Clock,
+    ChevronRight,
+    Loader2,
+    CalendarCheck,
+    Plus,
+    XCircle,
+    Star,
+    MapPin,
     ShieldCheck
 } from 'lucide-react';
 import { RootState, AppDispatch } from '../../src/stores/store';
@@ -20,11 +28,12 @@ import { logout } from '../../src/features/auth/stores/authSlice';
 // Sub-components
 import { JobBoard } from '../../src/features/staff/components/JobBoard';
 import { JobDetailsDrawer } from '../../src/features/staff/components/JobDetailsDrawer';
+import { StaffApplyModal } from '../../src/features/staff/components/StaffApplyModal';
+import { JobPost, Application, Task, StaffRecord } from '../../src/features/staff/components/types';
+import { StaffProfile } from '../../src/features/staff/components/StaffProfile';
+import { CreateJobModal } from '../../src/features/staff/components/CreateJobModal';
 import { ManagementHub } from '../../src/features/staff/components/ManagementHub';
 import { MyTasks } from '../../src/features/staff/components/MyTasks';
-import { CreateJobModal } from '../../src/features/staff/components/CreateJobModal';
-
-import { JobPost, Application, Task, StaffRecord } from '../../src/features/staff/components/types';
 
 interface Invitation {
     id: string;
@@ -41,7 +50,7 @@ export default function StaffDashboard() {
     const router = useRouter();
     const dispatch = useDispatch<AppDispatch>();
 
-    const [activeTab, setActiveTab] = useState<'tasks' | 'recruitment' | 'management'>('tasks');
+    const [activeTab, setActiveTab] = useState<'tasks' | 'recruitment' | 'management' | 'settings'>('tasks');
     const [staffRecords, setStaffRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [allJobs, setAllJobs] = useState<JobPost[]>([]);
@@ -83,7 +92,7 @@ export default function StaffDashboard() {
             setStaffRecords(staffArray);
 
             // 2. Fetch All Jobs
-            const jobsRes = await fetch(`${apiUrl}/organize/jobs`);
+            const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorRole=MANAGER`);
             const jobsData = await jobsRes.json();
             setAllJobs(jobsData);
 
@@ -96,54 +105,53 @@ export default function StaffDashboard() {
                 }
             }
 
-            // 4. Fetch My Invitations (Direct invites)
-            const inviteRes = await fetch(`${apiUrl}/organize/staff/invitations?email=${user.email}`);
-            if (inviteRes.ok) {
-                const inviteData = await inviteRes.json();
-                setMyInvitations(inviteData);
+            // 4. Fetch My Recruitment (if manager)
+            const isManager = staffArray.some(r =>
+                r.role === 'MANAGER' ||
+                ['EVENT_MANAGER', 'PRODUCTION_MANAGER', 'TECHNICAL_MANAGER', 'MARKETING_MANAGER', 'TALENT_MANAGER'].includes(r.role)
+            );
+
+            if (isManager && staffArray[0]?.id) {
+                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${staffArray[0].id}`);
+                if (managerJobsRes.ok) {
+                    const managerJobsData = await managerJobsRes.json();
+                    setManagerJobPosts(managerJobsData || []);
+                }
             }
 
-            // 5. If Manager, fetch their job posts
-            if (staffArray[0]?.id) {
-                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${staffArray[0].id}&includeClosed=true`);
-                const managerJobsData = await managerJobsRes.json();
-                setManagerJobPosts(managerJobsData);
+            // 5. Fetch Invitations
+            const inviteRes = await fetch(`${apiUrl}/organize/invitations/me?email=${user.email}`);
+            if (inviteRes.ok) {
+                const inviteData = await inviteRes.json();
+                setMyInvitations(inviteData || []);
             }
+
         } catch (e) {
-            console.error("Failed to fetch staff data", e);
+            console.error(e);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (!authLoading && !user) router.push('/login');
-        if (user) fetchStaffData();
+        if (!user && !authLoading) {
+            router.push('/login');
+        } else if (user) {
+            fetchStaffData();
+        }
     }, [user, authLoading]);
 
-    // Redirection for Managers
-    useEffect(() => {
-        const hasManagerRecord = staffRecords.some(r =>
-            r.role === 'MANAGER' ||
-            ['EVENT_MANAGER', 'PRODUCTION_MANAGER', 'TECHNICAL_MANAGER', 'MARKETING_MANAGER', 'TALENT_MANAGER'].includes(r.role)
-        );
-        // Only redirect if they are not currently on the management tab and actually have a manager role
-        if (hasManagerRecord && activeTab !== 'management') {
-            router.push('/staff/manager');
-        }
-    }, [staffRecords, router, activeTab]);
-
-    const handleAcceptInvitation = async (invitationId: string) => {
+    const handleAcceptInvite = async (tokenStr: string) => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/staff/join`, {
+            const res = await fetch(`${apiUrl}/organize/invitations/accept`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ invitationId, userId: user!.id, name: user!.name })
+                body: JSON.stringify({ token: tokenStr, userId: user?.id })
             });
 
             if (res.ok) {
-                notify('success', 'Bạn đã gia nhập tổ chức thành công!');
+                notify('success', 'Bạn đã là một phần của ban tổ chức!');
                 fetchStaffData();
             } else {
                 const err = await res.json();
@@ -154,57 +162,32 @@ export default function StaffDashboard() {
         }
     };
 
-    const handleApply = async () => {
+    const handleApplyWithModal = async (cvUrl: string, message: string) => {
         if (!selectedJob || !staffRecords[0]) return;
-
-        if (!cvFile) {
-            notify('error', 'Vui lòng đính kèm CV (PDF) của bạn.');
-            return;
-        }
-
         setIsApplying(true);
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-            // 1. Upload CV to MinIo
-            const formData = new FormData();
-            formData.append('file', cvFile);
-
-            const uploadRes = await fetch(`${apiUrl}/organize/applications/upload-cv`, {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!uploadRes.ok) {
-                throw new Error('Lỗi khi tải lên CV. Vui lòng thử lại.');
-            }
-
-            const { url: cvUrl } = await uploadRes.json();
-
-            // 2. Submit Application
-            const res = await fetch(`${apiUrl}/organize/applications`, {
+            const response = await fetch(`${apiUrl}/organize/applications`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    jobPostId: selectedJob.id,
                     applicantId: staffRecords[0].id,
-                    cvUrl: cvUrl,
-                    message: applicationNote
+                    jobPostId: selectedJob.id,
+                    cvUrl,
+                    message
                 })
             });
-            if (res.ok) {
-                notify('success', 'Đã nộp hồ sơ thành công!');
+
+            if (response.ok) {
+                notify('success', 'Nộp đơn thành công!');
                 setShowApplyModal(false);
-                setSelectedJob(null);
-                setApplicationNote('');
-                setCvFile(null);
                 fetchStaffData();
             } else {
-                const errorData = await res.json();
+                const errorData = await response.json();
                 notify('error', `Không thể ứng tuyển: ${errorData.message || 'Lỗi không xác định'}`);
             }
-        } catch (e: any) {
-            notify('error', e.message || 'Lỗi kết nối máy chủ.');
+        } catch (e) {
+            notify('error', 'Lỗi kết nối máy chủ.');
         } finally {
             setIsApplying(false);
         }
@@ -266,6 +249,40 @@ export default function StaffDashboard() {
         } finally { setIsCreatingJob(false); }
     };
 
+    const handleDeleteJob = async (jobId: string) => {
+        if (!confirm('Bạn có chắc muốn xóa tin tuyển dụng này?')) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${apiUrl}/organize/jobs/${jobId}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                notify('success', 'Đã xóa tin tuyển dụng');
+                fetchStaffData();
+            }
+        } catch (e) {
+            notify('error', 'Lỗi khi xóa tin');
+        }
+    };
+
+    const handleToggleStatus = async (jobId: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'OPEN' ? 'CLOSED' : 'OPEN';
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${apiUrl}/organize/jobs/${jobId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            if (res.ok) {
+                notify('success', newStatus === 'OPEN' ? 'Đã mở lại tin tuyển dụng' : 'Đã đóng tin tuyển dụng');
+                fetchStaffData();
+            }
+        } catch (e) {
+            notify('error', 'Lỗi khi cập nhật trạng thái');
+        }
+    };
+
     const handleLogout = () => { dispatch(logout()); router.push('/login'); };
 
     if (authLoading || (loading && user)) return (
@@ -295,89 +312,89 @@ export default function StaffDashboard() {
                             <span className="text-white font-black text-xl italic">T</span>
                         </div>
                         <div>
-                            <h1 className="text-2xl font-black tracking-tight text-slate-900">STAFF HUB</h1>
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{isManagerRole ? 'Recruiter Account' : 'Worker Account'}</p>
-                            </div>
+                            <h1 className="text-xl font-black tracking-tight text-slate-800">TICKETBOX<span className="text-blue-600">.STAFF</span></h1>
+                            <p className="text-[10px] text-slate-400 font-bold tracking-[0.2em] uppercase">Executive Workspace</p>
                         </div>
                     </div>
 
-                    <nav className="hidden md:flex items-center bg-slate-100 p-1.5 rounded-2xl font-bold text-xs border border-slate-200">
-                        <button
-                            onClick={() => setActiveTab('tasks')}
-                            className={`px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'tasks' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            <CalendarCheck className="w-4 h-4" />
-                            CÔNG VIỆC
-                        </button>
+                    <div className="flex items-center gap-10">
+                        <nav className="flex items-center gap-2 p-1.5 bg-slate-100/50 rounded-2xl border border-slate-100">
+                            {[
+                                { id: 'tasks', label: 'CÔNG VIỆC', icon: CalendarCheck },
+                                { id: 'recruitment', label: 'TÌM VIỆC', icon: Search },
+                                ...(isManagerRole ? [{ id: 'management', label: 'TUYỂN DỤNG', icon: Users }] : []),
+                                { id: 'settings', label: 'HỒ SƠ', icon: Settings }
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`px-8 py-3 rounded-xl flex items-center gap-3 transition-all font-black text-[11px] tracking-widest ${activeTab === tab.id
+                                        ? 'bg-white text-blue-600 shadow-md shadow-blue-600/5 scale-[1.02]'
+                                        : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'}`}
+                                >
+                                    <tab.icon className="w-4 h-4" />
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </nav>
 
-                        {!isManagerRole && (
-                            <button
-                                onClick={() => setActiveTab('recruitment')}
-                                className={`px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'recruitment' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                <Search className="w-4 h-4" />
-                                TÌM VIỆC LÀM
+                        <div className="h-10 w-px bg-slate-200"></div>
+
+                        <div className="flex items-center gap-6">
+                            <div className="text-right">
+                                <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{user?.name}</p>
+                                <p className="text-[10px] text-blue-600 font-bold uppercase">{staffRecords[0]?.role || 'APPLICANT'}</p>
+                            </div>
+                            <button onClick={handleLogout} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                                <LogOut className="w-5 h-5" />
                             </button>
-                        )}
-
-                        {isManagerRole && (
-                            <button
-                                onClick={() => setActiveTab('management')}
-                                className={`px-6 py-2.5 rounded-xl transition-all flex items-center gap-2 ${activeTab === 'management' ? 'bg-white text-purple-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                <Users className="w-4 h-4" />
-                                TUYỂN DỤNG
-                            </button>
-                        )}
-                    </nav>
-
-                    <div className="flex items-center gap-4">
-                        <button className="relative p-3 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-blue-600 hover:border-blue-100 transition-all">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-600 rounded-full border-2 border-white"></span>
-                        </button>
-                        <div className="h-10 w-px bg-slate-200 mx-2"></div>
-                        <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-3 bg-slate-900 px-5 py-3 rounded-2xl text-white font-black text-xs hover:bg-red-600 transition-all shadow-xl shadow-slate-200"
-                        >
-                            <LogOut className="w-4 h-4" />
-                            <span className="hidden sm:inline">THOÁT</span>
-                        </button>
+                        </div>
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-6 py-12">
-                {/* Invitations Alert */}
+            <main className="max-w-7xl mx-auto px-6 pt-12">
+                {/* Invitations Section */}
                 {myInvitations.length > 0 && (
-                    <div className="mb-10 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-[2.5rem] p-10 text-white shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 group overflow-hidden relative">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:scale-110 transition-transform duration-1000"></div>
-                        <div className="flex items-center gap-8 relative z-10">
-                            <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-md">
-                                <ShieldCheck className="w-10 h-10" />
+                    <div className="mb-12 animate-in slide-in-from-top-10 duration-700">
+                        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-1 rounded-[3rem] shadow-2xl">
+                            <div className="bg-white/95 backdrop-blur-md rounded-[2.8rem] p-10 flex flex-col md:flex-row items-center justify-between gap-8 border border-white/20">
+                                <div className="flex items-center gap-8 text-center md:text-left">
+                                    <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center text-blue-600 relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-blue-600 scale-0 group-hover:scale-100 transition-transform duration-500 rounded-full opacity-10"></div>
+                                        <Bell className="w-10 h-10 group-hover:rotate-12 transition-transform" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-900 leading-none">LỜI MỜI HỢP TÁC MỚI</h3>
+                                        <p className="text-slate-500 text-sm mt-3 font-medium uppercase tracking-widest">Bạn đang được mời tham gia vào đội ngũ sản xuất Concert.</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap justify-center gap-4">
+                                    {myInvitations.map(invite => (
+                                        <div key={invite.id} className="bg-slate-50 border border-slate-100 p-6 rounded-[2.5rem] flex items-center gap-8 shadow-sm group hover:border-blue-200 transition-all">
+                                            <div>
+                                                <p className="text-[10px] text-blue-600 font-black uppercase tracking-[0.2em] mb-1">Vị trí đề xuất</p>
+                                                <p className="font-black text-slate-800 text-lg italic">{invite.role}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleAcceptInvite(invite.token)}
+                                                className="px-8 py-4 bg-blue-600 text-white rounded-2xl hover:bg-black transition-all shadow-xl shadow-blue-200 font-black text-xs uppercase tracking-widest"
+                                            >
+                                                CHẤP NHẬN NGAY
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div>
-                                <h2 className="text-2xl font-black uppercase tracking-tight">Khuynh đảo cùng BTC mới?</h2>
-                                <p className="text-blue-100 text-sm mt-1 font-bold">Bạn có {myInvitations.length} lời mời gia nhập tổ chức đang chờ.</p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-4 relative z-10 font-black">
-                            {myInvitations.map(invite => (
-                                <button
-                                    key={invite.id}
-                                    onClick={() => handleAcceptInvitation(invite.id)}
-                                    className="bg-white text-blue-600 px-8 py-4 rounded-2xl text-xs hover:bg-black hover:text-white transition-all shadow-xl shadow-blue-900/20 uppercase"
-                                >
-                                    Chấp nhận vai {invite.role}
-                                </button>
-                            ))}
                         </div>
                     </div>
-                )}                {activeTab === 'tasks' && (
-                    <MyTasks staffRecords={staffRecords} loading={loading} />
+                )}
+
+                {activeTab === 'tasks' && (
+                    <MyTasks
+                        staffRecords={staffRecords}
+                        loading={loading}
+                    />
                 )}
 
                 {activeTab === 'recruitment' && (
@@ -398,14 +415,23 @@ export default function StaffDashboard() {
                         onSelectJob={fetchJobApplications}
                         onReview={handleReview}
                         onCreateJob={() => setShowCreateJobModal(true)}
-                        onEditJob={() => { }} // Not implemented in main staff page, use manager dashboard
-                        onDeleteJob={() => { }}
-                        onToggleStatus={() => { }}
+                        onEditJob={(job) => { setSelectedManagerJob(job); }}
+                        onDeleteJob={handleDeleteJob}
+                        onToggleStatus={handleToggleStatus}
+                        accentColor="blue-600"
+                    />
+                )}
+
+                {activeTab === 'settings' && (
+                    <StaffProfile
+                        user={user}
+                        token="" // Staff page uses local storage or session, but let's assume it works with user object
+                        accentColor="blue-600"
+                        onUpdateSuccess={(msg) => notify('success', msg)}
                     />
                 )}
             </main>
 
-            {/* Modals & Drawers */}
             <JobDetailsDrawer
                 job={selectedJob}
                 onClose={() => setSelectedJob(null)}
@@ -422,67 +448,20 @@ export default function StaffDashboard() {
                 isCreatingJob={isCreatingJob}
             />
 
-            {/* Apply Modal */}
-            {showApplyModal && selectedJob && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[3rem] w-full max-w-lg p-10 shadow-2xl animate-in zoom-in-9 group font-bold">
-                        <div className="text-center mb-8">
-                            <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-6 text-blue-600">
-                                <CalendarCheck className="w-10 h-10" />
-                            </div>
-                            <h2 className="text-2xl font-black text-slate-900 uppercase">Gửi hồ sơ ứng tuyển</h2>
-                            <p className="text-slate-400 text-sm mt-2 font-bold uppercase tracking-widest">{selectedJob.title}</p>
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] text-slate-400 uppercase tracking-widest pl-1">Tải lên hồ sơ (CV - PDF)*</label>
-                                <input
-                                    type="file"
-                                    accept=".pdf"
-                                    onChange={(e) => setCvFile(e.target.files ? e.target.files[0] : null)}
-                                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-6 py-3 focus:bg-white focus:border-blue-600 outline-none transition-all text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] text-slate-400 uppercase tracking-widest pl-1">Lời nhắn gửi Nhà tuyển dụng</label>
-                                <textarea
-                                    rows={3}
-                                    placeholder="Chia sẻ ngắn gọn về kinh nghiệm hoặc lý do bạn muốn tham gia..."
-                                    className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl px-6 py-4 focus:bg-white focus:border-blue-600 outline-none transition-all resize-none text-slate-700"
-                                    value={applicationNote}
-                                    onChange={(e) => setApplicationNote(e.target.value)}
-                                />
-                            </div>
-                            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-50 flex items-center gap-4">
-                                <div className="p-3 bg-blue-600 rounded-xl text-white">
-                                    <CheckCircle className="w-5 h-5" />
-                                </div>
-                                <p className="text-[10px] text-blue-700 uppercase leading-relaxed tracking-tighter">
-                                    Ticketbox sẽ tự động đính kèm thông tin liên hệ và lý lịch cơ bản của bạn.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mt-10">
-                            <button onClick={() => setShowApplyModal(false)} className="py-4 rounded-2xl bg-slate-50 text-slate-500 hover:bg-slate-100 transition-all">HỦY BỎ</button>
-                            <button
-                                onClick={handleApply}
-                                disabled={isApplying}
-                                className="py-4 rounded-2xl bg-blue-600 text-white hover:bg-black transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-2"
-                            >
-                                {isApplying ? <Loader2 className="w-5 h-5 animate-spin" /> : <>NỘP ĐƠN NGAY</>}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <StaffApplyModal
+                show={showApplyModal}
+                job={selectedJob}
+                onClose={() => setShowApplyModal(false)}
+                isApplying={isApplying}
+                onSubmit={handleApplyWithModal}
+                accentColor="blue-600"
+            />
 
             {/* Notifications */}
             {notification && (
-                <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 font-black tracking-tight text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                    {notification.message}
+                <div className={`fixed bottom-12 left-1/2 -translate-x-1/2 z-[100] px-10 py-5 rounded-[2rem] shadow-2xl backdrop-blur-xl border flex items-center gap-4 animate-in fade-in slide-in-from-bottom-10 duration-700 ${notification.type === 'success' ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-red-600 border-red-400 text-white'}`}>
+                    {notification.type === 'success' ? <CheckCircle className="w-10 h-10" /> : <XCircle className="w-10 h-10" />}
+                    <p className="font-black text-xs uppercase tracking-widest">{notification.message}</p>
                 </div>
             )}
         </div>
