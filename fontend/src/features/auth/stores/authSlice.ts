@@ -180,6 +180,13 @@ export const authSlice = createSlice({
             localStorage.removeItem('ticketbox_token');
             localStorage.removeItem('ticketbox_refresh_token');
         },
+        setAuth: (state, action: PayloadAction<{ token: string; refreshToken: string; user: User }>) => {
+            state.user = action.payload.user;
+            state.token = action.payload.token;
+            state.error = null;
+            localStorage.setItem('ticketbox_token', action.payload.token);
+            localStorage.setItem('ticketbox_refresh_token', action.payload.refreshToken);
+        },
         clearError: (state) => {
             state.error = null;
         },
@@ -234,5 +241,5 @@ export const authSlice = createSlice({
     },
 });
 
-export const { logout, clearError, resetRegisterSuccess } = authSlice.actions;
+export const { logout, clearError, resetRegisterSuccess, setAuth } = authSlice.actions;
 export default authSlice.reducer;

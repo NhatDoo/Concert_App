@@ -10,10 +10,12 @@ export class UserMapper {
         return UserAggregate.create(
             raw.id,
             raw.name,
-            new phoneNumber(raw.phoneNumber),
+            new phoneNumber(raw.phoneNumber || null),
             new Email(raw.email),
             Password.fromHash(raw.password),
             Role.from(raw.role),
+            raw.provider,
+            raw.googleId,
             raw.refreshToken || null
         );
     }
@@ -22,10 +24,12 @@ export class UserMapper {
         return {
             id: user.getId(),
             name: user.getName(),
-            phoneNumber: user.getPhoneNumber().value,
+            phoneNumber: user.getPhoneNumber()?.value || null,
             email: user.getEmail().value,
             password: user.getPassword().getValue(),
             role: user.getRole().getValue(),
+            provider: user.getProvider(),
+            googleId: user.getGoogleId(),
             refreshToken: user.getRefreshToken()
         };
     }

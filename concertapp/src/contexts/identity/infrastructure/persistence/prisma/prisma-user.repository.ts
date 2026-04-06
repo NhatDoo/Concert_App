@@ -36,6 +36,8 @@ export class PrismaUserRepository implements IUserRepository {
                 email: persistence.email,
                 password: persistence.password,
                 role: persistence.role,
+                provider: persistence.provider,
+                googleId: persistence.googleId,
                 refreshToken: persistence.refreshToken
             },
             create: {
@@ -45,6 +47,8 @@ export class PrismaUserRepository implements IUserRepository {
                 email: persistence.email,
                 password: persistence.password,
                 role: persistence.role,
+                provider: persistence.provider,
+                googleId: persistence.googleId,
                 refreshToken: persistence.refreshToken
             }
         });

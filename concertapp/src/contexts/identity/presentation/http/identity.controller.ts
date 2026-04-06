@@ -7,6 +7,9 @@ import { RefreshTokenCommand } from '../../application/commands/refresh-token.co
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { AuthTokens } from '../../domain/service/token.service.interface';
+import { AuthGuard } from '@nestjs/passport';
+import { UseGuards, Req, Get, Res } from '@nestjs/common';
+import { GoogleAuthCommand } from '../../application/commands/google-auth.command';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -48,5 +51,25 @@ export class IdentityController {
     @ApiOperation({ summary: 'Refresh access token using refresh token' })
     async refreshToken(@Body('refreshToken') refreshToken: string): Promise<AuthTokens> {
         return this.commandBus.execute(new RefreshTokenCommand(refreshToken));
+    }
+
+    @Get('google')
+    @UseGuards(AuthGuard('google'))
+    @ApiOperation({ summary: 'Login via Google' })
+    async googleAuth(@Req() req) {
+        // Guard handles the redirect to Google
+    }
+
+    @Get('google/callback')
+    @UseGuards(AuthGuard('google'))
+    @ApiOperation({ summary: 'Google auth callback' })
+    async googleAuthRedirect(@Req() req, @Res() res) {
+        const tokens: AuthTokens = await this.commandBus.execute(
+            new GoogleAuthCommand(req.user.email, req.user.name, req.user.googleId)
+        );
+
+        // Redirect to frontend with tokens in URL
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        return res.redirect(`${frontendUrl}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`);
     }
 }

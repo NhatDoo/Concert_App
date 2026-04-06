@@ -7,19 +7,23 @@ import { Role } from "../VO/role.vo";
 export class User extends AggregateRoot {
     private readonly id: string;
     private name: string;
-    private phoneNumber: phoneNumber;
+    private phoneNumber: phoneNumber | null;
     private email: Email;
     private role: Role;
     private password: Password;
+    private provider: string;
+    private googleId: string | null;
     private refreshToken: string | null;
 
     private constructor(
         id: string,
         name: string,
-        phoneNumber: phoneNumber,
+        phoneNumber: phoneNumber | null,
         email: Email,
         password: Password,
         role: Role,
+        provider: string = "LOCAL",
+        googleId: string | null = null,
         refreshToken: string | null = null
     ) {
         super();
@@ -29,20 +33,24 @@ export class User extends AggregateRoot {
         this.email = email;
         this.password = password;
         this.role = role;
+        this.provider = provider;
+        this.googleId = googleId;
         this.refreshToken = refreshToken;
     }
 
     static create(
         id: string,
         name: string,
-        phoneNumber: phoneNumber,
+        phoneNumber: phoneNumber | null,
         email: Email,
         password: Password,
         role: Role,
+        provider: string = "LOCAL",
+        googleId: string | null = null,
         refreshToken: string | null = null
     ): User {
         if (!name) throw new Error("Name is required");
-        return new User(id, name, phoneNumber, email, password, role, refreshToken);
+        return new User(id, name, phoneNumber, email, password, role, provider, googleId, refreshToken);
     }
 
     getId(): string {
@@ -54,7 +62,7 @@ export class User extends AggregateRoot {
     getName(): string {
         return this.name;
     }
-    getPhoneNumber(): phoneNumber {
+    getPhoneNumber(): phoneNumber | null {
         return this.phoneNumber;
     }
     getEmail(): Email {
@@ -62,6 +70,12 @@ export class User extends AggregateRoot {
     }
     getPassword(): Password {
         return this.password;
+    }
+    getProvider(): string {
+        return this.provider;
+    }
+    getGoogleId(): string | null {
+        return this.googleId;
     }
     getRefreshToken(): string | null {
         return this.refreshToken;
