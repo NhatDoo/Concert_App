@@ -24,8 +24,8 @@ export class JwtTokenService implements ITokenService {
 
         const accessToken = this.jwtService.sign(payload);
 
-        const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || 'defaultRefreshSecret12345';
-        const refreshTokenExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
+        const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+        const refreshTokenExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN');
 
         const refreshToken = this.jwtService.sign(payload, {
             secret: refreshTokenSecret,
@@ -41,7 +41,7 @@ export class JwtTokenService implements ITokenService {
     verifyToken(token: string, isRefresh: boolean = false): any {
         try {
             if (isRefresh) {
-                const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || 'defaultRefreshSecret12345';
+                const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
                 return this.jwtService.verify(token, { secret: refreshTokenSecret });
             }
             return this.jwtService.verify(token);

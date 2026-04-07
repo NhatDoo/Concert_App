@@ -23,6 +23,7 @@ export class Role {
   static get ORGANIZER(): Role { return Role.from("ORGANIZER"); }
   static get ADMIN(): Role { return Role.from("ADMIN"); }
   static get STAFF(): Role { return Role.from("STAFF"); }
+  static get VENDOR(): Role { return Role.from("VENDOR"); }
 
   equals(role: Role): boolean {
     if (!role) return false;

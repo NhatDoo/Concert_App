@@ -33,7 +33,12 @@ const CallbackHandler = () => {
                     }
                 }));
 
-            router.push('/');
+                // Redirect based on role
+                if (decodedPayload.role === 'VENDOR') {
+                    router.push('/vendor');
+                } else {
+                    router.push('/');
+                }
             } catch (error) {
                 console.error('Error decoding OAuth tokens:', error);
                 router.push('/login?error=oauth_failed');

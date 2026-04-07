@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AppDispatch, RootState } from '../../../stores/store';
 import { registerUser, clearError, resetRegisterSuccess } from '../stores/authSlice';
-import { User, Lock, Loader2, Eye, EyeOff, Mail, Phone, Users, CheckCircle, ShieldCheck, Briefcase, Award } from 'lucide-react';
+import { User, Lock, Loader2, Eye, EyeOff, Mail, Phone, Users, CheckCircle, ShieldCheck, Briefcase, Award, Truck } from 'lucide-react';
 
 export const RegisterForm = () => {
     const searchParams = useSearchParams();
@@ -125,7 +125,7 @@ export const RegisterForm = () => {
 
                 <div className="pt-2">
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 pl-1 text-center">Bạn tham gia với vai trò</label>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="grid grid-cols-2 gap-3 mb-4">
                         <button
                             type="button"
                             disabled={!!inviteToken}
@@ -133,17 +133,27 @@ export const RegisterForm = () => {
                             className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${role === 'USER' ? 'border-red-600 bg-red-50 text-red-600 shadow-lg shadow-red-100' : 'border-slate-50 text-slate-300 hover:border-red-100 opacity-50'}`}
                         >
                             <User className="w-6 h-6 mb-1" />
-                            <span className="text-[10px] font-black uppercase">User</span>
+                            <span className="text-[10px] font-black uppercase">Khán giả</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            disabled={!!inviteToken}
+                            onClick={() => setRole('VENDOR')}
+                            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${role === 'VENDOR' ? 'border-amber-600 bg-amber-50 text-amber-600 shadow-lg shadow-amber-100' : 'border-slate-50 text-slate-300 hover:border-amber-100 opacity-50'}`}
+                        >
+                            <Truck className="w-6 h-6 mb-1" />
+                            <span className="text-[10px] font-black uppercase">Đối tác hậu cần</span>
                         </button>
 
                         <button
                             type="button"
                             disabled={!!inviteToken}
                             onClick={() => setRole('ORGANIZER')}
-                            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${role === 'ORGANIZER' ? 'border-red-600 bg-red-50 text-red-600 shadow-lg shadow-red-100' : 'border-slate-50 text-slate-300 hover:border-red-100 opacity-50'}`}
+                            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${role === 'ORGANIZER' ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-lg shadow-blue-100' : 'border-slate-50 text-slate-300 hover:border-blue-100 opacity-50'}`}
                         >
                             <Lock className="w-6 h-6 mb-1" />
-                            <span className="text-[10px] font-black uppercase">Owner</span>
+                            <span className="text-[10px] font-black uppercase">Nhà tổ chức</span>
                         </button>
 
                         <button
@@ -152,7 +162,7 @@ export const RegisterForm = () => {
                             className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${role === 'STAFF' ? 'border-red-600 bg-red-50 text-red-600 shadow-lg shadow-red-100' : 'border-slate-50 text-slate-300 hover:border-red-100'}`}
                         >
                             <Users className="w-6 h-6 mb-1" />
-                            <span className="text-[10px] font-black uppercase">Staff</span>
+                            <span className="text-[10px] font-black uppercase">Nhân sự sự kiện</span>
                         </button>
                     </div>
 
@@ -250,7 +260,7 @@ export const RegisterForm = () => {
 
 const XCircle = ({ className }: { className?: string }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="StatusCodes.OK" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 9l-6 6m0-6l6 6" />
     </svg>

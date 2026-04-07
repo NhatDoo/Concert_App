@@ -41,6 +41,8 @@ export const LoginForm = () => {
                 } else {
                     router.push('/staff');
                 }
+            } else if (user.role === 'VENDOR') {
+                router.push('/vendor');
             } else {
                 router.push('/');
             }

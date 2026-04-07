@@ -1,0 +1,121 @@
+"use client";
+
+import React, { ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { LayoutDashboard, Truck, Users, Settings, LogOut, Package, Wrench, ClipboardList } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '../../src/stores/store';
+import { logout } from '../../src/features/auth/stores/authSlice';
+import { useRouter } from 'next/navigation';
+
+interface SidebarItemProps {
+    href: string;
+    icon: React.ReactNode;
+    label: string;
+    active: boolean;
+}
+
+const SidebarItem = ({ href, icon, label, active }: SidebarItemProps) => (
+    <Link
+        href={href}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${active
+            ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20'
+            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+    >
+        <span className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`}>
+            {icon}
+        </span>
+        <span className="font-bold text-sm tracking-wide">{label}</span>
+    </Link>
+);
+
+export default function VendorLayout({ children }: { children: ReactNode }) {
+    const pathname = usePathname();
+    const dispatch = useDispatch<AppDispatch>();
+    const router = useRouter();
+    const { user } = useSelector((state: RootState) => state.auth);
+
+    const handleLogout = () => {
+        dispatch(logout());
+        router.push('/login');
+    };
+
+    const navigation = [
+        { href: '/vendor', icon: <LayoutDashboard size={20} />, label: 'Tổng quan' },
+        { href: '/vendor/equipment', icon: <Truck size={20} />, label: 'Trang thiết bị' },
+        { href: '/vendor/logistics', icon: <Package size={20} />, label: 'Hậu cần & Cung ứng' },
+        { href: '/vendor/recruitment', icon: <Users size={20} />, label: 'Tuyển dụng nhân sự' },
+        { href: '/vendor/tasks', icon: <ClipboardList size={20} />, label: 'Nhiệm vụ & Lịch trình' },
+    ];
+
+    return (
+        <div className="min-h-screen bg-[#0f1115] text-slate-200 flex">
+            {/* Sidebar */}
+            <aside className="w-72 bg-[#16191f] border-r border-slate-800/50 flex flex-col fixed inset-y-0 shadow-2xl z-50">
+                <div className="p-8">
+                    <Link href="/" className="flex items-center gap-2 group">
+                        <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform shadow-lg shadow-amber-900/40">
+                            <Truck size={18} className="text-white" />
+                        </div>
+                        <span className="text-xl font-black tracking-tighter text-white">VENDORS</span>
+                    </Link>
+                </div>
+
+                <nav className="flex-1 px-4 space-y-2 py-4">
+                    <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">Menu chính</p>
+                    {navigation.map((item) => (
+                        <SidebarItem
+                            key={item.href}
+                            href={item.href}
+                            icon={item.icon}
+                            label={item.label}
+                            active={pathname === item.href}
+                        />
+                    ))}
+                </nav>
+
+                <div className="p-4 border-t border-slate-800/50 space-y-2">
+                    <div className="bg-[#1c2129] rounded-2xl p-4 mb-4 border border-slate-800/50">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
+                                <span className="text-amber-500 font-bold">{user?.name?.charAt(0) || 'V'}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-white truncate">{user?.name || 'Vendor Partner'}</p>
+                                <p className="text-[10px] font-medium text-slate-500 truncate">{user?.email}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-950/30 hover:text-red-400 transition-all duration-200 group font-bold text-sm mb-4"
+                    >
+                        <LogOut size={20} className="group-hover:translate-x-1 transition-transform" />
+                        Đăng xuất
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-1 ml-72 min-h-screen">
+                <header className="h-20 bg-[#16191f]/50 backdrop-blur-xl border-b border-slate-800/50 px-8 flex items-center justify-between sticky top-0 z-40">
+                    <h2 className="text-lg font-bold text-white tracking-tight">
+                        {navigation.find(n => n.href === pathname)?.label || 'Trang đối tác'}
+                    </h2>
+                    <div className="flex items-center gap-4">
+                        <button className="p-2.5 rounded-xl bg-slate-800/50 text-slate-400 hover:text-white transition-colors border border-slate-700/50">
+                            <Settings size={20} />
+                        </button>
+                    </div>
+                </header>
+
+                <div className="p-8 max-w-7xl mx-auto">
+                    {children}
+                </div>
+            </main>
+        </div>
+    );
+}
