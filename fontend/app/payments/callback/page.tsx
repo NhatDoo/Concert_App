@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Loader2, CheckCircle2, XCircle, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-export default function PaymentCallbackPage() {
+function PaymentCallbackContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
@@ -108,3 +108,23 @@ export default function PaymentCallbackPage() {
         </div>
     );
 }
+
+export default function PaymentCallbackPage() {
+    return (
+        <Suspense fallback={
+            <div className="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 text-center">
+                    <div className="animate-pulse">
+                        <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Loader2 className="w-10 h-10 animate-spin" />
+                        </div>
+                        <h2 className="text-2xl font-black text-gray-900 mb-2">Đang tải...</h2>
+                    </div>
+                </div>
+            </div>
+        }>
+            <PaymentCallbackContent />
+        </Suspense>
+    );
+}
+
