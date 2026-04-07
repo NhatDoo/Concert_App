@@ -37,6 +37,8 @@ export default function Home() {
         router.push('/staff/manager');
       } else if (user.role === 'EVENT_MANAGER' || user.staffRole === 'EVENT_MANAGER') {
         router.push('/staff/manager');
+      } else if (user.role === 'VENDOR') {
+        router.push('/vendor');
       } else {
         router.push('/');
       }

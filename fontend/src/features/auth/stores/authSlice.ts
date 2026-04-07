@@ -144,7 +144,7 @@ export const rehydrateUser = createAsyncThunk(
 
 export const registerUser = createAsyncThunk(
     'auth/registerUser',
-    async (userData: { name: string; email: string; phoneNumber?: string; password: string; role: string; staffRole?: string; inviteToken?: string }, { rejectWithValue }) => {
+    async (userData: { name: string; email: string; phoneNumber?: string; password: string; role: string; companyName?: string; staffRole?: string; inviteToken?: string }, { rejectWithValue }) => {
         try {
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: 'POST',

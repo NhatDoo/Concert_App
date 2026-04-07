@@ -5,7 +5,8 @@ export class RegisterCommand {
         public readonly email: string,
         public readonly plainPassword: string,
         public readonly role: string,
-        public readonly staffRole?: string,
-        public readonly inviteToken?: string
+        public readonly companyName?: string, // chỉ role VENDOR
+        public readonly staffRole?: string, // chỉ role STAFF
+
     ) { }
 }

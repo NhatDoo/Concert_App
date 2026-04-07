@@ -28,8 +28,8 @@ export class RegisterDto {
     @IsOptional()
     staffRole?: string;
 
-    @ApiProperty({ example: 'uuid-token-123', description: 'Invitation token', required: false })
+    @ApiProperty({ example: 'Công ty TNHH ABC', description: 'Company name (for VENDOR role)', required: false })
     @IsString()
     @IsOptional()
-    inviteToken?: string;
+    companyName?: string;
 }

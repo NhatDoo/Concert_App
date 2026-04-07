@@ -5,8 +5,8 @@ export class UserRegisteredEvent {
             name: string;
             email: string;
             role: string;
-            staffRole?: string;
-            inviteToken?: string;
+            companyName?: string; // chỉ role VENDOR
+            staffRole?: string;   // chỉ role STAFF
         }
     ) { }
 }

@@ -22,7 +22,7 @@ export class RegisterHandler implements ICommandHandler<RegisterCommand, AuthTok
     ) { }
 
     async execute(command: RegisterCommand): Promise<AuthTokens> {
-        const { name, phoneNumber: phone, email: mail, plainPassword, role, staffRole, inviteToken } = command;
+        const { name, phoneNumber: phone, email: mail, plainPassword, role, companyName, staffRole } = command;
 
         // 1. Kiểm tra Email xem có bị trùng hay không
         const existingUser = await this.userRepository.findByEmail(mail);
@@ -59,14 +59,14 @@ export class RegisterHandler implements ICommandHandler<RegisterCommand, AuthTok
         await this.userRepository.save(user);
 
         // 8. Emit Event qua EventBus để các Context khác (như Organizing) có thể lắng nghe
-        console.log('[DEBUG] Publishing UserRegisteredEvent with staffRole:', staffRole);
+        console.log('[DEBUG] Publishing UserRegisteredEvent:', { role, companyName });
         this.eventBus.publish(new UserRegisteredEvent({
             userId: newUserId,
             name,
             email: mail,
             role,
+            companyName,
             staffRole,
-            inviteToken
         }));
 
         return tokens;

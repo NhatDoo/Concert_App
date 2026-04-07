@@ -30,8 +30,8 @@ export class IdentityController {
             dto.email,
             dto.password,
             dto.role,
+            dto.companyName,
             dto.staffRole,
-            dto.inviteToken
         );
         return this.commandBus.execute(command);
     }

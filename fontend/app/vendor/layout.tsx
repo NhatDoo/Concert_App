@@ -21,7 +21,7 @@ const SidebarItem = ({ href, icon, label, active }: SidebarItemProps) => (
         href={href}
         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${active
             ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/20'
-            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-amber-600'
             }`}
     >
         <span className={`${active ? 'text-white' : 'text-slate-500 group-hover:text-amber-500'} transition-colors`}>
@@ -51,15 +51,15 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
     ];
 
     return (
-        <div className="min-h-screen bg-[#0f1115] text-slate-200 flex">
+        <div className="min-h-screen bg-slate-50 text-slate-900 flex">
             {/* Sidebar */}
-            <aside className="w-72 bg-[#16191f] border-r border-slate-800/50 flex flex-col fixed inset-y-0 shadow-2xl z-50">
+            <aside className="w-72 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 shadow-sm z-50">
                 <div className="p-8">
                     <Link href="/" className="flex items-center gap-2 group">
                         <div className="w-8 h-8 bg-amber-600 rounded-lg flex items-center justify-center group-hover:rotate-12 transition-transform shadow-lg shadow-amber-900/40">
                             <Truck size={18} className="text-white" />
                         </div>
-                        <span className="text-xl font-black tracking-tighter text-white">VENDORS</span>
+                        <span className="text-xl font-black tracking-tighter text-slate-900">VENDORS</span>
                     </Link>
                 </div>
 
@@ -76,14 +76,14 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
                     ))}
                 </nav>
 
-                <div className="p-4 border-t border-slate-800/50 space-y-2">
-                    <div className="bg-[#1c2129] rounded-2xl p-4 mb-4 border border-slate-800/50">
+                <div className="p-4 border-t border-slate-100 space-y-2">
+                    <div className="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-200/50">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
                                 <span className="text-amber-500 font-bold">{user?.name?.charAt(0) || 'V'}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-white truncate">{user?.name || 'Vendor Partner'}</p>
+                                <p className="text-sm font-bold text-slate-900 truncate">{user?.name || 'Vendor Partner'}</p>
                                 <p className="text-[10px] font-medium text-slate-500 truncate">{user?.email}</p>
                             </div>
                         </div>
@@ -91,7 +91,7 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
 
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-red-950/30 hover:text-red-400 transition-all duration-200 group font-bold text-sm mb-4"
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200 group font-bold text-sm mb-4"
                     >
                         <LogOut size={20} className="group-hover:translate-x-1 transition-transform" />
                         Đăng xuất
@@ -101,12 +101,12 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
 
             {/* Main Content */}
             <main className="flex-1 ml-72 min-h-screen">
-                <header className="h-20 bg-[#16191f]/50 backdrop-blur-xl border-b border-slate-800/50 px-8 flex items-center justify-between sticky top-0 z-40">
-                    <h2 className="text-lg font-bold text-white tracking-tight">
+                <header className="h-20 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-40">
+                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">
                         {navigation.find(n => n.href === pathname)?.label || 'Trang đối tác'}
                     </h2>
                     <div className="flex items-center gap-4">
-                        <button className="p-2.5 rounded-xl bg-slate-800/50 text-slate-400 hover:text-white transition-colors border border-slate-700/50">
+                        <button className="p-2.5 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors border border-slate-200/50">
                             <Settings size={20} />
                         </button>
                     </div>

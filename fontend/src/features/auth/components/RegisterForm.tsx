@@ -18,6 +18,7 @@ export const RegisterForm = () => {
     const [password, setPassword] = useState('');
     const [role, setRole] = useState(inviteToken ? 'STAFF' : 'USER');
     const [staffRole, setStaffRole] = useState('APPLICANT');
+    const [companyName, setCompanyName] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
     const dispatch = useDispatch<AppDispatch>();
@@ -44,8 +45,8 @@ export const RegisterForm = () => {
             phoneNumber,
             password,
             role,
+            companyName: role === 'VENDOR' ? companyName : undefined,
             staffRole: role === 'STAFF' ? staffRole : undefined,
-            inviteToken: inviteToken || undefined
         }));
     };
 
@@ -165,6 +166,28 @@ export const RegisterForm = () => {
                             <span className="text-[10px] font-black uppercase">Nhân sự sự kiện</span>
                         </button>
                     </div>
+
+                    {role === 'VENDOR' && (
+                        <div className="bg-amber-50 p-6 rounded-[2.5rem] border border-amber-100 mb-6 space-y-4 animate-in slide-in-from-top-2 duration-300 shadow-inner">
+                            <p className="text-[10px] text-amber-600 font-black uppercase tracking-widest text-center mb-2 flex items-center justify-center gap-2">
+                                <Truck className="w-3 h-3" /> Thông tin đối tác hậu cần
+                            </p>
+                            <div className="relative group">
+                                <Truck className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-300 group-focus-within:text-amber-600 transition-colors" />
+                                <input
+                                    type="text"
+                                    required={role === 'VENDOR'}
+                                    placeholder="Tên công ty / Tổ chức của bạn"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-white border-2 border-amber-100 rounded-2xl focus:border-amber-500 outline-none transition font-bold text-slate-800 placeholder:text-slate-300"
+                                    value={companyName}
+                                    onChange={(e) => setCompanyName(e.target.value)}
+                                />
+                            </div>
+                            <p className="text-[9px] text-amber-500 italic font-bold text-center px-2">
+                                🏢 Thông tin này sẽ được hiển thị trên hồ sơ đối tác của bạn.
+                            </p>
+                        </div>
+                    )}
 
                     {role === 'STAFF' && (
                         <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 mb-6 space-y-4 animate-in slide-in-from-top-2 duration-300 shadow-inner">

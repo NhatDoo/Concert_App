@@ -9,17 +9,27 @@ export class CreateStaffOnRegistrationHandler implements IEventHandler<UserRegis
 
     async handle(event: UserRegisteredEvent) {
         console.log('[DEBUG] Received UserRegisteredEvent:', JSON.stringify(event, null, 2));
-        const { userId, name, email, role, staffRole, inviteToken } = event.payload;
+        const { userId, name, email, role, companyName, staffRole} = event.payload;
 
+        // ---- VENDOR: Tạo Vendor profile ----
+        if (role === 'VENDOR') {
+            console.log(`[Vendor] Creating Vendor profile for user ${userId} (${email})`);
+            await this.prisma.vendor.create({
+                data: {
+                    id: uuidv4(),
+                    userId: userId,
+                    companyName: companyName || name, // fallback về tên user nếu không có tên công ty
+                }
+            });
+            return; // Không cần tạo Staff
+        }
+
+        // ---- STAFF: Tạo Staff profile ----
         if (role === 'STAFF') {
             // 1. Tìm kiếm lời mời (Ưu tiên dùng Token nếu có)
             let invitation: any = null;
 
-            if (inviteToken) {
-                invitation = await this.prisma.staffInvitation.findUnique({
-                    where: { token: inviteToken, status: 'PENDING' }
-                });
-            }
+    
 
             // Nếu không có Token hoặc Token không hợp lệ, thử tìm theo Email
             if (!invitation) {
@@ -56,7 +66,7 @@ export class CreateStaffOnRegistrationHandler implements IEventHandler<UserRegis
                         id: uuidv4(),
                         userId: userId,
                         name: name,
-                        role: staffRole || 'APPLICANT', // Sử dụng Role người dùng chọn khi đăng ký
+                        role: staffRole || 'APPLICANT',
                         organizerId: null,
                         concertId: null,
                         managerId: null
