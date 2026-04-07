@@ -1,10 +1,13 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Truck, Users, Package, ClipboardList, Activity, ArrowUpRight, TrendingUp, Zap } from 'lucide-react';
+import Link from 'next/link';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../src/stores/store';
 
-const StatCard = ({ icon, label, value, trend, color }: { icon: React.ReactNode, label: string, value: string, trend: string, color: string }) => (
-    <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm hover:shadow-xl hover:shadow-slate-200 hover:-translate-y-1 transition-all group overflow-hidden relative">
+const StatCard = ({ icon, label, value, trend, color, link }: { icon: React.ReactNode, label: string, value: string | number, trend: string, color: string, link: string }) => (
+    <Link href={link} className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm hover:shadow-xl hover:shadow-slate-200 hover:-translate-y-1 transition-all group overflow-hidden relative block text-left">
         <div className={`absolute top-0 right-0 w-32 h-32 opacity-10 bg-gradient-to-br from-${color}-500 to-transparent rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150`}></div>
 
         <div className="flex items-center justify-between mb-6">
@@ -19,14 +22,14 @@ const StatCard = ({ icon, label, value, trend, color }: { icon: React.ReactNode,
 
         <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.15em] mb-2">{label}</p>
         <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{value}</h3>
-    </div>
+    </Link>
 );
 
 const ActivityItem = ({ title, time, type }: { title: string, time: string, type: 'EQUIPMENT' | 'PERSONNEL' | 'SYSTEM' }) => (
     <div className="flex items-center gap-4 py-6 border-b border-slate-100 last:border-0 group cursor-pointer hover:bg-slate-50 px-4 -mx-4 rounded-2xl transition-all">
         <div className={`w-3 h-3 rounded-full ${type === 'EQUIPMENT' ? 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.2)]' :
-                type === 'PERSONNEL' ? 'bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.2)]' :
-                    'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+            type === 'PERSONNEL' ? 'bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.2)]' :
+                'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
             }`}></div>
         <div className="flex-1">
             <h4 className="text-sm font-bold text-slate-700 group-hover:text-slate-900 transition-colors">{title}</h4>
@@ -37,17 +40,46 @@ const ActivityItem = ({ title, time, type }: { title: string, time: string, type
 );
 
 export default function VendorDashboard() {
+    const [stats, setStats] = useState({
+        totalEquipments: 0,
+        totalOrders: 0,
+        pendingOrders: 0,
+        preparingOrders: 0,
+        totalJobs: 0,
+        pendingApplications: 0
+    });
+    const { token, user } = useSelector((state: RootState) => state.auth);
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            if (!token) return;
+            try {
+                const response = await fetch(`${API_URL}/vendor/stats`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setStats(data);
+                }
+            } catch (error) {
+                console.error('Error fetching vendor stats:', error);
+            }
+        };
+        fetchStats();
+    }, [token, API_URL]);
+
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header info */}
-            <div className="flex items-end justify-between">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-4 leading-none">
-                        Chào mừng trở lại, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-rose-600 uppercase">Vendor Partner</span>!
+                        Chào mừng trở lại, <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-rose-600 uppercase">{user?.name || 'Vendor Partner'}</span>!
                     </h1>
-                    <p className="text-slate-500 font-medium">Hệ thống đang hoạt động ổn định. Bạn có <span className="text-amber-600 font-black">4 yêu cầu mới</span> hôm nay.</p>
+                    <p className="text-slate-500 font-medium">Hệ thống đang hoạt động ổn định. Bạn có <span className="text-amber-600 font-black">{stats.pendingOrders} yêu cầu mới</span> hôm nay.</p>
                 </div>
-                <div className="hidden lg:flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm w-fit">
                     <button className="px-4 py-2 rounded-xl text-xs font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">7 ngày</button>
                     <button className="px-4 py-2 rounded-xl text-xs font-black uppercase bg-slate-900 text-white shadow-lg">30 ngày</button>
                 </div>
@@ -57,31 +89,35 @@ export default function VendorDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     icon={<Truck size={24} />}
-                    label="Thiết bị vận hành"
-                    value="128"
-                    trend="+12%"
+                    label="Trang thiết bị"
+                    value={stats.totalEquipments}
+                    trend="0%"
                     color="amber"
-                />
-                <StatCard
-                    icon={<Users size={24} />}
-                    label="Nhân sự hậu cần"
-                    value="42"
-                    trend="+5%"
-                    color="indigo"
+                    link="/vendor/equipment"
                 />
                 <StatCard
                     icon={<Package size={24} />}
-                    label="Tổng số đơn hàng"
-                    value="314"
-                    trend="+24%"
+                    label="Đơn hàng mới"
+                    value={stats.pendingOrders}
+                    trend="0%"
                     color="rose"
+                    link="/vendor/logistics"
                 />
                 <StatCard
-                    icon={<Activity size={24} />}
-                    label="Chỉ số hiệu quả"
-                    value="98.5%"
-                    trend="+1.2%"
+                    icon={<ClipboardList size={24} />}
+                    label="Đang xử lý"
+                    value={stats.preparingOrders}
+                    trend="0"
+                    color="indigo"
+                    link="/vendor/logistics"
+                />
+                <StatCard
+                    icon={<Users size={24} />}
+                    label="Tuyển dụng"
+                    value={stats.pendingApplications}
+                    trend={stats.totalJobs + " tin đang đăng"}
                     color="emerald"
+                    link="/vendor/recruitment"
                 />
             </div>
 
@@ -98,7 +134,7 @@ export default function VendorDashboard() {
                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Tiến độ logistics thực tế</p>
                             </div>
                         </div>
-                        <button className="text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-500 transition-colors">Xem tất cả</button>
+                        <Link href="/vendor/logistics" className="text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-500 transition-colors">Xem tất cả</Link>
                     </div>
 
                     <div className="flex-1 space-y-2">
@@ -145,12 +181,12 @@ export default function VendorDashboard() {
                     </div>
 
                     <div className="relative z-10 space-y-4">
-                        <button className="w-full py-4 bg-white text-amber-600 font-black rounded-2xl shadow-2xl hover:bg-slate-100 transition-all uppercase tracking-widest text-xs">
+                        <Link href="/vendor/equipment" className="block w-full py-4 bg-white text-amber-600 font-black rounded-2xl shadow-2xl hover:bg-slate-100 transition-all uppercase tracking-widest text-xs text-center">
                             Cập nhật thiết bị ngay
-                        </button>
-                        <button className="w-full py-4 bg-white/20 hover:bg-white/30 backdrop-blur-lg text-white font-black rounded-2xl transition-all uppercase tracking-widest text-xs">
+                        </Link>
+                        <Link href="/vendor/recruitment" className="block w-full py-4 bg-white/20 hover:bg-white/30 backdrop-blur-lg text-white font-black rounded-2xl transition-all uppercase tracking-widest text-xs text-center border border-white/10 shadow-lg">
                             Tìm kiếm nhân sự mới
-                        </button>
+                        </Link>
                     </div>
                 </div>
             </div>

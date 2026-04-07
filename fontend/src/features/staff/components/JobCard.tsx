@@ -30,6 +30,9 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onClick }) => {
                     <p className="text-slate-500 text-sm mb-3 flex items-center gap-2 uppercase tracking-tight truncate">
                         <Info className="w-3 h-3 text-blue-500" />
                         {job.companyName || 'Ban tổ chức sự kiện'}
+                        {job.category === 'VENDOR' && (
+                            <span className="bg-indigo-50 text-indigo-600 text-[8px] font-black px-2 py-0.5 rounded-md border border-indigo-100 ml-2">VENDOR</span>
+                        )}
                     </p>
                 </div>
 

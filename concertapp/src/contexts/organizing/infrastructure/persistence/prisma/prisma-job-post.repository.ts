@@ -22,9 +22,11 @@ export class PrismaJobPostRepository implements IJobPostRepository {
             prismaJobPost.authorId,
             prismaJobPost.createdAt,
             prismaJobPost.updatedAt,
+            prismaJobPost.category || 'STAFF',
             prismaJobPost.author ? {
                 name: prismaJobPost.author.name,
-                role: prismaJobPost.author.role
+                role: prismaJobPost.author.role,
+                user: prismaJobPost.author.user
             } : undefined
         );
     }
@@ -42,7 +44,8 @@ export class PrismaJobPostRepository implements IJobPostRepository {
                 location: jobPost.location,
                 salary: jobPost.salary,
                 organizerId: jobPost.organizerId,
-                authorId: jobPost.authorId
+                authorId: jobPost.authorId,
+                category: jobPost.category
             }
         });
     }
@@ -73,7 +76,11 @@ export class PrismaJobPostRepository implements IJobPostRepository {
             where: { id },
             include: {
                 author: {
-                    select: { name: true, role: true }
+                    select: {
+                        name: true,
+                        role: true,
+                        user: { select: { email: true, phoneNumber: true } }
+                    }
                 }
             }
         });
@@ -85,7 +92,11 @@ export class PrismaJobPostRepository implements IJobPostRepository {
             where: { organizerId },
             include: {
                 author: {
-                    select: { name: true, role: true }
+                    select: {
+                        name: true,
+                        role: true,
+                        user: { select: { email: true, phoneNumber: true } }
+                    }
                 }
             }
         });
@@ -106,7 +117,11 @@ export class PrismaJobPostRepository implements IJobPostRepository {
             orderBy: { createdAt: 'desc' },
             include: {
                 author: {
-                    select: { name: true, role: true }
+                    select: {
+                        name: true,
+                        role: true,
+                        user: { select: { email: true, phoneNumber: true } }
+                    }
                 }
             }
         });

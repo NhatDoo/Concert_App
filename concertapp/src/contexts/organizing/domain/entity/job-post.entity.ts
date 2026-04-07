@@ -13,7 +13,8 @@ export class JobPost {
         public readonly authorId: string,
         public readonly createdAt: Date,
         public readonly updatedAt: Date,
-        public readonly author?: { name: string; role: string }
+        public readonly category: string = 'STAFF',
+        public readonly author?: { name: string; role: string; user?: { email: string; phoneNumber: string } }
     ) { }
 
     static create(
@@ -27,7 +28,8 @@ export class JobPost {
             companyName?: string,
             companyLogo?: string,
             location?: string,
-            salary?: string
+            salary?: string,
+            category?: string
         }
     ): JobPost {
         return new JobPost(
@@ -43,7 +45,8 @@ export class JobPost {
             organizerId,
             authorId,
             new Date(),
-            new Date()
+            new Date(),
+            options?.category || 'STAFF'
         );
     }
 }

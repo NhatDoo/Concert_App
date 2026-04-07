@@ -92,7 +92,7 @@ export default function StaffDashboard() {
             setStaffRecords(staffArray);
 
             // 2. Fetch All Jobs
-            const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorRole=MANAGER`);
+            const jobsRes = await fetch(`${apiUrl}/organize/jobs`);
             const jobsData = await jobsRes.json();
             setAllJobs(jobsData);
 

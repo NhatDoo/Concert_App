@@ -14,6 +14,7 @@ export interface JobPost {
         role: string;
         user?: { phoneNumber: string; email: string };
     };
+    category?: string;
 }
 
 export interface Application {
