@@ -1,4 +1,5 @@
 import { Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
 import { GoogleAuthCommand } from '../google-auth.command';
@@ -17,6 +18,7 @@ export class GoogleAuthHandler implements ICommandHandler<GoogleAuthCommand, Aut
     constructor(
         @Inject(IUSER_REPOSITORY) private readonly userRepository: IUserRepository,
         @Inject(ITOKEN_SERVICE) private readonly tokenService: ITokenService,
+        private readonly configService: ConfigService,
     ) { }
 
     async execute(command: GoogleAuthCommand): Promise<AuthTokens> {
@@ -38,8 +40,9 @@ export class GoogleAuthHandler implements ICommandHandler<GoogleAuthCommand, Aut
         const phoneVO = new phoneNumber(null); // OAuth might not have phone
         const roleVO = Role.from('USER'); // Default role as requested
 
-        // Mật khẩu hash mặc định theo yêu cầu: $2a$13$yUmd31TYJFeDS70LbI4cze4s8cAlTTGpHYSY6boDAQHEFHOpLYbAW
-        const passwordVO = Password.fromHash('$2a$13$yUmd31TYJFeDS70LbI4cze4s8cAlTTGpHYSY6boDAQHEFHOpLYbAW');
+        // Mật khẩu hash mặc định lấy từ .env
+        const defaultHash = this.configService.get<string>('DEFAULT_OAUTH_PASSWORD_HASH') || '$2a$13$yUmd31TYJFeDS70LbI4cze4s8cAlTTGpHYSY6boDAQHEFHOpLYbAW';
+        const passwordVO = Password.fromHash(defaultHash);
 
         const newUserId = uuidv4();
         user = User.create(

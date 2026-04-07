@@ -33,8 +33,7 @@ const CallbackHandler = () => {
                     }
                 }));
 
-                // Redirect based on role
-        
+            router.push('/');
             } catch (error) {
                 console.error('Error decoding OAuth tokens:', error);
                 router.push('/login?error=oauth_failed');

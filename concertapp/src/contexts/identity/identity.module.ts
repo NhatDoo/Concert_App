@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { PassportModule } from '@nestjs/passport';
 import { IdentityInfrastructureModule } from './infrastructure/identity-infrastructure.module';
@@ -15,7 +16,8 @@ export const CommandHandlers = [LoginHandler, RegisterHandler, RefreshTokenHandl
     imports: [
         CqrsModule,
         IdentityInfrastructureModule,
-        PassportModule
+        PassportModule,
+        ConfigModule
     ],
     controllers: [
         IdentityController
