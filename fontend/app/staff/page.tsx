@@ -302,17 +302,36 @@ export default function StaffDashboard() {
         (j.companyName?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
+    const getRoleColor = () => {
+        const primaryStaff = staffRecords[0];
+        if (!primaryStaff) return 'blue';
+        if (primaryStaff.role === 'EVENT_MANAGER') return 'violet';
+        if (primaryStaff.role === 'PRODUCTION_MANAGER') return 'indigo';
+        if (primaryStaff.role === 'MANAGER') return 'blue';
+        return 'blue';
+    };
+
+    const roleColor = getRoleColor();
+    const colorClasses: Record<string, string> = {
+        blue: 'text-blue-600 bg-blue-600 shadow-blue-200',
+        violet: 'text-violet-600 bg-violet-600 shadow-violet-200',
+        indigo: 'text-indigo-600 bg-indigo-600 shadow-indigo-200',
+    };
+
+    const currentTheme = colorClasses[roleColor] || colorClasses.blue;
+    const [mainText, mainBg, mainShadow] = currentTheme.split(' ');
+
     return (
         <div className="min-h-screen bg-[#f1f5f9] text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-600 pb-20">
             {/* Modern Header */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
                     <div className="flex items-center gap-6">
-                        <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
-                            <span className="text-white font-black text-xl italic">T</span>
+                        <div className={`w-12 h-12 ${mainBg} rounded-2xl flex items-center justify-center shadow-lg ${mainShadow}`}>
+                            <span className="text-white font-black text-xl italic">{roleColor.charAt(0).toUpperCase()}</span>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black tracking-tight text-slate-800">TICKETBOX<span className="text-blue-600">.STAFF</span></h1>
+                            <h1 className="text-xl font-black tracking-tight text-slate-800">TICKETBOX<span className={`${mainText}`}>.{staffRecords[0]?.role || 'STAFF'}</span></h1>
                             <p className="text-[10px] text-slate-400 font-bold tracking-[0.2em] uppercase">Executive Workspace</p>
                         </div>
                     </div>
@@ -329,7 +348,7 @@ export default function StaffDashboard() {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
                                     className={`px-8 py-3 rounded-xl flex items-center gap-3 transition-all font-black text-[11px] tracking-widest ${activeTab === tab.id
-                                        ? 'bg-white text-blue-600 shadow-md shadow-blue-600/5 scale-[1.02]'
+                                        ? `bg-white ${mainText} shadow-md shadow-slate-200/50 scale-[1.02]`
                                         : 'text-slate-400 hover:text-slate-600 hover:bg-white/50'}`}
                                 >
                                     <tab.icon className="w-4 h-4" />
@@ -343,7 +362,7 @@ export default function StaffDashboard() {
                         <div className="flex items-center gap-6">
                             <div className="text-right">
                                 <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{user?.name}</p>
-                                <p className="text-[10px] text-blue-600 font-bold uppercase">{staffRecords[0]?.role || 'APPLICANT'}</p>
+                                <p className={`text-[10px] ${mainText} font-bold uppercase`}>{staffRecords[0]?.role || 'APPLICANT'}</p>
                             </div>
                             <button onClick={handleLogout} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm">
                                 <LogOut className="w-5 h-5" />
@@ -464,6 +483,21 @@ export default function StaffDashboard() {
                     <p className="font-black text-xs uppercase tracking-widest">{notification.message}</p>
                 </div>
             )}
+
+            {/* Role-based Footer */}
+            <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className={`w-8 h-8 ${mainBg} rounded-lg flex items-center justify-center text-white font-black italic shadow-lg ${mainShadow}`}>
+                        {roleColor.charAt(0).toUpperCase()}
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 tracking-widest uppercase">
+                        Ticketbox <span className={mainText}>{staffRecords[0]?.role || 'Staff'}</span> Workspace
+                    </p>
+                </div>
+                <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                    &copy; {new Date().getFullYear()} Công nghệ sản xuất Concert chuyên nghiệp
+                </p>
+            </footer>
         </div>
     );
 }

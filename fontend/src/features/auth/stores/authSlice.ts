@@ -177,8 +177,11 @@ export const authSlice = createSlice({
             state.user = null;
             state.token = null;
             state.error = null;
-            localStorage.removeItem('ticketbox_token');
-            localStorage.removeItem('ticketbox_refresh_token');
+            if (typeof window !== 'undefined') {
+                localStorage.clear();
+                // Clear any other session-related storage if needed
+                sessionStorage.clear();
+            }
         },
         setAuth: (state, action: PayloadAction<{ token: string; refreshToken: string; user: User }>) => {
             state.user = action.payload.user;

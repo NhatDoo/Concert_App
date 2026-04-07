@@ -57,7 +57,7 @@ export const RegisterForm = () => {
                     <ShieldCheck className="w-8 h-8 text-red-600" />
                 </div>
                 <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-                    TICKETBOX
+                    CONCERTMUSIC
                 </h1>
                 <p className="text-slate-400 mt-2 text-sm font-bold uppercase tracking-widest">Tạo tài khoản mới</p>
 

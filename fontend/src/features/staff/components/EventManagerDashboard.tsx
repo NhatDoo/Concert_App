@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import { logout } from '../../auth';
 import {
     LayoutDashboard,
     Users,
@@ -11,7 +12,6 @@ import {
     Bell,
     LogOut,
     CheckCircle,
-    Clock,
     ChevronRight,
     Loader2,
     ClipboardList,
@@ -37,6 +37,7 @@ import { useJobManagement } from '../hooks/useJobManagement';
 
 export const EventManagerDashboard = () => {
     const { user, token } = useSelector((state: RootState) => state.auth);
+    const dispatch = useDispatch();
     const router = useRouter();
 
     const {
@@ -137,28 +138,25 @@ export const EventManagerDashboard = () => {
                     ))}
                 </nav>
 
-                <div className="mt-8 mb-8 p-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-[2.5rem] border border-amber-100/50 shadow-inner group overflow-hidden relative">
-                    <div className="absolute -top-4 -right-4 w-12 h-12 bg-amber-200/20 rounded-full group-hover:scale-150 transition-transform duration-1000"></div>
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center text-white shadow-md">
-                            <Award className="w-4 h-4" />
-                        </div>
-                        <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Master Status</span>
-                    </div>
-                    <p className="text-[10px] text-amber-700/60 font-bold leading-relaxed">Bộ công cụ đặc quyền dành cho người điều hành mạch sống của Concert.</p>
-                </div>
+       
 
                 <div className="mt-auto pt-8 border-t border-slate-100">
-                    <div className="bg-slate-50 rounded-[2rem] p-5 border border-slate-100 flex items-center gap-4 group cursor-pointer hover:bg-white hover:border-amber-200 transition-all duration-500">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-600 font-black shadow-inner uppercase">
+                    <div className="bg-slate-50 rounded-[2rem] p-4 border border-slate-100 flex items-center gap-3 group cursor-pointer hover:bg-white hover:border-amber-200 transition-all duration-500 overflow-hidden">
+                        <div className="w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-amber-600 font-black shadow-inner uppercase text-sm">
                             {user?.name?.charAt(0) || 'D'}
                         </div>
-                        <div className="flex-1 truncate">
-                            <p className="text-sm font-black text-slate-900 truncate">{user?.name || 'Director'}</p>
-                            <p className="text-[9px] text-amber-500 uppercase tracking-widest font-black">Event Manager</p>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-slate-900 truncate leading-none mb-1">{user?.name || 'Director'}</p>
+                            <p className="text-[8px] text-amber-500 uppercase tracking-widest font-black leading-none">Event Manager</p>
                         </div>
-                        <button onClick={() => router.push('/logout')} className="p-3 text-slate-300 hover:text-red-500 transition-colors">
-                            <LogOut className="w-4 h-4" />
+                        <button
+                            onClick={() => {
+                                dispatch(logout());
+                                router.push('/login');
+                            }}
+                            className="p-2.5 shrink-0 text-slate-300 hover:text-red-500 transition-colors bg-white/50 rounded-xl border border-slate-100 group-hover:border-amber-100"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 </div>

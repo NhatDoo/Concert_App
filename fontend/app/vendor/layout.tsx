@@ -116,6 +116,34 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
                 <div className="p-8 max-w-7xl mx-auto">
                     {children}
                 </div>
+
+                {/* Vendor specific footer */}
+                <footer className="mt-auto border-t border-slate-200 bg-white/50 backdrop-blur-md p-10">
+                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-amber-900/20">
+                                <Truck size={20} className="text-white" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black text-slate-900 tracking-tight">VENDORS PORTAL</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hỗ trợ đối tác 24/7</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-10">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Hỗ trợ</p>
+                                <p className="text-xs font-bold text-slate-900">partner@ticketbox.vn</p>
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Kỹ thuật</p>
+                                <p className="text-xs font-bold text-slate-900">dev.support@ticketbox.vn</p>
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] italic">
+                            &copy; {new Date().getFullYear()} Ticketbox Ecosystem
+                        </p>
+                    </div>
+                </footer>
             </main>
         </div>
     );

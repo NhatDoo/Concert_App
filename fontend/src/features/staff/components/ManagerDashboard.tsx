@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import { logout } from '../../auth';
 import {
     LayoutDashboard,
     Users,
@@ -26,8 +27,6 @@ import {
 import { RootState } from '../../../stores/store';
 import { ManagementHub } from './ManagementHub';
 import { TeamHub } from './TeamHub';
-import { EventPhaseWorkflow } from './EventPhaseWorkflow';
-import { StaffDiscover } from './StaffDiscover';
 import { CreateJobModal } from './CreateJobModal';
 import { EditJobModal } from './EditJobModal';
 import { StaffProfile } from './StaffProfile';
@@ -39,6 +38,7 @@ import { useJobManagement } from '../hooks/useJobManagement';
 
 export const ManagerDashboard = () => {
     const { user, token } = useSelector((state: RootState) => state.auth);
+    const dispatch = useDispatch();
     const router = useRouter();
 
     const {
@@ -154,16 +154,22 @@ export const ManagerDashboard = () => {
                 </nav>
 
                 <div className="mt-auto pt-8 border-t border-slate-100">
-                    <div className="bg-slate-50 rounded-3xl p-5 border border-slate-100 flex items-center gap-4 group cursor-pointer hover:bg-white hover:border-amber-100 hover:shadow-md transition-all duration-500">
-                        <div className={`w-12 h-12 rounded-2xl bg-slate-100 text-rose-600 flex items-center justify-center font-black shadow-inner`}>
+                    <div className="bg-slate-50 rounded-3xl p-4 border border-slate-100 flex items-center gap-3 group cursor-pointer hover:bg-white hover:border-rose-100 hover:shadow-md transition-all duration-500 overflow-hidden">
+                        <div className={`w-10 h-10 shrink-0 rounded-xl bg-slate-100 text-rose-600 flex items-center justify-center font-black shadow-inner text-sm`}>
                             {user?.name?.charAt(0) || 'M'}
                         </div>
-                        <div className="flex-1 truncate">
-                            <p className="text-sm font-black text-slate-900 truncate">{user?.name || 'Manager'}</p>
-                            <p className="text-[9px] text-slate-400 uppercase tracking-widest font-black">Manager Đơn vị</p>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-slate-900 truncate leading-none mb-1">{user?.name || 'Manager'}</p>
+                            <p className="text-[8px] text-slate-400 uppercase tracking-widest font-black leading-none">Manager Đơn vị</p>
                         </div>
-                        <button onClick={() => router.push('/logout')} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                            <LogOut className="w-4 h-4" />
+                        <button
+                            onClick={() => {
+                                dispatch(logout());
+                                router.push('/login');
+                            }}
+                            className="p-2.5 shrink-0 text-slate-300 hover:text-red-500 transition-colors bg-white/50 rounded-xl border border-slate-100 group-hover:border-rose-100"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
                         </button>
                     </div>
                 </div>

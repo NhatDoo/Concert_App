@@ -58,7 +58,7 @@ export const LoginForm = () => {
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
             <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold text-red-600 tracking-tighter cursor-pointer">
-                    TICKETBOX
+                    CONCERTMUSIC
                 </h1>
                 <p className="text-gray-500 mt-2 text-sm font-medium">Đăng nhập để khám phá sự kiện</p>
             </div>
