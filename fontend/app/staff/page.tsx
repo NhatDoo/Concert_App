@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
     LayoutDashboard,
     Users,
@@ -20,7 +21,8 @@ import {
     XCircle,
     Star,
     MapPin,
-    ShieldCheck
+    ShieldCheck,
+    ClipboardList
 } from 'lucide-react';
 import { RootState, AppDispatch } from '../../src/stores/store';
 import { logout } from '../../src/features/auth/stores/authSlice';
@@ -78,6 +80,7 @@ export default function StaffDashboard() {
     };
 
     const [myInvitations, setMyInvitations] = useState<Invitation[]>([]);
+    const [team, setTeam] = useState<any[]>([]);
 
     const fetchStaffData = async () => {
         if (!user) return;
@@ -91,31 +94,41 @@ export default function StaffDashboard() {
             const staffArray = Array.isArray(staffData) ? staffData : [staffData];
             setStaffRecords(staffArray);
 
+            const primaryStaff = staffArray[0];
+
             // 2. Fetch All Jobs
             const jobsRes = await fetch(`${apiUrl}/organize/jobs`);
             const jobsData = await jobsRes.json();
             setAllJobs(jobsData);
 
             // 3. Fetch My Applications
-            if (staffArray[0]?.id) {
-                const myAppRes = await fetch(`${apiUrl}/organize/applications?applicantId=${staffArray[0].id}`);
+            if (primaryStaff?.id) {
+                const myAppRes = await fetch(`${apiUrl}/organize/applications?applicantId=${primaryStaff.id}`);
                 if (myAppRes.ok) {
                     const myAppData = await myAppRes.json();
                     setMyApplications(myAppData);
                 }
             }
 
-            // 4. Fetch My Recruitment (if manager)
+            // 4. Fetch My Recruitment & Team (if manager)
             const isManager = staffArray.some(r =>
                 r.role === 'MANAGER' ||
                 ['EVENT_MANAGER', 'PRODUCTION_MANAGER', 'TECHNICAL_MANAGER', 'MARKETING_MANAGER', 'TALENT_MANAGER'].includes(r.role)
             );
 
-            if (isManager && staffArray[0]?.id) {
-                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${staffArray[0].id}`);
+            if (isManager && primaryStaff?.id) {
+                // Fetch manager's jobs
+                const managerJobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${primaryStaff.id}`);
                 if (managerJobsRes.ok) {
                     const managerJobsData = await managerJobsRes.json();
                     setManagerJobPosts(managerJobsData || []);
+                }
+
+                // Fetch manager's team
+                const teamRes = await fetch(`${apiUrl}/organize/staff/list/${primaryStaff.organizerId}?managerId=${primaryStaff.id}`);
+                if (teamRes.ok) {
+                    const teamData = await teamRes.json();
+                    setTeam(teamData || []);
                 }
             }
 
@@ -285,6 +298,27 @@ export default function StaffDashboard() {
 
     const handleLogout = () => { dispatch(logout()); router.push('/login'); };
 
+    const handleUpdateTaskStatus = async (concertId: string, staffId: string, taskId: string, currentStatus: string) => {
+        let nextStatus = 'PENDING';
+        if (currentStatus === 'PENDING') nextStatus = 'WORKING';
+        else if (currentStatus === 'WORKING') nextStatus = 'FINISH';
+        else nextStatus = 'PENDING';
+
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${apiUrl}/organize/${concertId}/staff/${staffId}/tasks/${taskId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: nextStatus })
+            });
+            if (res.ok) {
+                fetchStaffData();
+            }
+        } catch (e) {
+            notify('error', 'Không thể cập nhật trạng thái');
+        }
+    };
+
     if (authLoading || (loading && user)) return (
         <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 font-bold">
             <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
@@ -360,10 +394,12 @@ export default function StaffDashboard() {
                         <div className="h-10 w-px bg-slate-200"></div>
 
                         <div className="flex items-center gap-6">
-                            <div className="text-right">
-                                <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{user?.name}</p>
-                                <p className={`text-[10px] ${mainText} font-bold uppercase`}>{staffRecords[0]?.role || 'APPLICANT'}</p>
-                            </div>
+                            <Link href="/profile" className="flex items-center gap-6 hover:opacity-80 transition-opacity group">
+                                <div className="text-right">
+                                    <p className="text-xs font-black text-slate-800 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{user?.name}</p>
+                                    <p className={`text-[10px] ${mainText} font-bold uppercase`}>{staffRecords[0]?.role || 'APPLICANT'}</p>
+                                </div>
+                            </Link>
                             <button onClick={handleLogout} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all shadow-sm">
                                 <LogOut className="w-5 h-5" />
                             </button>
@@ -410,10 +446,50 @@ export default function StaffDashboard() {
                 )}
 
                 {activeTab === 'tasks' && (
-                    <MyTasks
-                        staffRecords={staffRecords}
-                        loading={loading}
-                    />
+                    <div className="space-y-8">
+                        {/* Task Stats for Staff */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-100 transition-all">
+                                <div>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-2">Tổng nhiệm vụ</p>
+                                    <p className="text-3xl font-black text-slate-900 leading-none">
+                                        {staffRecords.reduce((acc, r) => acc + (r.tasks?.length || 0), 0)}
+                                    </p>
+                                </div>
+                                <div className={`w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner`}>
+                                    <CalendarCheck className="w-7 h-7" />
+                                </div>
+                            </div>
+                            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-emerald-100 transition-all">
+                                <div>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-2">Đã hoàn thành</p>
+                                    <p className="text-3xl font-black text-emerald-600 leading-none">
+                                        {staffRecords.reduce((acc, r) => acc + (r.tasks?.filter((t: any) => t.status === 'COMPLETED').length || 0), 0)}
+                                    </p>
+                                </div>
+                                <div className={`w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner`}>
+                                    <CheckCircle className="w-7 h-7" />
+                                </div>
+                            </div>
+                            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:border-amber-100 transition-all">
+                                <div>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-2">Đang thực hiện</p>
+                                    <p className="text-3xl font-black text-amber-600 leading-none">
+                                        {staffRecords.reduce((acc, r) => acc + (r.tasks?.filter((t: any) => t.status !== 'COMPLETED').length || 0), 0)}
+                                    </p>
+                                </div>
+                                <div className={`w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner`}>
+                                    <Clock className="w-7 h-7" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <MyTasks
+                            staffRecords={staffRecords}
+                            loading={loading}
+                            onUpdateStatus={handleUpdateTaskStatus}
+                        />
+                    </div>
                 )}
 
                 {activeTab === 'recruitment' && (
@@ -437,14 +513,14 @@ export default function StaffDashboard() {
                         onEditJob={(job) => { setSelectedManagerJob(job); }}
                         onDeleteJob={handleDeleteJob}
                         onToggleStatus={handleToggleStatus}
-                        accentColor="blue-600"
+                        accentColor={`${roleColor}-600`}
                     />
                 )}
 
                 {activeTab === 'settings' && (
                     <StaffProfile
                         user={user}
-                        token="" // Staff page uses local storage or session, but let's assume it works with user object
+                        token={null}
                         accentColor="blue-600"
                         onUpdateSuccess={(msg) => notify('success', msg)}
                     />

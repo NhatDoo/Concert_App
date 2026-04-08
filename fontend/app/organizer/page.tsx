@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RootState } from '../../src/stores/store';
-import { PlusCircle, Music, Ticket, Calendar, DollarSign, Trash2, Edit, Loader2, CheckCircle, XCircle, Users, Briefcase, LayoutDashboard } from 'lucide-react';
+import { PlusCircle, Music, Ticket, Calendar, DollarSign, Trash2, Edit, Loader2, CheckCircle, XCircle, Users, Briefcase, LayoutDashboard, User, Clock, Star, Plus, ClipboardList } from 'lucide-react';
 import { ManagementHub } from '../../src/features/staff/components/ManagementHub';
 import { CreateJobModal } from '../../src/features/staff/components/CreateJobModal';
 import { EditJobModal } from '../../src/features/staff/components/EditJobModal';
@@ -17,7 +17,13 @@ export default function OrganizerDashboard() {
     const router = useRouter();
 
     const [events, setEvents] = useState<any[]>([]);
-    const [stats, setStats] = useState({ totalTicketsSold: 0, totalRevenue: 0, totalConcerts: 0, activeConcerts: 0 });
+    const [stats, setStats] = useState({
+        totalTicketsSold: 0,
+        totalRevenue: 0,
+        totalConcerts: 0,
+        activeConcerts: 0,
+        staffStats: { totalStaff: 0, totalTasks: 0, completedTasks: 0, pendingTasks: 0, taskCompletionRate: 0 }
+    });
     const [loading, setLoading] = useState(true);
     const [notification, setNotification] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
@@ -52,6 +58,74 @@ export default function OrganizerDashboard() {
         setTimeout(() => setNotification(null), 3000);
     };
 
+    const [assignTaskModal, setAssignTaskModal] = useState<{ staffId: string, concertId: string, staffName: string } | null>(null);
+    const [taskTitle, setTaskTitle] = useState('');
+    const [taskDescription, setTaskDescription] = useState('');
+    const [taskLocation, setTaskLocation] = useState('');
+    const [taskTime, setTaskTime] = useState('');
+    const [isAssigning, setIsAssigning] = useState(false);
+
+    const fetchStats = async () => {
+        if (!user) return;
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+            const res = await fetch(`${apiUrl}/organize/stats/${user.id}`);
+            if (res.ok) {
+                const data = await res.json();
+                setStats(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch stats', error);
+        }
+    };
+
+    const handleAssignTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!assignTaskModal || !taskTitle.trim()) return;
+        if (!assignTaskModal.concertId) {
+            notify('error', 'Nhân viên này chưa được gán vào sự kiện nào!');
+            return;
+        }
+
+        setIsAssigning(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+            // Pack metadata into description field since schema can't change
+            const packedDescription = JSON.stringify({
+                title: taskTitle,
+                desc: taskDescription,
+                location: taskLocation,
+                time: taskTime
+            });
+
+            const res = await fetch(`${apiUrl}/organize/${assignTaskModal.concertId}/staff/${assignTaskModal.staffId}/tasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    description: packedDescription,
+                    status: 'PENDING'
+                })
+            });
+
+            if (res.ok) {
+                notify('success', 'Đã giao việc thành công!');
+                setAssignTaskModal(null);
+                setTaskTitle('');
+                setTaskDescription('');
+                setTaskLocation('');
+                setTaskTime('');
+                fetchStats();
+            } else {
+                notify('error', 'Lỗi khi giao việc');
+            }
+        } catch (error) {
+            notify('error', 'Lỗi kết nối');
+        } finally {
+            setIsAssigning(false);
+        }
+    };
+
     useEffect(() => {
         if (!user || user.role !== 'ORGANIZER') {
             router.push('/');
@@ -82,11 +156,7 @@ export default function OrganizerDashboard() {
                     setEvents(myConcerts);
                 }
 
-                const statsRes = await fetch(`${apiUrl}/organize/stats/${user.id}`);
-                if (statsRes.ok) {
-                    const statsData = await statsRes.json();
-                    setStats(statsData);
-                }
+                fetchStats();
             } catch (error) {
                 console.error('Failed to fetch dashboard data', error);
             } finally {
@@ -163,13 +233,17 @@ export default function OrganizerDashboard() {
                 </div>
             )}
 
-            {/* Header Dashboard */}
             <div className="bg-white border-b border-gray-200">
                 <div className="container mx-auto px-4 py-8">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900">Dashboard Ban Tổ Chức</h1>
-                            <p className="text-gray-500 mt-2">Chào mừng {user.name}, quản lý sự kiện của bạn hiệu quả hơn.</p>
+                            <div className="flex items-center gap-3 mt-2">
+                                <p className="text-gray-500 italic">Chào mừng {user.name}, quản lý sự kiện của bạn hiệu quả hơn.</p>
+                                <Link href="/profile" className="text-[10px] font-black uppercase tracking-widest bg-gray-100 hover:bg-red-50 hover:text-red-600 px-3 py-1 rounded-full transition-colors flex items-center gap-1">
+                                    <User className="w-3 h-3" /> Hồ sơ cá nhân
+                                </Link>
+                            </div>
                         </div>
                         <div className="flex bg-gray-100 p-1 rounded-2xl">
                             <button
@@ -202,7 +276,6 @@ export default function OrganizerDashboard() {
 
             {activeTab === 'events' ? (
                 <>
-                    {/* Stats Overview */}
                     <div className="container mx-auto px-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                             <div>
@@ -242,7 +315,142 @@ export default function OrganizerDashboard() {
                         </div>
                     </div>
 
-                    {/* List Events */}
+                    {/* Staff Statistics */}
+                    <div className="container mx-auto px-4 mt-12 mb-12">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-1.5 h-8 bg-red-600 rounded-full"></div>
+                            <h2 className="text-2xl font-bold text-gray-900 leading-none">Thống kê Nhân sự</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-red-100 transition-all">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Tổng nhân sự</p>
+                                    <p className="text-3xl font-bold text-gray-900">{stats.staffStats.totalStaff}</p>
+                                </div>
+                                <div className="p-3 bg-red-50 text-red-600 rounded-xl group-hover:scale-110 transition-transform">
+                                    <Users className="w-6 h-6" />
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-blue-100 transition-all">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Nhiệm vụ (Xong/Tổng)</p>
+                                    <p className="text-3xl font-bold text-blue-600">
+                                        {stats.staffStats.completedTasks}/{stats.staffStats.totalTasks}
+                                    </p>
+                                </div>
+                                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+                                    <CheckCircle className="w-6 h-6" />
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-amber-100 transition-all">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Đang chờ</p>
+                                    <p className="text-3xl font-bold text-amber-600">{stats.staffStats.pendingTasks}</p>
+                                </div>
+                                <div className="p-3 bg-amber-50 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
+                                    <Clock className="w-6 h-6" />
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-emerald-100 transition-all">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 mb-1">Hiệu suất chung</p>
+                                    <p className="text-3xl font-bold text-emerald-600">{stats.staffStats.taskCompletionRate}%</p>
+                                </div>
+                                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+                                    <Star className="w-6 h-6" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Staff Performance Table */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-6 border-b border-gray-50">
+                                <h3 className="font-bold text-gray-900">Chi tiết hiệu suất nhân viên</h3>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="bg-gray-50/50">
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Nhân viên</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Vai trò</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Nhiệm vụ</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Hoàn thành</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Tỷ lệ</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {(stats.staffStats as any).staffDetails?.length > 0 ? (stats.staffStats as any).staffDetails.map((staff: any) => (
+                                            <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center justify-between group/row">
+                                                        <div>
+                                                            <div className="font-bold text-gray-900">{staff.name}</div>
+                                                            <div className="text-[10px] text-gray-400 truncate max-w-[150px]">{staff.email}</div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setAssignTaskModal({
+                                                                staffId: staff.id,
+                                                                concertId: staff.concertId,
+                                                                staffName: staff.name
+                                                            })}
+                                                            className="opacity-0 group-hover/row:opacity-100 p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition shadow-sm"
+                                                            title="Giao nhiệm vụ mới"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg">
+                                                        {staff.role}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-center font-bold text-gray-600">
+                                                    {staff.totalTasks}
+                                                </td>
+                                                <td className="px-6 py-4 text-center font-bold text-emerald-600">
+                                                    {staff.completedTasks}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="text-xs font-bold text-gray-900 mb-1">{staff.rate}%</div>
+                                                    <div className="w-20 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
+                                                        <div
+                                                            className={`h-full ${staff.rate >= 80 ? 'bg-emerald-500' : staff.rate >= 40 ? 'bg-amber-500' : 'bg-red-500'} transition-all`}
+                                                            style={{ width: `${staff.rate}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${staff.rate === 100 ? 'bg-emerald-50 text-emerald-600' :
+                                                        staff.totalTasks === 0 ? 'bg-gray-50 text-gray-400' :
+                                                            'bg-amber-50 text-amber-600'
+                                                        }`}>
+                                                        <div className={`w-1.5 h-1.5 rounded-full ${staff.rate === 100 ? 'bg-emerald-600' :
+                                                            staff.totalTasks === 0 ? 'bg-gray-400' :
+                                                                'bg-amber-600 animate-pulse'
+                                                            }`}></div>
+                                                        {staff.rate === 100 ? 'Hoàn thành' : staff.totalTasks === 0 ? 'Chưa giao' : 'Đang làm'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">
+                                                    Chưa có dữ liệu nhân sự chi tiết
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="container mx-auto px-4 mt-10">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-gray-900">Danh sách sự kiện của bạn</h2>
@@ -317,7 +525,6 @@ export default function OrganizerDashboard() {
                         )}
                     </div>
 
-                    {/* Create Concert Modal */}
                     {showModal && (
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -414,7 +621,6 @@ export default function OrganizerDashboard() {
                 </div>
             )}
 
-            {/* Create Job Modal */}
             {showCreateJobModal && (
                 <CreateJobModal
                     show={showCreateJobModal}
@@ -427,7 +633,6 @@ export default function OrganizerDashboard() {
                 />
             )}
 
-            {/* Edit Job Modal */}
             {editingJob && (
                 <EditJobModal
                     show={!!editingJob}
@@ -437,6 +642,88 @@ export default function OrganizerDashboard() {
                     isSaving={jobSaving}
                     accentColor="red-600"
                 />
+            )}
+            {assignTaskModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-gray-100">
+                        <div className="bg-red-600 p-8 text-white">
+                            <h2 className="text-2xl font-bold flex items-center gap-3">
+                                <ClipboardList className="w-8 h-8 opacity-80" />
+                                Giao nhiệm vụ
+                            </h2>
+                            <p className="mt-2 text-red-100 font-medium opacity-80 truncate">
+                                Nhân viên: {assignTaskModal.staffName}
+                            </p>
+                        </div>
+                        <form onSubmit={handleAssignTask} className="p-8 space-y-5">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Tên nhiệm vụ</label>
+                                <input
+                                    required
+                                    autoFocus
+                                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 outline-none focus:border-red-500 transition-all text-gray-900 font-medium"
+                                    placeholder="Ví dụ: Kiểm tra âm thanh"
+                                    value={taskTitle}
+                                    onChange={(e) => setTaskTitle(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Vị trí</label>
+                                    <input
+                                        className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 outline-none focus:border-red-500 transition-all text-gray-900 font-medium"
+                                        placeholder="Sân khấu, Cổng..."
+                                        value={taskLocation}
+                                        onChange={(e) => setTaskLocation(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Thời gian</label>
+                                    <input
+                                        className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 outline-none focus:border-red-500 transition-all text-gray-900 font-medium text-xs"
+                                        placeholder="Giao lúc, Hạn chót..."
+                                        value={taskTime}
+                                        onChange={(e) => setTaskTime(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Mô tả công việc</label>
+                                <textarea
+                                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl px-4 py-3 outline-none focus:border-red-500 transition-all text-gray-900 font-medium min-h-[80px] resize-none"
+                                    placeholder="Chi tiết yêu cầu..."
+                                    value={taskDescription}
+                                    onChange={(e) => setTaskDescription(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAssignTaskModal(null);
+                                        setTaskTitle('');
+                                        setTaskDescription('');
+                                        setTaskLocation('');
+                                        setTaskTime('');
+                                    }}
+                                    className="py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all"
+                                >
+                                    Hủy bỏ
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isAssigning || !taskTitle.trim()}
+                                    className="bg-red-600 hover:bg-red-700 disabled:bg-gray-200 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-200 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isAssigning ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Xác nhận giao'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
             )}
         </div>
     );

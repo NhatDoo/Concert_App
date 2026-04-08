@@ -187,9 +187,17 @@ export const Header = () => {
                         </button>
                         {user ? (
                             <div className="flex items-center gap-4">
-                                <div className="text-sm font-semibold text-gray-800 hidden sm:block">
-                                    Chào,{user.email}
-                                </div>
+                                <Link
+                                    href="/profile"
+                                    className="flex items-center gap-2 text-sm font-semibold text-gray-800 hover:text-red-600 transition"
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                                        <User className="w-4 h-4" />
+                                    </div>
+                                    <span className="hidden sm:block truncate max-w-[150px]">
+                                        {user.email}
+                                    </span>
+                                </Link>
                                 <button
                                     onClick={() => dispatch(logout())}
                                     className="border border-red-500 text-red-500 px-4 py-2 rounded-full hover:bg-red-50 text-sm font-medium transition cursor-pointer"

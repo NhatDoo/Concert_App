@@ -24,6 +24,14 @@ export class PrismaUserRepository implements IUserRepository {
         return UserMapper.toDomain(raw);
     }
 
+    async findByResetToken(token: string): Promise<User | null> {
+        const raw = await this.prisma.user.findFirst({
+            where: { resetToken: token }
+        });
+        if (!raw) return null;
+        return UserMapper.toDomain(raw);
+    }
+
     async save(user: User): Promise<void> {
         const persistence = UserMapper.toPersistence(user);
 
@@ -38,7 +46,9 @@ export class PrismaUserRepository implements IUserRepository {
                 role: persistence.role,
                 provider: persistence.provider,
                 googleId: persistence.googleId,
-                refreshToken: persistence.refreshToken
+                refreshToken: persistence.refreshToken,
+                resetToken: persistence.resetToken,
+                resetTokenExpires: persistence.resetTokenExpires
             },
             create: {
                 id: persistence.id,
@@ -49,7 +59,9 @@ export class PrismaUserRepository implements IUserRepository {
                 role: persistence.role,
                 provider: persistence.provider,
                 googleId: persistence.googleId,
-                refreshToken: persistence.refreshToken
+                refreshToken: persistence.refreshToken,
+                resetToken: persistence.resetToken,
+                resetTokenExpires: persistence.resetTokenExpires
             }
         });
     }

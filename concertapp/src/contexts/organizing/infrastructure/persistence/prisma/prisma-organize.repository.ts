@@ -57,10 +57,8 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
     async save(organize: OrganizeAggregate): Promise<void> {
         const persistence = OrganizeMapper.toPersistence(organize);
 
-        // Transaction is safe for aggregate multi-table updates
         await this.prisma.$transaction(async (tx) => {
 
-            // 1. Handle Location creation/upsert
             if (persistence.location) {
                 await tx.location.upsert({
                     where: { id: persistence.location.id },
@@ -78,7 +76,6 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                 });
             }
 
-            // 2. Upsert Organize Root
             await tx.organize.upsert({
                 where: { id: persistence.id },
                 update: {
@@ -91,7 +88,6 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                 }
             });
 
-            // 3. Resync Logistics (Delete all & Recreate to avoid complex diffing or upsert individually)
             await tx.logistics.deleteMany({ where: { organizeId: persistence.id } });
             if (persistence.logistics.length > 0) {
                 await tx.logistics.createMany({
@@ -106,7 +102,6 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                 });
             }
 
-            // 4. Resync Equipments (Divide)
             await tx.divide.deleteMany({ where: { organizeId: persistence.id } });
             for (const equipment of persistence.equipments) {
                 await tx.divide.create({
@@ -123,26 +118,22 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                 });
             }
 
-            // 5. Resync Staff (Staff is connected to Concert, not Organize directly in Schema)
-            // But OrganizeAggregate manages it.
-            await tx.staff.deleteMany({ where: { concertId: persistence.concertId } });
-            if (persistence.staffs.length > 0) {
-                for (const s of persistence.staffs) {
-                    await tx.staff.create({
-                        data: {
-                            id: s.id,
-                            userId: s.userId,
-                            name: s.name,
-                            role: s.role,
-                            concertId: persistence.concertId,
-                            tasks: {
-                                create: s.tasks.map(t => ({
-                                    id: t.id,
-                                    description: t.description,
-                                    status: t.status
-                                }))
-                            }
-                        }
+            // Sync Staff Tasks while keeping Staff records primarily managed by recruitment flow
+            // Note: In this architecture, it's safer to upsert staff tasks rather than deleting all staff
+            for (const s of persistence.staffs) {
+                // We only sync tasks here as staff membership is handled by applications/direct invite
+                await tx.staffTask.deleteMany({ where: { staffId: s.id } });
+                if (s.tasks.length > 0) {
+                    await tx.staffTask.createMany({
+                        data: s.tasks.map(t => ({
+                            id: t.id,
+                            staffId: s.id,
+                            managerId: t.managerId,
+                            taskName: t.taskName,
+                            description: t.description,
+                            status: t.status,
+                            dueDate: t.dueDate
+                        }))
                     });
                 }
             }

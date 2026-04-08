@@ -16,7 +16,9 @@ export class UserMapper {
             Role.from(raw.role),
             raw.provider,
             raw.googleId,
-            raw.refreshToken || null
+            raw.refreshToken || null,
+            raw.resetToken || null,
+            raw.resetTokenExpires || null
         );
     }
 
@@ -30,7 +32,9 @@ export class UserMapper {
             role: user.getRole().getValue(),
             provider: user.getProvider(),
             googleId: user.getGoogleId(),
-            refreshToken: user.getRefreshToken()
+            refreshToken: user.getRefreshToken(),
+            resetToken: user.getResetToken(),
+            resetTokenExpires: user.getResetTokenExpires()
         };
     }
 }

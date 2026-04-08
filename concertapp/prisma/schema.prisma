@@ -6,8 +6,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
-  
+ 
 }
 
 model User {
@@ -27,6 +26,8 @@ model User {
   invoices     Invoice[]
   staffs       Staff[]
   vendor       Vendor?    
+  resetToken   String?
+  resetTokenExpires DateTime?
 
 
   @@index([role])
@@ -261,7 +262,8 @@ model Staff {
   reportsTo    Staff[]            @relation("StaffToManager")
   user         User               @relation(fields: [userId], references: [id])
   applications StaffApplication[] @relation("ApplicantStaff")
-  tasks        StaffTask[]
+  tasks        StaffTask[]        @relation("TaskStaff")
+  assignedTasks StaffTask[]       @relation("ManagerAssignedTasks")
   vendorId     String?
  vendor Vendor? @relation(fields: [vendorId], references: [id])           
 
@@ -329,12 +331,18 @@ model StaffInvitation {
 model StaffTask {
   id          String   @id @default(uuid())
   staffId     String
+  managerId   String?
+  taskName    String?
   description String
   status      String   @default("PENDING")
+  dueDate     DateTime?
   createdAt   DateTime @default(now())
-  staff       Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  
+  staff       Staff    @relation("TaskStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  taskManager Staff?   @relation("ManagerAssignedTasks", fields: [managerId], references: [id])
 
   @@index([staffId])
+  @@index([managerId])
 }
 
 model Vendor {

@@ -81,6 +81,14 @@ export const ManagerDashboard = () => {
         companyLogo: ''
     });
 
+    // Task Assignment States
+    const [assignTaskModal, setAssignTaskModal] = useState<{ staffId: string, concertId: string, staffName: string } | null>(null);
+    const [taskTitle, setTaskTitle] = useState('');
+    const [taskDescription, setTaskDescription] = useState('');
+    const [taskLocation, setTaskLocation] = useState('');
+    const [taskTime, setTaskTime] = useState('');
+    const [isAssigningTask, setIsAssigningTask] = useState(false);
+
     const handleCreateJob = async (e: React.FormEvent) => {
         e.preventDefault();
         await createJob(newJob, () => {
@@ -93,6 +101,53 @@ export const ManagerDashboard = () => {
         await updateJob(id, data, () => {
             setEditingJob(null);
         });
+    };
+
+    const handleAssignTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!assignTaskModal || !taskTitle.trim()) return;
+
+        setIsAssigningTask(true);
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+            // Fallback to manager's concertId if staff isn't assigned yet
+            const concertId = assignTaskModal.concertId || staffRecords[0]?.concertId;
+            if (!concertId) {
+                notify('error', 'Không tìm thấy ID sự kiện');
+                return;
+            }
+
+            const res = await fetch(`${apiUrl}/organize/${concertId}/staff/${assignTaskModal.staffId}/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    taskName: taskTitle,
+                    description: taskDescription || `Vị trí: ${taskLocation}\nThời gian: ${taskTime}`,
+                    managerId: staffRecords[0]?.id,
+                    dueDate: new Date(Date.now() + 86400000).toISOString()
+                })
+            });
+
+            if (res.ok) {
+                notify('success', 'Đã giao nhiệm vụ thành công!');
+                setAssignTaskModal(null);
+                setTaskTitle('');
+                setTaskDescription('');
+                setTaskLocation('');
+                setTaskTime('');
+            } else {
+                const errData = await res.json();
+                notify('error', `Lỗi: ${errData.message || 'Thất bại'}`);
+            }
+        } catch (error) {
+            notify('error', 'Lỗi kết nối server');
+        } finally {
+            setIsAssigningTask(false);
+        }
     };
 
     const [stats, setStats] = useState({ activeJobs: 0, totalApps: 0, pendingReview: 0 });
@@ -252,7 +307,11 @@ export const ManagerDashboard = () => {
                 )}
 
                 {activeTab === 'team' && (
-                    <TeamHub organizerId={staffRecords[0]?.organizerId || user?.id} token={token} />
+                    <TeamHub
+                        organizerId={staffRecords[0]?.organizerId || user?.id}
+                        token={token}
+                        onAssignTask={(staffId, concertId, name) => setAssignTaskModal({ staffId, concertId, staffName: name })}
+                    />
                 )}
 
                 {activeTab === 'job-board' && (
@@ -315,6 +374,91 @@ export const ManagerDashboard = () => {
                     }
                 }}
             />
+
+            {/* Task Assignment Modal */}
+            {assignTaskModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[3rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-white/20">
+                        <div className="bg-rose-600 p-10 text-white relative">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl -mr-16 -mt-16"></div>
+                            <h2 className="text-2xl font-black flex items-center gap-4 relative z-10 uppercase tracking-tighter">
+                                <ClipboardList className="w-8 h-8 opacity-80" />
+                                GIAO NHIỆM VỤ
+                            </h2>
+                            <p className="mt-3 text-rose-100 font-bold uppercase tracking-widest text-[10px] relative z-10">
+                                Nhân sự: <span className="text-white italic">{assignTaskModal.staffName}</span>
+                            </p>
+                        </div>
+                        <form onSubmit={handleAssignTask} className="p-10 space-y-6 font-bold">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Tên nhiệm vụ</label>
+                                <input
+                                    required
+                                    autoFocus
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-rose-500 transition-all text-slate-900 font-bold"
+                                    placeholder="Tiêu đề công việc..."
+                                    value={taskTitle}
+                                    onChange={(e) => setTaskTitle(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Vị trí</label>
+                                    <input
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-rose-500 transition-all text-slate-900 font-bold text-sm"
+                                        placeholder="Khu vực..."
+                                        value={taskLocation}
+                                        onChange={(e) => setTaskLocation(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Thời gian</label>
+                                    <input
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-rose-500 transition-all text-slate-900 font-bold text-sm"
+                                        placeholder="Hạn chót..."
+                                        value={taskTime}
+                                        onChange={(e) => setTaskTime(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Mô tả chi tiết</label>
+                                <textarea
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-rose-500 transition-all text-slate-900 font-bold min-h-[100px] resize-none"
+                                    placeholder="Nội dung nhiệm vụ..."
+                                    value={taskDescription}
+                                    onChange={(e) => setTaskDescription(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-4 pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={isAssigningTask || !taskTitle.trim()}
+                                    className="bg-rose-600 hover:opacity-90 disabled:opacity-30 text-white font-black py-5 rounded-2xl shadow-xl transition-all flex items-center justify-center gap-3 transform active:scale-95 uppercase tracking-widest text-[10px]"
+                                >
+                                    {isAssigningTask ? <Loader2 className="w-5 h-5 animate-spin" /> : 'XÁC NHẬN GIAO'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAssignTaskModal(null);
+                                        setTaskTitle('');
+                                        setTaskDescription('');
+                                        setTaskLocation('');
+                                        setTaskTime('');
+                                    }}
+                                    className="py-4 font-black text-slate-400 hover:text-slate-600 transition-all text-[10px] tracking-widest uppercase"
+                                >
+                                    HỦY BỎ
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

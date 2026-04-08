@@ -10,6 +10,14 @@ import { AuthTokens } from '../../domain/service/token.service.interface';
 import { AuthGuard } from '@nestjs/passport';
 import { UseGuards, Req, Get, Res } from '@nestjs/common';
 import { GoogleAuthCommand } from '../../application/commands/google-auth.command';
+import { ForgotPasswordCommand } from '../../application/commands/forgot-password.command';
+import { ResetPasswordCommand } from '../../application/commands/reset-password.command';
+import { ChangePasswordCommand } from '../../application/commands/change-password.command';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateProfileCommand } from '../../application/commands/update-profile.command';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -71,5 +79,34 @@ export class IdentityController {
         // Redirect to frontend with tokens in URL
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         return res.redirect(`${frontendUrl}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`);
+    }
+
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Request password reset email' })
+    async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
+        return this.commandBus.execute(new ForgotPasswordCommand(dto.email));
+    }
+
+    @Post('reset-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Reset password using token' })
+    async resetPassword(@Body() dto: ResetPasswordDto): Promise<void> {
+        return this.commandBus.execute(new ResetPasswordCommand(dto.token, dto.newPassword));
+    }
+
+    @Post('change-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Change password for user' })
+    async changePassword(@Body() dto: ChangePasswordDto): Promise<void> {
+        return this.commandBus.execute(new ChangePasswordCommand(dto.userId, dto.oldPassword, dto.newPassword));
+    }
+
+    @Post('profile/update')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update user profile info' })
+    @ApiResponse({ status: 200, description: 'Profile updated, new tokens returned' })
+    async updateProfile(@Body() dto: UpdateProfileDto): Promise<AuthTokens> {
+        return this.commandBus.execute(new UpdateProfileCommand(dto.userId, dto.name, dto.phoneNumber));
     }
 }

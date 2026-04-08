@@ -4,7 +4,10 @@ export class AssignStaffTaskCommand {
     constructor(
         public readonly concertId: string,
         public readonly staffId: string,
-        public readonly description: string
+        public readonly managerId: string,
+        public readonly taskName: string,
+        public readonly description: string,
+        public readonly dueDate: Date
     ) { }
 }
 
@@ -13,6 +16,6 @@ export class UpdateStaffTaskCommand {
         public readonly concertId: string,
         public readonly staffId: string,
         public readonly taskId: string,
-        public readonly status: StaffTaskStatus
+        public readonly status: string
     ) { }
 }

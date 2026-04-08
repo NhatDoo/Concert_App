@@ -39,6 +39,12 @@ export const RegisterForm = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (password.length < 8) {
+            alert('Mật khẩu phải có ít nhất 8 ký tự!');
+            return;
+        }
+
         dispatch(registerUser({
             name,
             email,

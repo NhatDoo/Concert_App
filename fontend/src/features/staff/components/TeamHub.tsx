@@ -5,9 +5,10 @@ import { StaffRecord } from './types';
 interface TeamHubProps {
     organizerId: string;
     token: string | null;
+    onAssignTask?: (staffId: string, concertId: string, staffName: string) => void;
 }
 
-export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token }) => {
+export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTask }) => {
     const [team, setTeam] = useState<StaffRecord[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -87,13 +88,12 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token }) => {
                             <div>
                                 <h3 className="text-xl font-black text-slate-900 group-hover:text-blue-600 transition-colors">{member.name}</h3>
                                 <div className="inline-flex px-3 py-1 bg-blue-50 text-blue-600 text-[10px] uppercase font-black tracking-widest rounded-full mt-2">
-                                    {member.role.replace('_', ' ')}
+                                    {(member.role || 'Staff').replace('_', ' ')}
                                 </div>
                             </div>
                         </div>
 
                         <div className="bg-slate-50 p-6 rounded-3xl space-y-4 border border-slate-100/50">
-                            {/* In a real scenario, you can map real contact info if attached to the member */}
                             <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
                                 <div className="w-8 h-8 bg-white rounded-xl shadow-sm flex items-center justify-center shrink-0">
                                     <CheckCircle className="w-4 h-4 text-emerald-500" />
@@ -109,7 +109,10 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token }) => {
                             </div>
 
                             <div className="flex items-center gap-3 pt-2">
-                                <button className="flex-1 py-4 bg-white text-slate-900 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2">
+                                <button
+                                    onClick={() => onAssignTask?.(member.id, member.concertId || "", member.name)}
+                                    className="flex-1 py-4 bg-white text-slate-900 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-slate-900 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
+                                >
                                     <Calendar className="w-4 h-4" /> Giao hạng mục
                                 </button>
                                 <button

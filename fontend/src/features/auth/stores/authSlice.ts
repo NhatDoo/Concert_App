@@ -55,9 +55,11 @@ export const loginUser = createAsyncThunk(
             localStorage.setItem('ticketbox_token', token);
             localStorage.setItem('ticketbox_refresh_token', data.refreshToken);
 
-            // Decode JWT payload (phần thứ 2, base64)
-            const payloadBase64 = token.split('.')[1];
-            const decodedPayload = JSON.parse(atob(payloadBase64));
+            // Decode JWT payload (base64) correctly for UTF-8 (Vietnamese characters)
+            const payloadBase64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const decodedPayload = JSON.parse(decodeURIComponent(atob(payloadBase64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join('')));
 
             return {
                 token,
@@ -67,6 +69,7 @@ export const loginUser = createAsyncThunk(
                     email: decodedPayload.email,
                     name: decodedPayload.name || credentials.email.split('@')[0],
                     role: decodedPayload.role,
+                    phoneNumber: decodedPayload.phoneNumber,
                     staffRole: decodedPayload.staffRole,
                 }
             };
@@ -81,14 +84,17 @@ export const rehydrateUser = createAsyncThunk(
     'auth/rehydrate',
     async (_, { rejectWithValue }) => {
         try {
+            if (typeof window === 'undefined') return null;
             const token = localStorage.getItem('ticketbox_token');
             const refreshToken = localStorage.getItem('ticketbox_refresh_token');
 
             if (!token) return null;
 
-            // Decode token để lấy thông tin user
-            const payloadBase64 = token.split('.')[1];
-            const decodedPayload = JSON.parse(atob(payloadBase64));
+            // Decode token để lấy thông tin user (UTF-8 safe)
+            const payloadBase64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const decodedPayload = JSON.parse(decodeURIComponent(atob(payloadBase64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join('')));
 
             // Kiểm tra hết hạn (exp là giây)
             const currentTime = Date.now() / 1000;
@@ -106,7 +112,10 @@ export const rehydrateUser = createAsyncThunk(
                         localStorage.setItem('ticketbox_token', data.accessToken);
                         localStorage.setItem('ticketbox_refresh_token', data.refreshToken);
 
-                        const newPayload = JSON.parse(atob(data.accessToken.split('.')[1]));
+                        const payloadBase64 = data.accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                        const newPayload = JSON.parse(decodeURIComponent(atob(payloadBase64).split('').map(function (c) {
+                            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                        }).join('')));
                         return {
                             token: data.accessToken,
                             refreshToken: data.refreshToken,
@@ -115,6 +124,7 @@ export const rehydrateUser = createAsyncThunk(
                                 email: newPayload.email,
                                 name: newPayload.name,
                                 role: newPayload.role,
+                                phoneNumber: newPayload.phoneNumber,
                                 staffRole: newPayload.staffRole,
                             }
                         };
@@ -133,6 +143,7 @@ export const rehydrateUser = createAsyncThunk(
                     email: decodedPayload.email,
                     name: decodedPayload.name,
                     role: decodedPayload.role,
+                    phoneNumber: decodedPayload.phoneNumber,
                     staffRole: decodedPayload.staffRole,
                 }
             };

@@ -31,7 +31,15 @@ export class OrganizeMapper {
         );
 
         const staffs: Staff[] = (raw.concert?.staffs || []).map((s: any) => {
-            const tasks = (s.tasks || []).map((t: any) => new StaffTask(t.id, t.description, t.status as StaffTaskStatus, t.staffId));
+            const tasks = (s.tasks || []).map((t: any) => new StaffTask(
+                t.id,
+                t.taskName || 'Untitled Task',
+                t.description,
+                t.status as StaffTaskStatus,
+                t.staffId,
+                t.managerId || '',
+                t.dueDate || new Date()
+            ));
             return new Staff(s.id, s.userId, s.name, StaffRole.create(s.role), s.concertId, tasks);
         });
 
@@ -81,8 +89,12 @@ export class OrganizeMapper {
                 concertId: s.getConcertId(),
                 tasks: s.getTasks().map(t => ({
                     id: t.getId(),
+                    taskName: t.getTaskName(),
                     description: t.getDescription(),
-                    status: t.getStatus()
+                    status: t.getStatus(),
+                    managerId: t.getManagerId(),
+                    dueDate: t.getDueDate(),
+                    staffId: t.getStaffId()
                 }))
             }))
         };

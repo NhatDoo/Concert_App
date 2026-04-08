@@ -31,12 +31,57 @@ export class GetOrganizerStatsHandler implements IQueryHandler<GetOrganizerStats
 
         const activeConcertsCount = concerts.filter(c => new Date(c.startDate) > new Date()).length;
 
+        // 3. Staff and Task Stats
+        const staffMembers = await this.prisma.staff.findMany({
+            where: { organizerId },
+            include: {
+                tasks: true,
+                user: true,
+                concert: true
+            }
+        });
+
+        const totalStaff = staffMembers.length;
+        let totalTasks = 0;
+        let completedTasks = 0;
+
+        const staffDetails = staffMembers.map(staff => {
+            const sTasks = staff.tasks || [];
+            const sCompleted = sTasks.filter(t => t.status === 'COMPLETED').length;
+            const sTotal = sTasks.length;
+
+            totalTasks += sTotal;
+            completedTasks += sCompleted;
+
+            return {
+                id: staff.id,
+                name: staff.name,
+                email: staff.user?.email || 'N/A',
+                role: staff.role,
+                concertId: staff.concertId,
+                concertName: staff.concert?.name || 'Chưa gán sự kiện',
+                totalTasks: sTotal,
+                completedTasks: sCompleted,
+                rate: sTotal > 0 ? Math.round((sCompleted / sTotal) * 100) : 0
+            };
+        });
+
+        const pendingTasks = totalTasks - completedTasks;
+
         return {
             totalTicketsSold,
             totalRevenue,
             totalConcerts,
             activeConcerts: activeConcertsCount,
-            completedConcerts: totalConcerts - activeConcertsCount
+            completedConcerts: totalConcerts - activeConcertsCount,
+            staffStats: {
+                totalStaff,
+                totalTasks,
+                completedTasks,
+                pendingTasks,
+                taskCompletionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+                staffDetails
+            }
         };
     }
 }

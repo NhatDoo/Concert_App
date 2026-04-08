@@ -7,9 +7,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Nhat123456789
-      POSTGRES_DB: concert
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Nhat123456789}
+      POSTGRES_DB: ${POSTGRES_DB:-concert}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -26,8 +26,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: Nhat123456789
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-Nhat123456789}
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
@@ -57,18 +57,26 @@ services:
       - minio
       - elasticsearch
     environment:
-      DATABASE_URL: "postgresql://postgres:Nhat123456789@postgres:5432/concert"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-Nhat123456789}@postgres:5432/${POSTGRES_DB:-concert}"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       ELASTICSEARCH_NODE: "http://elasticsearch:9200"
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
-      MINIO_ACCESS_KEY: admin
-      MINIO_SECRET_KEY: Nhat123456789
-      JWT_REFRESH_SECRET: "59efedfdabdd1cfb6321d61887a52e73b65db593e961a35cbc6e8db80972631237dda83d0f9d88cb9db094f066e6f8d98351a86c6d813fd6d60d61a1e2f06317"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-admin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-Nhat123456789}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_REFRESH_EXPIRES_IN: "7d"
       FRONTEND_URL: "http://localhost:3000"
       NEXT_PUBLIC_API_URL: "http://localhost:3001"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: "http://localhost:3001/auth/google/callback"
+      VNP_TMN_CODE: ${VNP_TMN_CODE}
+      VNP_HASH_SECRET: ${VNP_HASH_SECRET}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASS: ${MAIL_PASS}
+      DEFAULT_OAUTH_PASSWORD_HASH: ${DEFAULT_OAUTH_PASSWORD_HASH}
 
   frontend:
     build:

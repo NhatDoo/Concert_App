@@ -8,6 +8,9 @@ export interface JobPost {
     location: string;
     salary: string;
     createdAt: string;
+    status: string;
+    authorId: string;
+    organizerId: string;
     author: {
         id: string;
         name: string;
@@ -24,6 +27,7 @@ export interface Application {
     cvUrl?: string;
     message?: string;
     applicant: {
+        id: string;
         name: string;
         role: string;
         cvUrl?: string;
@@ -31,22 +35,28 @@ export interface Application {
         user?: { email: string; phoneNumber: string };
     };
     jobPostId: string;
-    jobPost?: { title: string };
+    jobPost?: { title: string; organizerId: string; authorId: string };
 }
 
 export interface Task {
     id: string;
-    title: string;
+    taskName: string;
     description: string;
     status: string;
-    deadline?: string;
-    concert?: { name: string; date: string; location: string };
+    dueDate?: string;
+    managerId?: string;
+    staffId: string;
+    taskManager?: { id: string; name: string; role: string };
+    concert?: { id: string; name: string; startDate: string; location?: string };
 }
 
 export interface StaffRecord {
     id: string;
     name: string;
     role: string;
+    userId: string;
     organizerId?: string;
+    concertId?: string;
     tasks: Task[];
+    concert?: { id: string; name: string; startDate: string };
 }

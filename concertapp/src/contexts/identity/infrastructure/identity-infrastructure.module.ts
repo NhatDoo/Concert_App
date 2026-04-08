@@ -8,6 +8,7 @@ import { PrismaUserRepository } from './persistence/prisma/prisma-user.repositor
 
 import { ITOKEN_SERVICE } from '../domain/service/token.service.interface';
 import { JwtTokenService } from './auth/jwt-token.service';
+import { MailService } from './mail/mail.service';
 
 @Module({
     imports: [
@@ -15,9 +16,9 @@ import { JwtTokenService } from './auth/jwt-token.service';
         JwtModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
-                secret: configService.get<string>('JWT_SECRET') || 'defaultSecret12345',
+                secret: configService.get<string>('JWT_SECRET'),
                 signOptions: {
-                    expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '1d') as any
+                    expiresIn: (configService.get<string>('JWT_EXPIRES_IN')) as any
                 },
             }),
             inject: [ConfigService],
@@ -32,8 +33,9 @@ import { JwtTokenService } from './auth/jwt-token.service';
         {
             provide: ITOKEN_SERVICE,
             useClass: JwtTokenService,
-        }
+        },
+        MailService
     ],
-    exports: [IUSER_REPOSITORY, ITOKEN_SERVICE, JwtModule, PrismaService],
+    exports: [IUSER_REPOSITORY, ITOKEN_SERVICE, JwtModule, PrismaService, MailService],
 })
 export class IdentityInfrastructureModule { }

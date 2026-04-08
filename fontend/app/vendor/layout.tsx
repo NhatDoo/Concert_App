@@ -78,9 +78,9 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
                 </nav>
 
                 <div className="p-4 border-t border-slate-100 space-y-2">
-                    <div className="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-200/50">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden">
+                    <Link href="/profile" className="block bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-200/50 hover:bg-slate-100 transition-colors group/profile">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden group-hover/profile:scale-105 transition-transform">
                                 <span className="text-amber-500 font-bold">{user?.name?.charAt(0) || 'V'}</span>
                             </div>
                             <div className="flex-1 min-w-0">
@@ -88,7 +88,7 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
                                 <p className="text-[10px] font-medium text-slate-500 truncate">{user?.email}</p>
                             </div>
                         </div>
-                    </div>
+                    </Link>
 
                     <button
                         onClick={handleLogout}

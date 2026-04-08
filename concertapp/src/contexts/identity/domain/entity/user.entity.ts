@@ -14,6 +14,8 @@ export class User extends AggregateRoot {
     private provider: string;
     private googleId: string | null;
     private refreshToken: string | null;
+    private resetToken: string | null;
+    private resetTokenExpires: Date | null;
 
     private constructor(
         id: string,
@@ -24,7 +26,9 @@ export class User extends AggregateRoot {
         role: Role,
         provider: string = "LOCAL",
         googleId: string | null = null,
-        refreshToken: string | null = null
+        refreshToken: string | null = null,
+        resetToken: string | null = null,
+        resetTokenExpires: Date | null = null
     ) {
         super();
         this.id = id;
@@ -36,6 +40,8 @@ export class User extends AggregateRoot {
         this.provider = provider;
         this.googleId = googleId;
         this.refreshToken = refreshToken;
+        this.resetToken = resetToken;
+        this.resetTokenExpires = resetTokenExpires;
     }
 
     static create(
@@ -47,10 +53,12 @@ export class User extends AggregateRoot {
         role: Role,
         provider: string = "LOCAL",
         googleId: string | null = null,
-        refreshToken: string | null = null
+        refreshToken: string | null = null,
+        resetToken: string | null = null,
+        resetTokenExpires: Date | null = null
     ): User {
         if (!name) throw new Error("Name is required");
-        return new User(id, name, phoneNumber, email, password, role, provider, googleId, refreshToken);
+        return new User(id, name, phoneNumber, email, password, role, provider, googleId, refreshToken, resetToken, resetTokenExpires);
     }
 
     getId(): string {
@@ -80,6 +88,12 @@ export class User extends AggregateRoot {
     getRefreshToken(): string | null {
         return this.refreshToken;
     }
+    getResetToken(): string | null {
+        return this.resetToken;
+    }
+    getResetTokenExpires(): Date | null {
+        return this.resetTokenExpires;
+    }
 
     changeName(newName: string): void {
         if (!newName) throw new Error("Name cannot be empty");
@@ -104,6 +118,16 @@ export class User extends AggregateRoot {
 
     changePassword(newPassword: Password): void {
         this.password = newPassword;
+    }
+
+    setResetToken(token: string, expires: Date): void {
+        this.resetToken = token;
+        this.resetTokenExpires = expires;
+    }
+
+    clearResetToken(): void {
+        this.resetToken = null;
+        this.resetTokenExpires = null;
     }
 
     async verifyPassword(plain: string) {

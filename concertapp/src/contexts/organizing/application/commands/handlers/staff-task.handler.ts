@@ -13,7 +13,7 @@ export class AssignStaffTaskHandler implements ICommandHandler<AssignStaffTaskCo
     ) { }
 
     async execute(command: AssignStaffTaskCommand): Promise<void> {
-        const { concertId, staffId, description } = command;
+        const { concertId, staffId, managerId, taskName, description, dueDate } = command;
 
         const organize = await this.repository.findByConcertId(concertId);
         if (!organize) {
@@ -21,7 +21,7 @@ export class AssignStaffTaskHandler implements ICommandHandler<AssignStaffTaskCo
         }
 
         const taskId = uuidv4();
-        const task = StaffTask.create(taskId, description, staffId);
+        const task = StaffTask.create(taskId, taskName, description, staffId, managerId, dueDate);
         organize.assignTaskToStaff(staffId, task);
 
         await this.repository.save(organize);

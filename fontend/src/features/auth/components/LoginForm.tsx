@@ -112,7 +112,7 @@ export const LoginForm = () => {
                         <input type="checkbox" className="mr-2 text-red-600 focus:ring-red-500 rounded border-gray-300" />
                         Ghi nhớ đăng nhập
                     </label>
-                    <a href="#" className="text-red-600 font-medium hover:underline">Quên mật khẩu?</a>
+                    <Link href="/forgot-password" title='Quên mật khẩu?' className="text-red-600 font-medium hover:underline">Quên mật khẩu?</Link>
                 </div>
 
                 <button

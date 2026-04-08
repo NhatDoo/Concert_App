@@ -15,6 +15,8 @@ export class JwtTokenService implements ITokenService {
         const payload: Record<string, any> = {
             sub: user.getId(),
             email: user.getEmail().value,
+            name: user.getName(),
+            phoneNumber: user.getPhoneNumber()?.value,
             role: user.getRole().getValue()
         };
 

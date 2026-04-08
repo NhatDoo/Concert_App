@@ -134,7 +134,14 @@ export class OrganizingController {
         @Param('staffId') staffId: string,
         @Body() dto: AssignStaffTaskDto
     ) {
-        const command = new AssignStaffTaskCommand(concertId, staffId, dto.description);
+        const command = new AssignStaffTaskCommand(
+            concertId,
+            staffId,
+            dto.managerId,
+            dto.taskName,
+            dto.description,
+            new Date(dto.dueDate)
+        );
         await this.commandBus.execute(command);
         return { message: 'Task successfully assigned to staff member' };
     }
@@ -580,6 +587,15 @@ export class OrganizingController {
                     }
                 },
                 tasks: {
+                    include: {
+                        taskManager: {
+                            select: {
+                                id: true,
+                                name: true,
+                                role: true
+                            }
+                        }
+                    },
                     orderBy: { createdAt: 'desc' }
                 }
             }

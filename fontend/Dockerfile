@@ -4,6 +4,7 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
+ENV DATABASE_URL="postgresql://postgres:Nhat123456789@postgres:5432/concert"
 
 FROM node:20-alpine
 WORKDIR /app

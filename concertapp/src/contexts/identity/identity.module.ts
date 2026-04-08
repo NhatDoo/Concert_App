@@ -9,8 +9,21 @@ import { RegisterHandler } from './application/commands/handlers/register.handle
 import { RefreshTokenHandler } from './application/commands/handlers/refresh-token.handler';
 import { GoogleAuthHandler } from './application/commands/handlers/google-auth.handler';
 import { GoogleStrategy } from './infrastructure/auth/google.strategy';
+import { ForgotPasswordHandler } from './application/commands/forgot-password.command';
+import { ResetPasswordHandler } from './application/commands/reset-password.command';
+import { ChangePasswordHandler } from './application/commands/change-password.command';
+import { UpdateProfileHandler } from './application/commands/update-profile.command';
 
-export const CommandHandlers = [LoginHandler, RegisterHandler, RefreshTokenHandler, GoogleAuthHandler];
+export const CommandHandlers = [
+    LoginHandler,
+    RegisterHandler,
+    RefreshTokenHandler,
+    GoogleAuthHandler,
+    ForgotPasswordHandler,
+    ResetPasswordHandler,
+    ChangePasswordHandler,
+    UpdateProfileHandler
+];
 
 @Module({
     imports: [
