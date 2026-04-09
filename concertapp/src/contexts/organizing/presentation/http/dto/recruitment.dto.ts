@@ -44,6 +44,11 @@ export class CreateJobPostDto {
     @ApiProperty()
     @IsUUID()
     authorId: string; // Staff manager ID
+
+    @ApiProperty({ required: false, enum: ['STAFF', 'MANAGER'] })
+    @IsString()
+    @IsOptional()
+    category?: string;
 }
 
 export class UpdateJobPostDto {
@@ -86,6 +91,11 @@ export class UpdateJobPostDto {
     @IsString()
     @IsOptional()
     status?: 'OPEN' | 'CLOSED';
+
+    @ApiProperty({ required: false, enum: ['STAFF', 'MANAGER'] })
+    @IsString()
+    @IsOptional()
+    category?: string;
 }
 
 

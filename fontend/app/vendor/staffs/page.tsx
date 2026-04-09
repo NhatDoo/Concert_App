@@ -40,6 +40,24 @@ export default function VendorStaffs() {
         }
     };
 
+    const handlePromote = async (staffId: string) => {
+        if (!confirm('Bạn có chắc chắn muốn thăng hạng nhân viên này lên MANAGER không?')) return;
+        try {
+            const res = await fetch(`${API_URL}/vendor/staffs/${staffId}/promote`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                alert('Thăng hạng thành công!');
+                fetchStaffs();
+            } else {
+                alert('Có lỗi xảy ra, vui lòng thử lại.');
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     useEffect(() => {
         if (token) fetchStaffs();
     }, [token]);
@@ -129,6 +147,24 @@ export default function VendorStaffs() {
                                     <span className="text-xs font-bold">{staff.user.phoneNumber || 'N/A'}</span>
                                 </div>
                             </div>
+
+                            {/* Actions */}
+                            {staff.role !== 'VENDOR_ADMIN' && staff.role !== 'MANAGER' && (
+                                <div className="mt-6 flex flex-col gap-2">
+                                    <button
+                                        onClick={() => handlePromote(staff.id)}
+                                        className="w-full py-3 bg-amber-50 text-amber-600 font-bold text-xs uppercase tracking-widest rounded-xl border border-amber-100 hover:bg-amber-600 hover:text-white transition-all">
+                                        🚀 Thăng cấp Quản lý
+                                    </button>
+                                </div>
+                            )}
+                            {staff.role !== 'VENDOR_ADMIN' && (
+                                <div className="mt-2 flex flex-col gap-2">
+                                    <button className="w-full py-3 bg-slate-50 text-slate-600 font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-900 hover:text-white transition-all">
+                                        📝 Giao nhiệm vụ
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

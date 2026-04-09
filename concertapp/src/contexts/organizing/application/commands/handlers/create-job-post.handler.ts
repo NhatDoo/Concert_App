@@ -25,7 +25,8 @@ export class CreateJobPostHandler implements ICommandHandler<CreateJobPostComman
                 companyName: command.companyName,
                 companyLogo: command.companyLogo,
                 location: command.location,
-                salary: command.salary
+                salary: command.salary,
+                category: command.category
             }
         );
 

@@ -139,7 +139,7 @@ export default function VendorDashboard() {
                         <Link href="/vendor/logistics" className="text-[10px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-500 transition-colors">Xem tất cả</Link>
                     </div>
 
-                    <div className="flex-1 space-y-2">
+                    {/* <div className="flex-1 space-y-2">
                         <ActivityItem
                             title="Đã vận chuyển 50 dàn loa Line-Array đến Sân vận động Mỹ Đình"
                             time="2 giờ trước"
@@ -165,7 +165,7 @@ export default function VendorDashboard() {
                             time="2 days ago"
                             type="SYSTEM"
                         />
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Right Status Panel */}

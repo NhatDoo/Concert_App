@@ -12,6 +12,7 @@ export class EventRequirement {
         public readonly authorId: string,
         public readonly vendorId: string | null,
         public readonly staffNeeded: number,
+        public readonly equipmentNeeded: number,
         public readonly budgetAllocated: number,
         public status: EventRequirementStatus = EventRequirementStatus.PENDING,
         public readonly createdAt: Date = new Date(),
@@ -25,6 +26,7 @@ export class EventRequirement {
         authorId: string,
         vendorId: string | null,
         staffNeeded: number,
+        equipmentNeeded: number,
         budgetAllocated: number
     ): EventRequirement {
         return new EventRequirement(
@@ -34,6 +36,7 @@ export class EventRequirement {
             authorId,
             vendorId,
             staffNeeded,
+            equipmentNeeded,
             budgetAllocated,
             EventRequirementStatus.PENDING,
             new Date(),

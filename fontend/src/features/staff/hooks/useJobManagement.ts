@@ -77,7 +77,11 @@ export const useJobManagement = (user: any, token: string | null) => {
             setStaffRecords(Array.isArray(staffData) ? staffData : [staffData]);
 
             const authorIdToFetch = staff?.id || user.id;
-            console.log('[JobManagement] Fetching jobs for authorId:', authorIdToFetch);
+            const contextIdToFetch = staff?.organizerId || staff?.vendorId || user.id;
+
+            console.log('[JobManagement] Fetching jobs:', { authorId: authorIdToFetch, contextId: contextIdToFetch });
+
+            // Search for jobs authored by this manager OR belonging to this organizer/vendor
             const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${authorIdToFetch}&includeClosed=true`);
             const jobsData = await jobsRes.json();
             const allJobs = Array.isArray(jobsData) ? jobsData : [];
@@ -134,7 +138,7 @@ export const useJobManagement = (user: any, token: string | null) => {
     };
 
     const createJob = async (jobData: any, onSuccess?: () => void) => {
-      
+
         if (!user) return;
         if (!staffRecords[0]) {
             notify('error', 'Hồ sơ tuyển dụng của bạn đang được chuẩn bị. Vui lòng thử lại sau giây lát.');
@@ -145,7 +149,7 @@ export const useJobManagement = (user: any, token: string | null) => {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
             const body = JSON.stringify({
                 ...jobData,
-                organizerId: staffRecords[0]?.organizerId || user?.id,
+                organizerId: staffRecords[0]?.organizerId || staffRecords[0]?.vendorId || user?.id,
                 authorId: staffRecords[0]?.id || user?.id
             });
             console.log('[JobManagement] Final POST Body:', body);

@@ -55,8 +55,11 @@ export interface StaffRecord {
     name: string;
     role: string;
     userId: string;
+    managerId?: string;
+    vendorId?: string;
     organizerId?: string;
     concertId?: string;
     tasks: Task[];
     concert?: { id: string; name: string; startDate: string };
+    manager?: { id: string; name: string; role: string };
 }

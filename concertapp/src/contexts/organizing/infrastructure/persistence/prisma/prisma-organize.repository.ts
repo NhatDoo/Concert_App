@@ -158,9 +158,10 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                         description: req.description,
                         status: req.status,
                         staffNeeded: req.staffNeeded,
+                        equipmentNeeded: req.equipmentNeeded,
                         budgetAllocated: req.budgetAllocated,
                         createdAt: req.createdAt,
-                        updatedAt: req.updatedAt
+                        updatedAt: req.updatedAt 
                     }))
                 });
             }

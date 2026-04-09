@@ -15,6 +15,7 @@ export const RequirementModal: React.FC<Props> = ({ concertId, vendors, authorId
         title: '',
         description: '',
         staffNeeded: 0,
+        equipmentNeeded: 0,
         budgetAllocated: 0,
         vendorId: '' // Optional: linked to a specific vendor
     });
@@ -74,7 +75,7 @@ export const RequirementModal: React.FC<Props> = ({ concertId, vendors, authorId
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
+                    <div className="grid grid-cols-3 gap-8">
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 pl-2">
                                 <Users className="w-3 h-3 text-red-500" />
@@ -83,7 +84,7 @@ export const RequirementModal: React.FC<Props> = ({ concertId, vendors, authorId
                             <input
                                 type="number"
                                 required
-                                min="1"
+                                min="0"
                                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-red-500 font-bold"
                                 value={formData.staffNeeded}
                                 onChange={(e) => setFormData({ ...formData, staffNeeded: parseInt(e.target.value) || 0 })}
@@ -91,12 +92,27 @@ export const RequirementModal: React.FC<Props> = ({ concertId, vendors, authorId
                         </div>
                         <div className="space-y-2">
                             <div className="flex items-center gap-2 pl-2">
-                                <DollarSign className="w-3 h-3 text-green-500" />
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Ngân sách dự kiến (VNĐ)</label>
+                                <Package className="w-3 h-3 text-blue-500" />
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Thiết bị cần thiết</label>
                             </div>
                             <input
                                 type="number"
                                 required
+                                min="0"
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-red-500 font-bold"
+                                value={formData.equipmentNeeded}
+                                onChange={(e) => setFormData({ ...formData, equipmentNeeded: parseInt(e.target.value) || 0 })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 pl-2">
+                                <DollarSign className="w-3 h-3 text-green-500" />
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Ngân sách dự kiến</label>
+                            </div>
+                            <input
+                                type="number"
+                                required
+                                min="0"
                                 className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-red-500 font-bold"
                                 placeholder="0"
                                 value={formData.budgetAllocated}

@@ -22,7 +22,8 @@ import {
     ClipboardList,
     ShoppingBag,
     ShieldCheck,
-    Award
+    Award,
+    Send
 } from 'lucide-react';
 import { RootState } from '../../../stores/store';
 import { ManagementHub } from './ManagementHub';
@@ -112,14 +113,21 @@ export const ManagerDashboard = () => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-            // Fallback to manager's concertId if staff isn't assigned yet
+            // Determine endpoint and concertId context
+            const isVendorManager = !!staffRecords[0]?.vendorId;
             const concertId = assignTaskModal.concertId || staffRecords[0]?.concertId;
-            if (!concertId) {
+
+            let url = `${apiUrl}/organize/${concertId}/staff/${assignTaskModal.staffId}/tasks`;
+
+            if (isVendorManager) {
+                // For Vendor Managers, we use the vendor-specific endpoint which handles concertId resolution
+                url = `${apiUrl}/vendor/staffs/${assignTaskModal.staffId}/tasks`;
+            } else if (!concertId) {
                 notify('error', 'Không tìm thấy ID sự kiện');
                 return;
             }
 
-            const res = await fetch(`${apiUrl}/organize/${concertId}/staff/${assignTaskModal.staffId}/tasks`, {
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -154,7 +162,7 @@ export const ManagerDashboard = () => {
     const [stats, setStats] = useState({ activeJobs: 0, totalApps: 0, pendingReview: 0 });
 
     useEffect(() => {
-        if (activeTab === 'job-board') fetchDiscoverJobs('EVENT_MANAGER');
+        if (activeTab === 'job-board') fetchDiscoverJobs();
     }, [activeTab, fetchDiscoverJobs]);
 
     useEffect(() => {
@@ -181,8 +189,12 @@ export const ManagerDashboard = () => {
                         <Target className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className={`text-2xl font-black tracking-tight text-slate-900 uppercase`}>UNIT MANAGER</h1>
-                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Trưởng bộ phận</p>
+                        <h1 className={`text-2xl font-black tracking-tight text-slate-900 uppercase`}>
+                            {staffRecords[0]?.vendorId ? 'VENDOR MANAGER' : 'UNIT MANAGER'}
+                        </h1>
+                        <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">
+                            {staffRecords[0]?.vendorId ? 'Quản lý đối tác' : 'Trưởng bộ phận'}
+                        </p>
                     </div>
                 </div>
 
@@ -191,6 +203,7 @@ export const ManagerDashboard = () => {
                         { id: 'overview', icon: LayoutDashboard, label: 'Tổng quan Hub' },
                         { id: 'job-board', icon: Briefcase, label: 'Sàn Việc Làm' },
                         { id: 'team', icon: Users, label: 'Nhân sự Team' },
+                        { id: 'invitations', icon: Send, label: 'Lời Mời Hợp Tác' },
                         { id: 'settings', icon: Settings, label: 'Hồ sơ & Hệ thống' },
                     ].map((item, i) => (
                         <button
@@ -239,14 +252,14 @@ export const ManagerDashboard = () => {
                     </div>
                 )}
 
-                {user && <CollaborationInvitations user={user as any} token={token} />}
+
 
                 <header className="flex justify-between items-end">
                     <div className="animate-in fade-in slide-in-from-left-5 duration-700">
                         <p className="text-rose-600 text-[10px] font-black uppercase tracking-[0.3em] mb-2">Management Dashboard</p>
                         <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none">Chào, {user?.name?.split(' ')[0]}</h2>
                         <p className="text-slate-500 text-sm mt-4 font-medium">
-                            Bạn đang quản trị tin tuyển dụng và đội ngũ nhân sự của bộ phận.
+                            Bạn đang quản trị tin tuyển dụng và đội ngũ nhân sự {staffRecords[0]?.vendorId ? 'của Vendor' : 'của bộ phận'}.
                         </p>
                     </div>
                     <div className="flex items-center gap-8">
@@ -311,7 +324,7 @@ export const ManagerDashboard = () => {
 
                 {activeTab === 'team' && (
                     <TeamHub
-                        organizerId={staffRecords[0]?.organizerId || user?.id}
+                        organizerId={staffRecords[0]?.vendorId || staffRecords[0]?.organizerId || user?.id}
                         token={token}
                         onAssignTask={(staffId, concertId, name) => setAssignTaskModal({ staffId, concertId, staffName: name })}
                     />
@@ -320,14 +333,21 @@ export const ManagerDashboard = () => {
                 {activeTab === 'job-board' && (
                     <JobBoard
                         jobs={discoverJobs.filter(j =>
-                            j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            j.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+                            j.authorId !== staffRecords[0]?.id &&
+                            (j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                j.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
                         )}
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}
                         onSelectJob={setSelectedDiscoverJob}
                         loading={loading}
                     />
+                )}
+
+                {activeTab === 'invitations' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+                        {user && <CollaborationInvitations user={user as any} token={token} />}
+                    </div>
                 )}
 
                 {activeTab === 'settings' && (

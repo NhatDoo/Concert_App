@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, Min, IsOptional, IsString } from 'class-validator';
 
 export class CreateEventRequirementDto {
     @ApiProperty()
@@ -13,10 +14,16 @@ export class CreateEventRequirementDto {
     @ApiProperty({ required: false })
     description?: string;
 
-    @ApiProperty()
+    @IsNumber()
+    @Min(0)
     staffNeeded: number;
 
-    @ApiProperty()
+    @ApiProperty({ description: 'Number of equipment items needed for this requirement', default: 0 })
+    @IsNumber()
+    @Min(0)
+    equipmentNeeded: number;
+
+    @ApiProperty({ description: 'Allocated budget for this operation requirement', default: 0 })
     budgetAllocated: number;
 
     @ApiProperty({ required: false })

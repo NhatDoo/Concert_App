@@ -19,7 +19,8 @@ import {
     ShieldCheck,
     Award,
     TrendingUp,
-    Target
+    Target,
+    Send
 } from 'lucide-react';
 import { RootState } from '../../../stores/store';
 import { ManagementHub } from './ManagementHub';
@@ -151,7 +152,7 @@ export const EventManagerDashboard = () => {
     };
 
     useEffect(() => {
-        if (activeTab === 'job-board') fetchDiscoverJobs('ORGANIZER');
+        if (activeTab === 'job-board') fetchDiscoverJobs();
     }, [activeTab, fetchDiscoverJobs]);
 
     if (loading) return (
@@ -182,6 +183,7 @@ export const EventManagerDashboard = () => {
                         { id: 'job-board', icon: Briefcase, label: 'Cơ hội cộng tác' },
                         { id: 'marketplace', icon: ShoppingBag, label: 'Sàn nhân sự (Market)' },
                         { id: 'team', icon: Users, label: 'Đối tác & Team' },
+                        { id: 'invitations', icon: Send, label: 'Lời Mời Hợp Tác' },
                         { id: 'settings', icon: Settings, label: 'Hồ sơ chuyên môn' },
                     ].map((item, i) => (
                         <button key={i} onClick={() => setActiveTab(item.id)} className={`w-full group flex items-center justify-between p-4 rounded-3xl transition-all duration-500 font-bold ${activeTab === item.id ? 'bg-amber-600 text-white shadow-2xl shadow-amber-600/30 -translate-y-1' : 'text-slate-500 hover:bg-amber-50 hover:text-amber-700'}`}>
@@ -225,7 +227,7 @@ export const EventManagerDashboard = () => {
                     </div>
                 )}
 
-                {user && <CollaborationInvitations user={user as any} token={token} />}
+
 
                 <header className="flex justify-between items-end">
                     <div className="animate-in fade-in slide-in-from-left-8 duration-1000">
@@ -334,14 +336,21 @@ export const EventManagerDashboard = () => {
                     <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
                         <JobBoard
                             jobs={discoverJobs.filter(j =>
-                                j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                j.companyName.toLowerCase().includes(searchTerm.toLowerCase())
+                                j.authorId !== staffRecords[0]?.id &&
+                                (j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                    j.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
                             )}
                             searchTerm={searchTerm}
                             onSearchChange={setSearchTerm}
                             onSelectJob={setSelectedDiscoverJob}
                             loading={loading}
                         />
+                    </div>
+                )}
+
+                {activeTab === 'invitations' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+                        {user && <CollaborationInvitations user={user as any} token={token} />}
                     </div>
                 )}
 

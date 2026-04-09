@@ -14,7 +14,7 @@ export class CreateEventRequirementHandler implements ICommandHandler<CreateEven
     ) { }
 
     async execute(command: CreateEventRequirementCommand): Promise<string> {
-        const { concertId, authorId, title, description, staffNeeded, budgetAllocated, vendorId } = command;
+        const { concertId, authorId, title, description, staffNeeded, equipmentNeeded, budgetAllocated, vendorId } = command;
 
         let organize = await this.repository.findByConcertId(concertId);
         if (!organize) {
@@ -31,6 +31,7 @@ export class CreateEventRequirementHandler implements ICommandHandler<CreateEven
             authorId,
             vendorId,
             staffNeeded,
+            equipmentNeeded,
             budgetAllocated
         );
 

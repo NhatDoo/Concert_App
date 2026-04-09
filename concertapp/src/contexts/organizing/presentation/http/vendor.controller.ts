@@ -8,6 +8,8 @@ import { PrismaService } from '../../../../prisma.service';
 import { RolesGuard } from '../../../organizing/presentation/http/roles.guard';
 import { Roles } from '../../../organizing/presentation/http/roles.decorator';
 import { v4 as uuidv4 } from 'uuid';
+import { AssignStaffTaskDto } from './dto/staff-task.dto';
+import { AssignStaffTaskCommand } from '../../application/commands/staff-task.command';
 
 // ===== DTOs =====
 export class CreateEquipmentDto {
@@ -36,7 +38,8 @@ export class UpdateEquipmentDto {
 export class VendorController {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly queryBus: QueryBus
+        private readonly queryBus: QueryBus,
+        private readonly commandBus: CommandBus
     ) { }
 
     // ---------- Helper: get vendorId from JWT userId ----------
@@ -174,6 +177,8 @@ export class VendorController {
         };
     }
 
+    // ======================== STAFF MANAGEMENT ========================
+
     @Get('staffs')
     @UseGuards(RolesGuard)
     @Roles('VENDOR')
@@ -184,6 +189,58 @@ export class VendorController {
             where: { vendorId },
             include: { user: true },
         });
+    }
+
+    @Patch('staffs/:staffId/promote')
+    @UseGuards(RolesGuard)
+    @Roles('VENDOR')
+    @ApiOperation({ summary: 'Thăng hạng nhân sự lên MANAGER' })
+    async promoteStaff(@Req() req, @Param('staffId') staffId: string) {
+        const vendorId = await this.getVendorId(req.user.id);
+        const staff = await this.prisma.staff.findFirst({ where: { id: staffId, vendorId } });
+        if (!staff) throw new NotFoundException('Staff not found or not owned by this vendor');
+
+        return this.prisma.staff.update({
+            where: { id: staffId },
+            data: { role: 'MANAGER' }
+        });
+    }
+
+    @Post('staffs/:staffId/tasks')
+    @UseGuards(RolesGuard)
+    @Roles('VENDOR')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Vendor trực tiếp giao việc cho Staff/Manager' })
+    async assignTaskToStaff(@Req() req, @Param('staffId') staffId: string, @Body() dto: AssignStaffTaskDto) {
+        const vendorId = await this.getVendorId(req.user.id);
+        const staff = await this.prisma.staff.findFirst({ where: { id: staffId, vendorId } });
+        if (!staff) throw new NotFoundException('Staff not found or not owned by this vendor');
+
+        let concertId = staff.concertId;
+
+        // If staff is not assigned to a concert, try to find the latest active project for this vendor
+        if (!concertId) {
+            const latestRequirement = await this.prisma.eventRequirement.findFirst({
+                where: { vendorId, status: 'ACCEPTED' },
+                orderBy: { updatedAt: 'desc' }
+            });
+            if (latestRequirement) {
+                concertId = latestRequirement.concertId;
+            }
+        }
+
+        if (!concertId) throw new Error('Staff is not assigned to a concert and no active vendor project found');
+
+        const command = new AssignStaffTaskCommand(
+            concertId,
+            staffId,
+            dto.managerId || '',
+            dto.taskName,
+            dto.description,
+            new Date(dto.dueDate)
+        );
+        await this.commandBus.execute(command);
+        return { message: 'Task successfully created and assigned from Vendor' };
     }
 
     // ======================== RECRUITMENT & JOBS ========================
@@ -233,7 +290,7 @@ export class VendorController {
                 salary: dto.salary,
                 organizerId: vendorId, // Using vendorId as organizerId here
                 authorId: authorId,
-                category: 'VENDOR'
+                category: dto.category || 'STAFF'
             }
         });
     }
@@ -318,11 +375,20 @@ export class VendorController {
 
         // Map approved applicant to Vendor staff if approved
         if (status === 'APPROVED') {
+            const vendorId = application.jobPost.organizerId; // organizerId in vendor jobs stores vendorId
+
+            // Find the VENDOR_ADMIN staff record to use as managerId
+            const vendorAdmin = await this.prisma.staff.findFirst({
+                where: { vendorId, role: { in: ['VENDOR_ADMIN', 'VENDOR'] } }
+            });
+
             await this.prisma.staff.update({
                 where: { id: application.applicantId },
                 data: {
-                    vendorId: application.jobPost.organizerId, // organizerId in vendor jobs is the vendorId
+                    vendorId,
+                    organizerId: null,
                     role: application.jobPost.title,
+                    managerId: vendorAdmin?.id ?? null,
                 }
             });
         }

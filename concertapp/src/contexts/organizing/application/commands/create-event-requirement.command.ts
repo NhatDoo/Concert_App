@@ -5,6 +5,7 @@ export class CreateEventRequirementCommand {
         public readonly title: string,
         public readonly description: string | null,
         public readonly staffNeeded: number,
+        public readonly equipmentNeeded: number,
         public readonly budgetAllocated: number,
         public readonly vendorId: string | null = null
     ) { }

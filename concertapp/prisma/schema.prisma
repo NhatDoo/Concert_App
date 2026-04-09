@@ -6,29 +6,27 @@ generator client {
 
 datasource db {
   provider = "postgresql"
- 
 }
 
 model User {
-  id           String    @id @default(uuid())
-  name         String
-  phoneNumber  String?
-  email        String    @unique
-  password     String
-  role         String
-  provider     String    @default("LOCAL")
-  googleId     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  refreshToken String?
-  bookings     Booking[]
-  concerts     Concert[]
-  invoices     Invoice[]
-  staffs       Staff[]
-  vendor       Vendor?    
-  resetToken   String?
+  id                String    @id @default(uuid())
+  name              String
+  phoneNumber       String?
+  email             String    @unique
+  password          String
+  role              String
+  provider          String    @default("LOCAL")
+  googleId          String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  refreshToken      String?
+  bookings          Booking[]
+  concerts          Concert[]
+  invoices          Invoice[]
+  staffs            Staff[]
+  vendor            Vendor?
+  resetToken        String?
   resetTokenExpires DateTime?
-
 
   @@index([role])
 }
@@ -53,16 +51,16 @@ model EventReport {
 }
 
 model Concert {
-  id           String        @id @default(uuid())
+  id           String             @id @default(uuid())
   organizerId  String
   name         String
   startDate    DateTime
   location     String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
   imageUrl     String?
   bookings     Booking[]
-  organizer    User          @relation(fields: [organizerId], references: [id])
+  organizer    User               @relation(fields: [organizerId], references: [id])
   organize     Organize?
   performances Performance[]
   staffs       Staff[]
@@ -248,28 +246,28 @@ model Logistics {
 }
 
 model Staff {
-  id           String             @id @default(uuid())
-  userId       String
-  name         String
-  role         String
-  concertId    String?
-  organizerId  String?
-  managerId    String?
-  bio          String?
-  cvUrl        String?
-  reports      EventReport[]
-  jobPosts     JobPost[]          @relation("ManagerJobPosts")
-  concert      Concert?           @relation(fields: [concertId], references: [id])
-  manager      Staff?             @relation("StaffToManager", fields: [managerId], references: [id])
-  reportsTo    Staff[]            @relation("StaffToManager")
-  user         User               @relation(fields: [userId], references: [id])
-  applications StaffApplication[] @relation("ApplicantStaff")
-  tasks        StaffTask[]        @relation("TaskStaff")
-  assignedTasks StaffTask[]       @relation("ManagerAssignedTasks")
-  vendorId     String?
-  vendor Vendor? @relation(fields: [vendorId], references: [id])           
-  requirements  EventRequirement[] @relation("RequirementAuthor")
-  managedShifts Shift[]            @relation("ShiftManager")
+  id             String             @id @default(uuid())
+  userId         String
+  name           String
+  role           String
+  concertId      String?
+  organizerId    String?
+  managerId      String?
+  bio            String?
+  cvUrl          String?
+  reports        EventReport[]
+  jobPosts       JobPost[]          @relation("ManagerJobPosts")
+  concert        Concert?           @relation(fields: [concertId], references: [id])
+  manager        Staff?             @relation("StaffToManager", fields: [managerId], references: [id])
+  reportsTo      Staff[]            @relation("StaffToManager")
+  user           User               @relation(fields: [userId], references: [id])
+  applications   StaffApplication[] @relation("ApplicantStaff")
+  tasks          StaffTask[]        @relation("TaskStaff")
+  assignedTasks  StaffTask[]        @relation("ManagerAssignedTasks")
+  vendorId       String?
+  vendor         Vendor?            @relation(fields: [vendorId], references: [id])
+  requirements   EventRequirement[] @relation("RequirementAuthor")
+  managedShifts  Shift[]            @relation("ShiftManager")
   assignedShifts ShiftAssignment[]
 
   @@index([concertId])
@@ -334,48 +332,48 @@ model StaffInvitation {
 }
 
 model StaffTask {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   staffId     String
   managerId   String?
   taskName    String?
   description String
-  status      String   @default("PENDING")
+  status      String    @default("PENDING")
   dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  
-  staff       Staff    @relation("TaskStaff", fields: [staffId], references: [id], onDelete: Cascade)
-  taskManager Staff?   @relation("ManagerAssignedTasks", fields: [managerId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  staff       Staff  @relation("TaskStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  taskManager Staff? @relation("ManagerAssignedTasks", fields: [managerId], references: [id])
 
   @@index([staffId])
   @@index([managerId])
 }
 
 model Vendor {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  companyName String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id])
-  equipments  Equipment[]
-  orders      LogisticsOrder[]
-  staffs      Staff[]
+  id           String             @id @default(uuid())
+  userId       String             @unique
+  companyName  String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  user         User               @relation(fields: [userId], references: [id])
+  equipments   Equipment[]
+  orders       LogisticsOrder[]
+  staffs       Staff[]
   requirements EventRequirement[]
 }
 
 model Equipment {
-  id          String   @id @default(uuid())
-  vendorId    String
-  name        String
-  category    String
-  description String?
-  totalQty    Int      @default(0)
-  availableQty Int     @default(0)
-  status      String   @default("AVAILABLE")
-  imageUrl    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  vendor      Vendor   @relation(fields: [vendorId], references: [id])
+  id             String               @id @default(uuid())
+  vendorId       String
+  name           String
+  category       String
+  description    String?
+  totalQty       Int                  @default(0)
+  availableQty   Int                  @default(0)
+  status         String               @default("AVAILABLE")
+  imageUrl       String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  vendor         Vendor               @relation(fields: [vendorId], references: [id])
   logisticsItems LogisticsOrderItem[]
 
   @@index([vendorId])
@@ -383,23 +381,23 @@ model Equipment {
 }
 
 model LogisticsOrder {
-  id          String   @id @default(uuid())
-  vendorId    String
-  organizerId String
-  eventId     String?
-  status      String   @default("PENDING")
-  notes       String?
-  orderDate   DateTime @default(now())
+  id           String               @id @default(uuid())
+  vendorId     String
+  organizerId  String
+  eventId      String?
+  status       String               @default("PENDING")
+  notes        String?
+  orderDate    DateTime             @default(now())
   deliveryDate DateTime?
-  vendor      Vendor   @relation(fields: [vendorId], references: [id])
-  items       LogisticsOrderItem[]
+  vendor       Vendor               @relation(fields: [vendorId], references: [id])
+  items        LogisticsOrderItem[]
 
   @@index([vendorId])
   @@index([status])
 }
 
 model LogisticsOrderItem {
-  id          String   @id @default(uuid())
+  id          String         @id @default(uuid())
   orderId     String
   equipmentId String
   quantity    Int
@@ -419,13 +417,14 @@ model EventRequirement {
   description     String?
   status          String   @default("PENDING")
   staffNeeded     Int      @default(0)
+  equipmentNeeded Int      @default(0)
   budgetAllocated Float    @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  concert         Concert  @relation(fields: [concertId], references: [id])
-  author          Staff    @relation("RequirementAuthor", fields: [authorId], references: [id])
-  vendor          Vendor?  @relation(fields: [vendorId], references: [id])
+  concert Concert @relation(fields: [concertId], references: [id])
+  author  Staff   @relation("RequirementAuthor", fields: [authorId], references: [id])
+  vendor  Vendor? @relation(fields: [vendorId], references: [id])
 
   @@index([concertId])
   @@index([authorId])
@@ -441,8 +440,8 @@ model Zone {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  concert     Concert  @relation(fields: [concertId], references: [id])
-  shifts      Shift[]
+  concert Concert @relation(fields: [concertId], references: [id])
+  shifts  Shift[]
 
   @@index([concertId])
 }
@@ -459,8 +458,8 @@ model Shift {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  zone        Zone     @relation(fields: [zoneId], references: [id])
-  manager     Staff?   @relation("ShiftManager", fields: [managerId], references: [id])
+  zone        Zone              @relation(fields: [zoneId], references: [id])
+  manager     Staff?            @relation("ShiftManager", fields: [managerId], references: [id])
   assignments ShiftAssignment[]
 
   @@index([zoneId])
@@ -468,17 +467,17 @@ model Shift {
 }
 
 model ShiftAssignment {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   shiftId   String
   staffId   String
-  status    String   @default("ASSIGNED")
+  status    String    @default("ASSIGNED")
   checkIn   DateTime?
   checkOut  DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  shift     Shift    @relation(fields: [shiftId], references: [id])
-  staff     Staff    @relation(fields: [staffId], references: [id])
+  shift Shift @relation(fields: [shiftId], references: [id])
+  staff Staff @relation(fields: [staffId], references: [id])
 
   @@index([shiftId])
   @@index([staffId])

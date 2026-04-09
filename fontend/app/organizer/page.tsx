@@ -11,6 +11,7 @@ import { CreateJobModal } from '../../src/features/staff/components/CreateJobMod
 import { EditJobModal } from '../../src/features/staff/components/EditJobModal';
 import { useJobManagement } from '../../src/features/staff/hooks/useJobManagement';
 import { JobPost } from '../../src/features/staff/components/types';
+import { TeamHub } from '../../src/features/staff/components/TeamHub';
 
 export default function OrganizerDashboard() {
     const { user, token } = useSelector((state: RootState) => state.auth);
@@ -30,7 +31,8 @@ export default function OrganizerDashboard() {
     const [showModal, setShowModal] = useState(false);
     const [createForm, setCreateForm] = useState({ name: '', startDate: '', location: '', image: null as File | null });
     const [isCreating, setIsCreating] = useState(false);
-    const [activeTab, setActiveTab] = useState<'events' | 'recruitment'>('events');
+    const [activeTab, setActiveTab] = useState<'events' | 'staff' | 'revenue'>('events');
+    const [staffSubTab, setStaffSubTab] = useState<'stats' | 'teamhub' | 'recruitment'>('stats');
 
     const {
         loading: jobsLoading,
@@ -245,20 +247,27 @@ export default function OrganizerDashboard() {
                                 </Link>
                             </div>
                         </div>
-                        <div className="flex bg-gray-100 p-1 rounded-2xl">
+                        <div className="flex bg-gray-100 p-1 rounded-2xl overflow-x-auto">
                             <button
                                 onClick={() => setActiveTab('events')}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'events' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'events' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             >
                                 <LayoutDashboard className="w-4 h-4" />
                                 Sự kiện
                             </button>
                             <button
-                                onClick={() => setActiveTab('recruitment')}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'recruitment' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                onClick={() => setActiveTab('staff')}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'staff' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                             >
-                                <Briefcase className="w-4 h-4" />
-                                Tuyển dụng
+                                <Users className="w-4 h-4" />
+                                Nhân sự
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('revenue')}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === 'revenue' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <DollarSign className="w-4 h-4" />
+                                Doanh thu
                             </button>
                         </div>
                         {activeTab === 'events' && (
@@ -274,9 +283,9 @@ export default function OrganizerDashboard() {
                 </div>
             </div>
 
-            {activeTab === 'events' ? (
+            {activeTab === 'events' && (
                 <>
-                    <div className="container mx-auto px-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="container mx-auto px-4 mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-500 mb-1">Tổng sự kiện</p>
@@ -288,165 +297,11 @@ export default function OrganizerDashboard() {
                         </div>
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-500 mb-1">Vé đã bán</p>
-                                <p className="text-3xl font-bold text-gray-900">{stats.totalTicketsSold.toLocaleString('vi-VN')}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-purple-50 text-purple-600 flex items-center justify-center rounded-xl">
-                                <Ticket className="w-6 h-6" />
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div>
                                 <p className="text-sm font-medium text-gray-500 mb-1">Sắp diễn ra</p>
                                 <p className="text-3xl font-bold text-gray-900">{stats.activeConcerts}</p>
                             </div>
                             <div className="w-12 h-12 bg-orange-50 text-orange-600 flex items-center justify-center rounded-xl">
                                 <Calendar className="w-6 h-6" />
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-500 mb-1">Doanh thu</p>
-                                <p className="text-3xl font-bold text-gray-900">{stats.totalRevenue.toLocaleString('vi-VN')} ₫</p>
-                            </div>
-                            <div className="w-12 h-12 bg-green-50 text-green-600 flex items-center justify-center rounded-xl">
-                                <DollarSign className="w-6 h-6" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Staff Statistics */}
-                    <div className="container mx-auto px-4 mt-12 mb-12">
-                        <div className="flex items-center gap-4 mb-8">
-                            <div className="w-1.5 h-8 bg-red-600 rounded-full"></div>
-                            <h2 className="text-2xl font-bold text-gray-900 leading-none">Thống kê Nhân sự</h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-red-100 transition-all">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500 mb-1">Tổng nhân sự</p>
-                                    <p className="text-3xl font-bold text-gray-900">{stats.staffStats.totalStaff}</p>
-                                </div>
-                                <div className="p-3 bg-red-50 text-red-600 rounded-xl group-hover:scale-110 transition-transform">
-                                    <Users className="w-6 h-6" />
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-blue-100 transition-all">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500 mb-1">Nhiệm vụ (Xong/Tổng)</p>
-                                    <p className="text-3xl font-bold text-blue-600">
-                                        {stats.staffStats.completedTasks}/{stats.staffStats.totalTasks}
-                                    </p>
-                                </div>
-                                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
-                                    <CheckCircle className="w-6 h-6" />
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-amber-100 transition-all">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500 mb-1">Đang chờ</p>
-                                    <p className="text-3xl font-bold text-amber-600">{stats.staffStats.pendingTasks}</p>
-                                </div>
-                                <div className="p-3 bg-amber-50 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
-                                    <Clock className="w-6 h-6" />
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-emerald-100 transition-all">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500 mb-1">Hiệu suất chung</p>
-                                    <p className="text-3xl font-bold text-emerald-600">{stats.staffStats.taskCompletionRate}%</p>
-                                </div>
-                                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
-                                    <Star className="w-6 h-6" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Staff Performance Table */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="p-6 border-b border-gray-50">
-                                <h3 className="font-bold text-gray-900">Chi tiết hiệu suất nhân viên</h3>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead>
-                                        <tr className="bg-gray-50/50">
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Nhân viên</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Vai trò</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Nhiệm vụ</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Hoàn thành</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Tỷ lệ</th>
-                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Trạng thái</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {(stats.staffStats as any).staffDetails?.length > 0 ? (stats.staffStats as any).staffDetails.map((staff: any) => (
-                                            <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center justify-between group/row">
-                                                        <div>
-                                                            <div className="font-bold text-gray-900">{staff.name}</div>
-                                                            <div className="text-[10px] text-gray-400 truncate max-w-[150px]">{staff.email}</div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setAssignTaskModal({
-                                                                staffId: staff.id,
-                                                                concertId: staff.concertId,
-                                                                staffName: staff.name
-                                                            })}
-                                                            className="opacity-0 group-hover/row:opacity-100 p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition shadow-sm"
-                                                            title="Giao nhiệm vụ mới"
-                                                        >
-                                                            <Plus className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg">
-                                                        {staff.role}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-center font-bold text-gray-600">
-                                                    {staff.totalTasks}
-                                                </td>
-                                                <td className="px-6 py-4 text-center font-bold text-emerald-600">
-                                                    {staff.completedTasks}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="text-xs font-bold text-gray-900 mb-1">{staff.rate}%</div>
-                                                    <div className="w-20 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
-                                                        <div
-                                                            className={`h-full ${staff.rate >= 80 ? 'bg-emerald-500' : staff.rate >= 40 ? 'bg-amber-500' : 'bg-red-500'} transition-all`}
-                                                            style={{ width: `${staff.rate}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${staff.rate === 100 ? 'bg-emerald-50 text-emerald-600' :
-                                                        staff.totalTasks === 0 ? 'bg-gray-50 text-gray-400' :
-                                                            'bg-amber-50 text-amber-600'
-                                                        }`}>
-                                                        <div className={`w-1.5 h-1.5 rounded-full ${staff.rate === 100 ? 'bg-emerald-600' :
-                                                            staff.totalTasks === 0 ? 'bg-gray-400' :
-                                                                'bg-amber-600 animate-pulse'
-                                                            }`}></div>
-                                                        {staff.rate === 100 ? 'Hoàn thành' : staff.totalTasks === 0 ? 'Chưa giao' : 'Đang làm'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        )) : (
-                                            <tr>
-                                                <td colSpan={6} className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">
-                                                    Chưa có dữ liệu nhân sự chi tiết
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
                             </div>
                         </div>
                     </div>
@@ -473,7 +328,7 @@ export default function OrganizerDashboard() {
                                 </button>
                             </div>
                         ) : (
-                            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-12">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
@@ -606,21 +461,199 @@ export default function OrganizerDashboard() {
                         </div>
                     )}
                 </>
-            ) : (
-                <div className="container mx-auto px-4 mt-12">
-                    <ManagementHub
-                        managerJobPosts={managerJobs}
-                        selectedManagerJob={selectedJob}
-                        jobApplications={jobApplications}
-                        onSelectJob={fetchJobApplications}
-                        onReview={reviewApplication}
-                        onCreateJob={() => setShowCreateJobModal(true)}
-                        onEditJob={(job) => setEditingJob(job)}
-                        onDeleteJob={deleteJob}
-                        onToggleStatus={toggleStatus}
-                        accentColor="red-600"
-                        filterApplicantRole={['EVENT_MANAGER', 'VENDOR']}
-                    />
+            )}
+
+            {activeTab === 'revenue' && (
+                <div className="container mx-auto px-4 mt-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-black text-gray-400 uppercase tracking-widest mb-2">Tổng doanh thu</p>
+                                <p className="text-4xl font-black text-gray-900">{stats.totalRevenue.toLocaleString('vi-VN')} <span className="text-xl text-gray-400">VND</span></p>
+                            </div>
+                            <div className="w-16 h-16 bg-green-50 text-green-600 flex items-center justify-center rounded-2xl">
+                                <DollarSign className="w-8 h-8" />
+                            </div>
+                        </div>
+                        <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100 flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-black text-gray-400 uppercase tracking-widest mb-2">Vé đã bán</p>
+                                <p className="text-4xl font-black text-gray-900">{stats.totalTicketsSold.toLocaleString('vi-VN')} <span className="text-xl text-gray-400">vé</span></p>
+                            </div>
+                            <div className="w-16 h-16 bg-purple-50 text-purple-600 flex items-center justify-center rounded-2xl">
+                                <Ticket className="w-8 h-8" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'staff' && (
+                <div className="container mx-auto px-4 mt-8 mb-12 space-y-6">
+                    {/* Sub Menu cho Staff */}
+                    <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-gray-200 overflow-x-auto shadow-sm w-fit">
+                        <button
+                            onClick={() => setStaffSubTab('stats')}
+                            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${staffSubTab === 'stats' ? 'bg-red-50 text-red-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >Thống kê & Đánh giá</button>
+                        <button
+                            onClick={() => setStaffSubTab('teamhub')}
+                            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${staffSubTab === 'teamhub' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >Sơ đồ tổ chức & Giao việc</button>
+                        <button
+                            onClick={() => setStaffSubTab('recruitment')}
+                            className={`px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${staffSubTab === 'recruitment' ? 'bg-green-50 text-green-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >Tuyển dụng</button>
+                    </div>
+
+                    {staffSubTab === 'stats' && (
+                        <div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-red-100 transition-all">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500 mb-1">Tổng nhân sự</p>
+                                        <p className="text-3xl font-bold text-gray-900">{stats.staffStats.totalStaff}</p>
+                                    </div>
+                                    <div className="p-3 bg-red-50 text-red-600 rounded-xl group-hover:scale-110 transition-transform">
+                                        <Users className="w-6 h-6" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-blue-100 transition-all">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500 mb-1">Nhiệm vụ (Xong/Tổng)</p>
+                                        <p className="text-3xl font-bold text-blue-600">
+                                            {stats.staffStats.completedTasks}/{stats.staffStats.totalTasks}
+                                        </p>
+                                    </div>
+                                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+                                        <CheckCircle className="w-6 h-6" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-amber-100 transition-all">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500 mb-1">Đang chờ</p>
+                                        <p className="text-3xl font-bold text-amber-600">{stats.staffStats.pendingTasks}</p>
+                                    </div>
+                                    <div className="p-3 bg-amber-50 text-amber-600 rounded-xl group-hover:scale-110 transition-transform">
+                                        <Clock className="w-6 h-6" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between group hover:border-emerald-100 transition-all">
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500 mb-1">Hiệu suất chung</p>
+                                        <p className="text-3xl font-bold text-emerald-600">{stats.staffStats.taskCompletionRate}%</p>
+                                    </div>
+                                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform">
+                                        <Star className="w-6 h-6" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Staff Performance Table */}
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="p-6 border-b border-gray-50">
+                                    <h3 className="font-bold text-gray-900">Chi tiết hiệu suất nhân viên</h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="bg-gray-50/50">
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Nhân viên</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Vai trò</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Nhiệm vụ</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Hoàn thành</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Tỷ lệ</th>
+                                                <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Trạng thái</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {(stats.staffStats as any).staffDetails?.length > 0 ? (stats.staffStats as any).staffDetails.map((staff: any) => (
+                                                <tr key={staff.id} className="hover:bg-gray-50/50 transition-colors">
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center justify-between group/row">
+                                                            <div>
+                                                                <div className="font-bold text-gray-900">{staff.name}</div>
+                                                                <div className="text-[10px] text-gray-400 truncate max-w-[150px]">{staff.email}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg">
+                                                            {staff.role}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center font-bold text-gray-600">
+                                                        {staff.totalTasks}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center font-bold text-emerald-600">
+                                                        {staff.completedTasks}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="text-xs font-bold text-gray-900 mb-1">{staff.rate}%</div>
+                                                        <div className="w-20 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
+                                                            <div
+                                                                className={`h-full ${staff.rate >= 80 ? 'bg-emerald-500' : staff.rate >= 40 ? 'bg-amber-500' : 'bg-red-500'} transition-all`}
+                                                                style={{ width: `${staff.rate}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold ${staff.rate === 100 ? 'bg-emerald-50 text-emerald-600' :
+                                                            staff.totalTasks === 0 ? 'bg-gray-50 text-gray-400' :
+                                                                'bg-amber-50 text-amber-600'
+                                                            }`}>
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${staff.rate === 100 ? 'bg-emerald-600' :
+                                                                staff.totalTasks === 0 ? 'bg-gray-400' :
+                                                                    'bg-amber-600 animate-pulse'
+                                                                }`}></div>
+                                                            {staff.rate === 100 ? 'Hoàn thành' : staff.totalTasks === 0 ? 'Chưa giao' : 'Đang làm'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">
+                                                        Chưa có dữ liệu nhân sự chi tiết
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {staffSubTab === 'teamhub' && (
+                        <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+                            <TeamHub
+                                organizerId={user.id}
+                                token={token}
+                                onAssignTask={(staffId, concertId, name) => setAssignTaskModal({ staffId, concertId, staffName: name })}
+                            />
+                        </div>
+                    )}
+
+                    {staffSubTab === 'recruitment' && (
+                        <div>
+                            <ManagementHub
+                                managerJobPosts={managerJobs}
+                                selectedManagerJob={selectedJob}
+                                jobApplications={jobApplications}
+                                onSelectJob={fetchJobApplications}
+                                onReview={reviewApplication}
+                                onCreateJob={() => setShowCreateJobModal(true)}
+                                onEditJob={(job) => setEditingJob(job)}
+                                onDeleteJob={deleteJob}
+                                onToggleStatus={toggleStatus}
+                                accentColor="green-600"
+                                filterApplicantRole={['EVENT_MANAGER', 'VENDOR', 'MANAGER', 'STAFF']}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
 

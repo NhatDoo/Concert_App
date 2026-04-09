@@ -48,6 +48,7 @@ export default function VendorRecruitment() {
         requirements: '',
         location: '',
         salary: '',
+        category: 'STAFF',
     });
 
     const { token } = useSelector((state: RootState) => state.auth);
@@ -88,7 +89,7 @@ export default function VendorRecruitment() {
             });
             if (response.ok) {
                 setIsAddModalOpen(false);
-                setFormData({ title: '', description: '', requirements: '', location: '', salary: '' });
+                setFormData({ title: '', description: '', requirements: '', location: '', salary: '', category: 'STAFF' });
                 fetchJobs();
             }
         } catch (error) {
@@ -279,6 +280,17 @@ export default function VendorRecruitment() {
                                         value={formData.salary}
                                         onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Đối tượng tuyển dụng</label>
+                                    <select
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:border-indigo-500 transition-all font-bold"
+                                        value={formData.category}
+                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                    >
+                                        <option value="STAFF">Nhân viên (STAFF)</option>
+                                        <option value="MANAGER">Quản lý (MANAGER)</option>
+                                    </select>
                                 </div>
                             </div>
                             <div>

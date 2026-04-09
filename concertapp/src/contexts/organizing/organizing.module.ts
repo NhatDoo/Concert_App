@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { OrganizingInfrastructureModule } from './infrastructure/organizing-infrastructure.module';
-import { OrganizingController } from './presentation/http/organizing.controller';
+import { StaffController } from './presentation/http/staff.controller';
+import { JobBoardController } from './presentation/http/job-board.controller';
+import { OperationController } from './presentation/http/operation.controller';
+import { ConcertController } from './presentation/http/concert.controller';
 import { VendorController } from './presentation/http/vendor.controller';
 import { AssignLocationHandler } from './application/commands/handlers/assign-location.handler';
 import { AddLogisticsTaskHandler, UpdateLogisticsStatusHandler } from './application/commands/handlers/logistics.handler';
@@ -62,7 +65,10 @@ export const EventHandlers = [
         OrganizingInfrastructureModule
     ],
     controllers: [
-        OrganizingController,
+        StaffController,
+        JobBoardController,
+        OperationController,
+        ConcertController,
         VendorController
     ],
     providers: [

@@ -33,6 +33,12 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onClick }) => {
                         {job.category === 'VENDOR' && (
                             <span className="bg-indigo-50 text-indigo-600 text-[8px] font-black px-2 py-0.5 rounded-md border border-indigo-100 ml-2">VENDOR</span>
                         )}
+                        {job.category === 'MANAGER' && (
+                            <span className="bg-rose-50 text-rose-600 text-[8px] font-black px-2 py-0.5 rounded-md border border-rose-100 ml-2">QUẢN LÝ</span>
+                        )}
+                        {job.category === 'STAFF' && (
+                            <span className="bg-slate-100 text-slate-600 text-[8px] font-black px-2 py-0.5 rounded-md border border-slate-200 ml-2">NHÂN VIÊN</span>
+                        )}
                     </p>
                 </div>
 
