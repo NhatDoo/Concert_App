@@ -19,9 +19,15 @@ import { UpdateJobPostCommand } from '../../application/commands/update-job-post
 import { DeleteJobPostCommand } from '../../application/commands/delete-job-post.command';
 import { GetJobsQuery } from '../../application/queries/get-jobs.query';
 import { GetJobByIdQuery } from '../../application/queries/get-job-by-id.query';
+import { GetRequirementsQuery } from '../../application/queries/get-requirements.query';
 import { UpdateStaffProfileCommand } from '../../application/commands/update-staff-profile.command';
 import { InviteStaffDto } from './dto/invite-staff.dto';
 import { CreateJobPostDto, UpdateJobPostDto, CreateApplicationDto, ReviewApplicationDto, UpdateStaffProfileDto } from './dto';
+import { CreateEventRequirementDto, CreateZoneDto, CreateShiftDto, AssignShiftDto } from './dto/operation.dto';
+import { CreateEventRequirementCommand } from '../../application/commands/create-event-requirement.command';
+import { CreateZoneCommand } from '../../application/commands/create-zone.command';
+import { CreateShiftCommand } from '../../application/commands/create-shift.command';
+import { AssignStaffToShiftCommand } from '../../application/commands/assign-staff-shift.command';
 import { PrismaService } from '../../../../prisma.service';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
@@ -38,6 +44,102 @@ export class OrganizingController {
         private readonly prisma: PrismaService,
         private readonly cvStorageService: CvStorageService
     ) { }
+
+    @Get(':organizerId/vendors')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Lấy danh sách các đối tác (Vendor Staff) thuộc Organizer' })
+    async getVendors(@Param('organizerId') organizerId: string) {
+        return await this.prisma.staff.findMany({
+            where: {
+                organizerId: organizerId,
+                OR: [
+                    { role: 'VENDOR' },
+                    { user: { role: 'VENDOR' } }
+                ]
+            },
+            include: {
+                user: { select: { name: true, email: true } }
+            },
+            orderBy: { name: 'asc' }
+        });
+    }
+
+
+    @Get('requirements')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Lấy danh sách yêu cầu vận hành với bộ lọc' })
+    async getRequirements(
+        @Query('concertId') concertId?: string,
+        @Query('vendorId') vendorId?: string,
+        @Query('status') status?: string
+    ) {
+        return await this.queryBus.execute(new GetRequirementsQuery({ concertId, vendorId, status }));
+    }
+
+    @Post('requirements')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Tạo yêu cầu vận hành mới' })
+    async createRequirement(@Body() dto: CreateEventRequirementDto) {
+        // 1. Resolve author (User -> Staff)
+        let staffAuthor = await this.prisma.staff.findFirst({
+            where: { userId: dto.authorId }
+        });
+
+        if (!staffAuthor) {
+            const user = await this.prisma.user.findUnique({ where: { id: dto.authorId } });
+            staffAuthor = await this.prisma.staff.create({
+                data: {
+                    id: uuidv4(),
+                    userId: dto.authorId,
+                    name: user?.name || 'Organizer',
+                    role: 'ORGANIZER'
+                }
+            });
+        }
+
+        // 2. Resolve vendorId (could be Staff ID or User ID, but needs to be Vendor ID)
+        let resolvedVendorId = dto.vendorId;
+        if (dto.vendorId) {
+            // Check if it's already a valid Vendor ID
+            const isVendor = await this.prisma.vendor.findUnique({ where: { id: dto.vendorId } });
+
+            if (!isVendor) {
+                // If not, maybe it's a Staff ID
+                const staffVendor = await this.prisma.staff.findUnique({
+                    where: { id: dto.vendorId },
+                    include: { user: { include: { vendor: true } } }
+                });
+
+                if (staffVendor) {
+                    if (staffVendor.user.vendor) {
+                        resolvedVendorId = staffVendor.user.vendor.id;
+                    } else {
+                        // Create a vendor profile for this user if missing
+                        const newVendor = await this.prisma.vendor.create({
+                            data: {
+                                id: uuidv4(),
+                                userId: staffVendor.userId,
+                                companyName: staffVendor.name
+                            }
+                        });
+                        resolvedVendorId = newVendor.id;
+                    }
+                }
+            }
+        }
+
+        const command = new CreateEventRequirementCommand(
+            dto.concertId,
+            staffAuthor.id,
+            dto.title,
+            dto.description || null,
+            dto.staffNeeded,
+            dto.budgetAllocated,
+            resolvedVendorId || null
+        );
+        const result = await this.commandBus.execute(command);
+        return { id: result, message: 'Yêu cầu vận hành đã được tạo' };
+    }
 
     @Get('stats/:organizerId')
     @HttpCode(HttpStatus.OK)
@@ -237,6 +339,19 @@ export class OrganizingController {
         });
     }
 
+    @Get('staff/my-invitations')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Lấy danh sách lời mời cho người dùng hiện tại dựa trên email' })
+    async getMyInvitations(@Query('email') email: string) {
+        return await this.prisma.staffInvitation.findMany({
+            where: {
+                email: email,
+                status: 'PENDING'
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
     @Post('staff/join')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Join an organizers team using an invite key' })
@@ -309,8 +424,13 @@ export class OrganizingController {
         let whereClause: any = { organizerId: null };
 
         if (filterRole) {
-            // Exact role filter - for role-based marketplace (e.g., Organizer sees only EVENT_MANAGERs)
-            whereClause.role = filterRole;
+            // Support multiple roles and check both Staff.role and User.role
+            const roles = filterRole.split(',').map(r => r.trim());
+
+            whereClause.OR = [
+                { role: { in: roles } },
+                { user: { role: { in: roles } } }
+            ];
         } else if (role) {
             // Fuzzy search by keyword
             whereClause.role = { contains: role, mode: 'insensitive' };
@@ -320,7 +440,7 @@ export class OrganizingController {
             where: whereClause,
             include: {
                 user: {
-                    select: { name: true, email: true, phoneNumber: true }
+                    select: { name: true, email: true, phoneNumber: true, role: true }
                 }
             }
         });
@@ -374,6 +494,33 @@ export class OrganizingController {
         return { message: 'Nhân sự đã được gỡ bỏ khỏi Team' };
     }
 
+    @Post('shifts')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create a new shift within a zone' })
+    async createShift(@Body() dto: CreateShiftDto) {
+        const command = new CreateShiftCommand(
+            dto.concertId,
+            dto.zoneId,
+            dto.title,
+            dto.description || null,
+            new Date(dto.startTime),
+            new Date(dto.endTime),
+            dto.headcount,
+            dto.managerId || null
+        );
+        const id = await this.commandBus.execute(command);
+        return { id, message: 'Ca làm việc đã được khởi tạo' };
+    }
+
+    @Post('shifts/assign')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Assign a staff member to a shift' })
+    async assignToShift(@Body() dto: AssignShiftDto, @Query('concertId') concertId: string) {
+        if (!concertId) throw new Error('concertId query param is required');
+        const command = new AssignStaffToShiftCommand(concertId, dto.shiftId, dto.staffId);
+        await this.commandBus.execute(command);
+        return { message: 'Nhân sự đã được gán vào ca làm việc thành công' };
+    }
 
     @Get('staff/me')
     @HttpCode(HttpStatus.OK)
@@ -410,17 +557,15 @@ export class OrganizingController {
                 dto.authorId
             );
             const result = await this.commandBus.execute(command);
-            console.log('[Controller] Successfully created job post:', result);
             return result;
         } catch (error) {
-            console.error('[Controller] Error creating job post:', error);
             throw error;
         }
     }
 
     @Get('jobs')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get active job postings, optionally filtered by author, role or organizer' })
+    @ApiOperation({ summary: 'Get active job postings' })
     async getJobs(
         @Query('authorId') authorId?: string,
         @Query('organizerId') organizerId?: string,
@@ -448,7 +593,7 @@ export class OrganizingController {
     @Roles('MANAGER', 'ORGANIZER')
     @UseGuards(RolesGuard)
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Delete a job posting and its applications' })
+    @ApiOperation({ summary: 'Delete a job posting' })
     async deleteJobPost(@Param('id') id: string) {
         await this.commandBus.execute(new DeleteJobPostCommand(id));
         return { message: 'Tin tuyển dụng đã được xóa thành công' };
@@ -461,16 +606,9 @@ export class OrganizingController {
         return await this.queryBus.execute(new GetJobByIdQuery(id));
     }
 
-    @Get('organizer/:organizerId/jobs')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all job postings for a specific organizer' })
-    async getJobsByOrganizer(@Param('organizerId') organizerId: string) {
-        return await this.queryBus.execute(new GetJobsQuery({ organizerId, includeClosed: true }));
-    }
-
     @Get('applications')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all applications, optionally filtering by applicantId' })
+    @ApiOperation({ summary: 'Get all applications' })
     async getApplications(@Query('applicantId') applicantId?: string) {
         if (applicantId) {
             return await this.prisma.staffApplication.findMany({
@@ -500,7 +638,7 @@ export class OrganizingController {
 
     @Patch('staff/profile')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Update logged-in staff member profile' })
+    @ApiOperation({ summary: 'Update logged-in staff profile' })
     async updateStaffProfile(@Body() dto: UpdateStaffProfileDto, @Query('userId') userId: string) {
         if (!userId) throw new Error('User ID is required');
         const command = new UpdateStaffProfileCommand(
@@ -516,36 +654,20 @@ export class OrganizingController {
 
     @Post('applications/upload-cv')
     @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Upload CV to MinIo CV bucket' })
+    @ApiOperation({ summary: 'Upload CV' })
     @UseInterceptors(FileInterceptor('file'))
     async uploadCv(@UploadedFile() file: Express.Multer.File) {
-        if (!file) throw new Error('Tệp CV không được tìm thấy');
-
+        if (!file) throw new Error('File not found');
         const fileName = `${uuidv4()}-${file.originalname}`;
         const url = await this.cvStorageService.uploadCv(fileName, file.buffer, file.mimetype);
-
         return { url };
-    }
-
-    @Get('jobs/:jobPostId/applications')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all applications for a specific job post' })
-    async getJobApplications(@Param('jobPostId') jobPostId: string) {
-        return await this.prisma.staffApplication.findMany({
-            where: { jobPostId },
-            include: {
-                applicant: {
-                    select: { id: true, name: true, bio: true, cvUrl: true, role: true }
-                }
-            }
-        });
     }
 
     @Patch('applications/:id/review')
     @Roles('MANAGER', 'ORGANIZER')
     @UseGuards(RolesGuard)
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Approve or reject a job application' })
+    @ApiOperation({ summary: 'Review application' })
     async reviewApplication(@Param('id') id: string, @Body() dto: ReviewApplicationDto) {
         const app = await this.prisma.staffApplication.findUnique({
             where: { id },
@@ -555,13 +677,12 @@ export class OrganizingController {
         if (!app) return { message: 'Application not found' };
 
         if (dto.status === 'APPROVED') {
-            // Move applicant into the organizational structure
             await this.prisma.staff.update({
                 where: { id: app.applicantId },
                 data: {
                     organizerId: app.jobPost.organizerId,
                     managerId: app.jobPost.authorId,
-                    role: app.jobPost.title // Use job title as their specific role
+                    role: app.jobPost.title
                 }
             });
         }
@@ -574,38 +695,34 @@ export class OrganizingController {
 
     @Get('staff/my-tasks/:userId')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all concert assignments and tasks for a specific staff user' })
+    @ApiOperation({ summary: 'Get tasks for user' })
     async getMyTasks(@Param('userId') userId: string) {
         return await this.prisma.staff.findMany({
             where: { userId: userId },
             include: {
-                concert: {
-                    select: {
-                        id: true,
-                        name: true,
-                        startDate: true
-                    }
-                },
+                concert: { select: { id: true, name: true, startDate: true } },
                 tasks: {
+                    include: { taskManager: { select: { id: true, name: true, role: true } } },
+                    orderBy: { createdAt: 'desc' }
+                },
+                assignedShifts: {
                     include: {
-                        taskManager: {
-                            select: {
-                                id: true,
-                                name: true,
-                                role: true
+                        shift: {
+                            include: {
+                                zone: true
                             }
                         }
-                    },
-                    orderBy: { createdAt: 'desc' }
+                    }
                 }
             }
         });
     }
+
     @Post('reports')
     @Roles('EVENT_MANAGER', 'MANAGER')
     @UseGuards(RolesGuard)
     @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Submit final event report' })
+    @ApiOperation({ summary: 'Submit event report' })
     async submitReport(@Body() dto: any) {
         return this.prisma.eventReport.create({
             data: {
@@ -624,12 +741,22 @@ export class OrganizingController {
 
     @Get('reports/:organizerId')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all event reports for an organizer' })
+    @ApiOperation({ summary: 'Get reports' })
     async getReports(@Param('organizerId') organizerId: string) {
         return this.prisma.eventReport.findMany({
             where: { organizerId },
             include: { author: true },
             orderBy: { createdAt: 'desc' }
         });
+    }
+
+
+    @Post('zones')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create zone' })
+    async createZone(@Body() dto: CreateZoneDto) {
+        const command = new CreateZoneCommand(dto.concertId, dto.name, dto.description, dto.capacity);
+        const id = await this.commandBus.execute(command);
+        return { id, message: 'Khu vực vận hành đã được lập' };
     }
 }

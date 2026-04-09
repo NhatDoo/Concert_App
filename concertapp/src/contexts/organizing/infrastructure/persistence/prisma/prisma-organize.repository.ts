@@ -21,6 +21,14 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                     include: {
                         staffs: {
                             include: { tasks: true }
+                        },
+                        requirements: true,
+                        zones: {
+                            include: {
+                                shifts: {
+                                    include: { assignments: true }
+                                }
+                            }
                         }
                     }
                 }
@@ -136,6 +144,62 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                         }))
                     });
                 }
+            }
+            // Persist Requirements
+            await tx.eventRequirement.deleteMany({ where: { concertId: persistence.concertId } });
+            if (persistence.requirements.length > 0) {
+                await tx.eventRequirement.createMany({
+                    data: persistence.requirements.map(req => ({
+                        id: req.id,
+                        concertId: persistence.concertId,
+                        authorId: req.authorId,
+                        vendorId: req.vendorId,
+                        title: req.title,
+                        description: req.description,
+                        status: req.status,
+                        staffNeeded: req.staffNeeded,
+                        budgetAllocated: req.budgetAllocated,
+                        createdAt: req.createdAt,
+                        updatedAt: req.updatedAt
+                    }))
+                });
+            }
+
+            // Persist Zones, Shifts, and Assignments
+            await tx.shiftAssignment.deleteMany({ where: { shift: { zone: { concertId: persistence.concertId } } } });
+            await tx.shift.deleteMany({ where: { zone: { concertId: persistence.concertId } } });
+            await tx.zone.deleteMany({ where: { concertId: persistence.concertId } });
+
+            for (const z of persistence.zones) {
+                await tx.zone.create({
+                    data: {
+                        id: z.id,
+                        concertId: persistence.concertId,
+                        name: z.name,
+                        description: z.description,
+                        capacity: z.capacity,
+                        shifts: {
+                            create: z.shifts.map(sh => ({
+                                id: sh.id,
+                                managerId: sh.managerId,
+                                title: sh.title,
+                                description: sh.description,
+                                startTime: sh.startTime,
+                                endTime: sh.endTime,
+                                headcount: sh.headcount,
+                                assignments: {
+                                    create: sh.assignments.map(a => ({
+                                        id: a.id,
+                                        staffId: a.staffId,
+                                        status: a.status,
+                                        checkIn: a.checkIn,
+                                        checkOut: a.checkOut
+                                    }))
+                                }
+                            }))
+                        }
+                    }
+                });
             }
         });
     }

@@ -34,6 +34,7 @@ import { JobDetailsDrawer } from './JobDetailsDrawer';
 import { StaffApplyModal } from './StaffApplyModal';
 import { JobPost } from './types';
 import { useJobManagement } from '../hooks/useJobManagement';
+import { CollaborationInvitations } from './CollaborationInvitations';
 
 export const EventManagerDashboard = () => {
     const { user, token } = useSelector((state: RootState) => state.auth);
@@ -223,6 +224,8 @@ export const EventManagerDashboard = () => {
                         <p className="font-black text-[10px] uppercase tracking-[0.25em]">{notification.msg}</p>
                     </div>
                 )}
+
+                {user && <CollaborationInvitations user={user as any} token={token} />}
 
                 <header className="flex justify-between items-end">
                     <div className="animate-in fade-in slide-in-from-left-8 duration-1000">

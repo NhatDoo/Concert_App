@@ -11,6 +11,7 @@ interface PotentialStaff {
         name: string;
         email: string;
         phoneNumber: string;
+        role: string;
     };
 }
 
@@ -132,7 +133,9 @@ export const StaffDiscover: React.FC<StaffDiscoverProps> = ({ organizerId, manag
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-black text-slate-900 group-hover:text-red-600 transition-colors uppercase">{staff.user.name}</h3>
-                                                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">{staff.role}</p>
+                                                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                                                    {staff.user.role === 'VENDOR' ? 'VENDOR MANAGER' : staff.role}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="bg-slate-50 text-slate-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">

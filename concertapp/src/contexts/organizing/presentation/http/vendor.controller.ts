@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, UseGuards, HttpCode, HttpStatus, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Req, Query, UseGuards, HttpCode, HttpStatus, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { GetRequirementsQuery } from '../../application/queries/get-requirements.query';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsOptional, IsInt, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -32,7 +34,10 @@ export class UpdateEquipmentDto {
 @ApiBearerAuth()
 @Controller('vendor')
 export class VendorController {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly queryBus: QueryBus
+    ) { }
 
     // ---------- Helper: get vendorId from JWT userId ----------
     private async getVendorId(userId: string): Promise<string> {
@@ -323,6 +328,39 @@ export class VendorController {
         }
 
         return this.prisma.staffApplication.update({
+            where: { id },
+            data: { status }
+        });
+    }
+
+    // ======================== OPERATION REQUIREMENTS ========================
+
+    @Get('requirements')
+    @UseGuards(RolesGuard)
+    @Roles('VENDOR')
+    @ApiOperation({ summary: 'Lấy danh sách yêu cầu từ Event Manager gửi cho Vendor này' })
+    async getRequirements(@Req() req, @Query('status') status?: string) {
+        const vendorId = await this.getVendorId(req.user.id);
+        return this.queryBus.execute(new GetRequirementsQuery({ vendorId, status }));
+    }
+
+    @Patch('requirements/:id/status')
+    @UseGuards(RolesGuard)
+    @Roles('VENDOR')
+    @ApiOperation({ summary: 'Chấp nhận hoặc từ chối yêu cầu từ Event Manager' })
+    async updateRequirementStatus(
+        @Req() req,
+        @Param('id') id: string,
+        @Body('status') status: 'ACCEPTED' | 'REJECTED'
+    ) {
+        const vendorId = await this.getVendorId(req.user.id);
+        const reqDoc = await this.prisma.eventRequirement.findFirst({
+            where: { id, vendorId }
+        });
+
+        if (!reqDoc) throw new NotFoundException('Requirement not found or not assigned to this vendor');
+
+        return this.prisma.eventRequirement.update({
             where: { id },
             data: { status }
         });

@@ -5,6 +5,9 @@ import { Logistics, LogisticsStatus } from "../entity/logistics.entity";
 import { Staff } from "../entity/staff.entity"; // Import Staff
 import { LocationAssignedEvent } from "../events/location-assigned.event";
 import { StaffTask } from "../entity/staff-task.entity";
+import { EventRequirement } from "../entity/event-requirement.entity";
+import { Zone } from "../entity/zone.entity";
+import { Shift } from "../entity/shift.entity";
 
 export class OrganizeAggregate extends AggregateRoot {
     private readonly id: string;
@@ -13,8 +16,19 @@ export class OrganizeAggregate extends AggregateRoot {
     private equipments: Divide[];
     private logistics: Logistics[];
     private staffs: Staff[]; // Added staffs array
+    private requirements: EventRequirement[];
+    private zones: Zone[];
 
-    private constructor(id: string, concertId: string, location: Location | null = null, equipments: Divide[] = [], logistics: Logistics[] = [], staffs: Staff[] = []) {
+    private constructor(
+        id: string,
+        concertId: string,
+        location: Location | null = null,
+        equipments: Divide[] = [],
+        logistics: Logistics[] = [],
+        staffs: Staff[] = [],
+        requirements: EventRequirement[] = [],
+        zones: Zone[] = []
+    ) {
         super();
         this.id = id;
         this.concertId = concertId;
@@ -22,15 +36,26 @@ export class OrganizeAggregate extends AggregateRoot {
         this.equipments = equipments;
         this.logistics = logistics;
         this.staffs = staffs;
+        this.requirements = requirements;
+        this.zones = zones;
     }
 
     static create(id: string, concertId: string): OrganizeAggregate {
         if (!concertId) throw new Error("Concert ID is required for organization");
-        return new OrganizeAggregate(id, concertId, null, [], [], []);
+        return new OrganizeAggregate(id, concertId, null, [], [], [], [], []);
     }
 
-    static hydrate(id: string, concertId: string, location: Location | null, equipments: Divide[], logistics: Logistics[], staffs: Staff[]): OrganizeAggregate {
-        return new OrganizeAggregate(id, concertId, location, equipments, logistics, staffs);
+    static hydrate(
+        id: string,
+        concertId: string,
+        location: Location | null,
+        equipments: Divide[],
+        logistics: Logistics[],
+        staffs: Staff[],
+        requirements: EventRequirement[] = [],
+        zones: Zone[] = []
+    ): OrganizeAggregate {
+        return new OrganizeAggregate(id, concertId, location, equipments, logistics, staffs, requirements, zones);
     }
 
     // --- Location Management (Địa điểm) ---
@@ -131,5 +156,29 @@ export class OrganizeAggregate extends AggregateRoot {
         }
 
         return true;
+    }
+
+    // --- Requirement Management ---
+    addRequirement(requirement: EventRequirement): void {
+        this.requirements.push(requirement);
+    }
+
+    getRequirements(): EventRequirement[] {
+        return this.requirements;
+    }
+
+    // --- Zone & Shift Management ---
+    addZone(zone: Zone): void {
+        this.zones.push(zone);
+    }
+
+    getZones(): Zone[] {
+        return this.zones;
+    }
+
+    addShiftToZone(zoneId: string, shift: Shift): void {
+        const zone = this.zones.find(z => z.id === zoneId);
+        if (!zone) throw new Error("Zone not found");
+        zone.addShift(shift);
     }
 }

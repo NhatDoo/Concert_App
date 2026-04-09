@@ -6,6 +6,10 @@ import { Logistics, LogisticsStatus } from '../../../domain/entity/logistics.ent
 import { Staff } from '../../../domain/entity/staff.entity';
 import { StaffRole } from '../../../domain/VO/staff.role';
 import { StaffTask, StaffTaskStatus } from '../../../domain/entity/staff-task.entity';
+import { EventRequirement, EventRequirementStatus } from '../../../domain/entity/event-requirement.entity';
+import { Zone } from '../../../domain/entity/zone.entity';
+import { Shift } from '../../../domain/entity/shift.entity';
+import { ShiftAssignment } from '../../../domain/entity/shift-assignment.entity';
 
 export class OrganizeMapper {
     static toDomain(raw: any): OrganizeAggregate | null {
@@ -43,13 +47,40 @@ export class OrganizeMapper {
             return new Staff(s.id, s.userId, s.name, StaffRole.create(s.role), s.concertId, tasks);
         });
 
+        const requirements: EventRequirement[] = (raw.concert?.requirements || []).map((req: any) =>
+            new EventRequirement(
+                req.id,
+                req.title,
+                req.description,
+                req.authorId,
+                req.vendorId,
+                req.staffNeeded,
+                req.budgetAllocated,
+                req.status as EventRequirementStatus,
+                req.createdAt,
+                req.updatedAt
+            )
+        );
+
+        const zones: Zone[] = (raw.concert?.zones || []).map((z: any) => {
+            const shifts = (z.shifts || []).map((sh: any) => {
+                const assignments = (sh.assignments || []).map((a: any) =>
+                    new ShiftAssignment(a.id, a.shiftId, a.staffId, a.status, a.checkIn, a.checkOut)
+                );
+                return new Shift(sh.id, sh.managerId, sh.title, sh.description, sh.startTime, sh.endTime, sh.headcount, assignments);
+            });
+            return new Zone(z.id, z.name, z.description, z.capacity, shifts);
+        });
+
         return OrganizeAggregate.hydrate(
             raw.id,
             raw.concertId,
             locationVal,
             equipments,
             logistics,
-            staffs
+            staffs,
+            requirements,
+            zones
         );
     }
 
@@ -95,6 +126,41 @@ export class OrganizeMapper {
                     managerId: t.getManagerId(),
                     dueDate: t.getDueDate(),
                     staffId: t.getStaffId()
+                }))
+            })),
+            requirements: organize.getRequirements().map(req => ({
+                id: req.id,
+                title: req.title,
+                description: req.description,
+                authorId: req.authorId,
+                vendorId: req.vendorId,
+                staffNeeded: req.staffNeeded,
+                budgetAllocated: req.budgetAllocated,
+                status: req.status,
+                createdAt: req.createdAt,
+                updatedAt: req.updatedAt
+            })),
+            zones: organize.getZones().map(z => ({
+                id: z.id,
+                name: z.name,
+                description: z.description,
+                capacity: z.capacity,
+                shifts: z.getShifts().map(sh => ({
+                    id: sh.id,
+                    managerId: sh.managerId,
+                    title: sh.title,
+                    description: sh.description,
+                    startTime: sh.startTime,
+                    endTime: sh.endTime,
+                    headcount: sh.headcount,
+                    assignments: sh.getAssignments().map(a => ({
+                        id: a.id,
+                        shiftId: a.shiftId,
+                        staffId: a.staffId,
+                        status: a.status,
+                        checkIn: a.checkIn,
+                        checkOut: a.checkOut
+                    }))
                 }))
             }))
         };

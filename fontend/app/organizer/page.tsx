@@ -507,6 +507,9 @@ export default function OrganizerDashboard() {
                                                             <Link href={`/organizer/concerts/${event.id}/tickets`} className="hover:text-blue-500 transition" title="Quản lý vé">
                                                                 <Ticket className="w-5 h-5" />
                                                             </Link>
+                                                            <Link href={`/organizer/concerts/${event.id}/operations`} className="hover:text-red-500 transition" title="Quản lý vận hành (Operations)">
+                                                                <ClipboardList className="w-5 h-5" />
+                                                            </Link>
                                                             <Link href={`/organizer/concerts/${event.id}/program`} className="hover:text-purple-500 transition" title="Lịch diễn (Line-up)">
                                                                 <Music className="w-5 h-5" />
                                                             </Link>
@@ -616,7 +619,7 @@ export default function OrganizerDashboard() {
                         onDeleteJob={deleteJob}
                         onToggleStatus={toggleStatus}
                         accentColor="red-600"
-                        filterApplicantRole="EVENT_MANAGER"
+                        filterApplicantRole={['EVENT_MANAGER', 'VENDOR']}
                     />
                 </div>
             )}

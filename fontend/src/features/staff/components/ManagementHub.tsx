@@ -27,7 +27,7 @@ interface ManagementHubProps {
     onDeleteJob: (id: string) => void;
     onToggleStatus: (id: string, currentStatus: string) => void;
     accentColor?: string;
-    filterApplicantRole?: string;
+    filterApplicantRole?: string | string[];
 }
 
 export const ManagementHub: React.FC<ManagementHubProps> = ({
@@ -50,7 +50,11 @@ export const ManagementHub: React.FC<ManagementHubProps> = ({
     const bgAccentLight = `bg-${accentColor.split('-')[0]}-50`;
 
     const displayApplications = filterApplicantRole
-        ? jobApplications.filter(app => app.applicant.role === filterApplicantRole)
+        ? jobApplications.filter(app =>
+            Array.isArray(filterApplicantRole)
+                ? filterApplicantRole.includes(app.applicant.role)
+                : app.applicant.role === filterApplicantRole
+        )
         : jobApplications;
 
     return (

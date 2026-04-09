@@ -51,6 +51,7 @@ interface StaffMember {
 
 const ROLES = [
     { value: 'EVENT_MANAGER', label: 'EVENT MANAGER (Tổng quản)', color: 'bg-red-600' },
+    { value: 'VENDOR', label: 'Vendor (Nhà cung cấp / Đối tác)', color: 'bg-amber-600' },
     { value: 'PRODUCTION_MANAGER', label: 'Production Manager', color: 'bg-purple-600' },
     { value: 'TECHNICAL_MANAGER', label: 'Technical Manager', color: 'bg-blue-600' },
     { value: 'MARKETING_MANAGER', label: 'Marketing Manager', color: 'bg-green-600' },
@@ -224,7 +225,7 @@ export default function GlobalStaffManagement() {
 
             <main className="container mx-auto px-4 mt-10">
                 {activeTab === 'marketplace' ? (
-                    <StaffDiscover organizerId={user!.id} filterRole="EVENT_MANAGER" onInviteSuccess={notify} />
+                    <StaffDiscover organizerId={user!.id} filterRole="EVENT_MANAGER, VENDOR" onInviteSuccess={notify} />
                 ) : activeTab === 'reports' ? (
                     <div className="space-y-8 animate-in fade-in duration-700">
                         <section className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
@@ -295,8 +296,8 @@ export default function GlobalStaffManagement() {
                                     <p className="text-2xl font-black">{invitations.filter(i => i.status === 'PENDING').length}</p>
                                 </div>
                                 <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-                                    <p className="text-[10px] font-black text-green-500 uppercase mb-1">Cấp Quản lý</p>
-                                    <p className="text-2xl font-black">{allStaff.filter(s => s.role.includes('MANAGER')).length}</p>
+                                    <p className="text-[10px] font-black text-green-500 uppercase mb-1">Cấp Quản lý / Vendor</p>
+                                    <p className="text-2xl font-black">{allStaff.filter(s => s.role.includes('MANAGER') || s.role === 'VENDOR').length}</p>
                                 </div>
                             </div>
 

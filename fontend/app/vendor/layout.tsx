@@ -3,7 +3,7 @@
 import React, { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Truck, Users, Settings, LogOut, Package, Wrench, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Truck, Users, Settings, LogOut, Package, Wrench, ClipboardList, Bell } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../src/stores/store';
 import { logout } from '../../src/features/auth/stores/authSlice';
@@ -44,6 +44,7 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
 
     const navigation = [
         { href: '/vendor', icon: <LayoutDashboard size={20} />, label: 'Tổng quan' },
+        { href: '/vendor/requirements', icon: <Bell size={20} />, label: 'Yêu cầu từ BTC' },
         { href: '/vendor/equipment', icon: <Truck size={20} />, label: 'Trang thiết bị' },
         { href: '/vendor/staffs', icon: <Users size={20} />, label: 'Quản lý nhân sự' },
         { href: '/vendor/logistics', icon: <Package size={20} />, label: 'Hậu cần & Cung ứng' },

@@ -565,6 +565,7 @@ export default function StaffManagementPage({ params }: { params: Promise<{ id: 
                                     <option value="Technical">Kỹ thuật âm thanh/ánh sáng</option>
                                     <option value="Reception">Lễ tân / Check-in</option>
                                     <option value="Manager">Quản lý khu vực</option>
+                                    <option value="Vendor">Nhà cung cấp / Đối tác (Vendor)</option>
                                     <option value="Staff">Nhân viên hiện trường</option>
                                 </select>
                             </div>
@@ -635,6 +636,7 @@ export default function StaffManagementPage({ params }: { params: Promise<{ id: 
                                     <option value="Technical">Kỹ thuật âm thanh/ánh sáng</option>
                                     <option value="Reception">Lễ tân / Check-in</option>
                                     <option value="Manager">Quản lý khu vực</option>
+                                    <option value="Vendor">Nhà cung cấp / Đối tác (Vendor)</option>
                                 </select>
                             </div>
 

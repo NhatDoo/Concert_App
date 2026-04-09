@@ -13,10 +13,15 @@ import { CreateJobPostHandler } from './application/commands/handlers/create-job
 import { UpdateJobPostHandler } from './application/commands/handlers/update-job-post.handler';
 import { DeleteJobPostHandler } from './application/commands/handlers/delete-job-post.handler';
 import { UpdateStaffProfileHandler } from './application/commands/handlers/update-staff-profile.handler';
+import { CreateEventRequirementHandler } from './application/commands/handlers/create-event-requirement.handler';
+import { CreateZoneHandler } from './application/commands/handlers/create-zone.handler';
+import { CreateShiftHandler } from './application/commands/handlers/create-shift.handler';
+import { AssignStaffToShiftHandler } from './application/commands/handlers/assign-staff-shift.handler';
 import { GetOrganizerStatsHandler } from './application/queries/handlers/get-organizer-stats.handler';
 import { GetConcertStaffHandler } from './application/queries/handlers/get-concert-staff.handler';
 import { GetJobsHandler } from './application/queries/handlers/get-jobs.handler';
 import { GetJobByIdHandler } from './application/queries/handlers/get-job-by-id.handler';
+import { GetRequirementsHandler } from './application/queries/handlers/get-requirements.handler';
 import { CreateStaffOnRegistrationHandler } from './application/events/handlers/create-staff-on-registration.handler';
 
 export const CommandHandlers = [
@@ -32,14 +37,19 @@ export const CommandHandlers = [
     CreateJobPostHandler,
     UpdateJobPostHandler,
     DeleteJobPostHandler,
-    UpdateStaffProfileHandler
+    UpdateStaffProfileHandler,
+    CreateEventRequirementHandler,
+    CreateZoneHandler,
+    CreateShiftHandler,
+    AssignStaffToShiftHandler
 ];
 
 export const QueryHandlers = [
     GetOrganizerStatsHandler,
     GetConcertStaffHandler,
     GetJobsHandler,
-    GetJobByIdHandler
+    GetJobByIdHandler,
+    GetRequirementsHandler
 ];
 
 export const EventHandlers = [

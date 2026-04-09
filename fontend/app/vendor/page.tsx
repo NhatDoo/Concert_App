@@ -5,6 +5,7 @@ import { Truck, Users, Package, ClipboardList, Activity, ArrowUpRight, TrendingU
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../src/stores/store';
+import { CollaborationInvitations } from '../../src/features/staff/components/CollaborationInvitations';
 
 const StatCard = ({ icon, label, value, trend, color, link }: { icon: React.ReactNode, label: string, value: string | number, trend: string, color: string, link: string }) => (
     <Link href={link} className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm hover:shadow-xl hover:shadow-slate-200 hover:-translate-y-1 transition-all group overflow-hidden relative block text-left">
@@ -71,6 +72,7 @@ export default function VendorDashboard() {
 
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {user && <CollaborationInvitations user={user as any} token={token} />}
             {/* Header info */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
