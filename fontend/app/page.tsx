@@ -27,6 +27,7 @@ export default function Home() {
   const { user } = useSelector((state: RootState) => state.auth);
   const { events, searchResults, searchQuery, loading, error } = useSelector((state: RootState) => state.concerts);
   const { currentLocation } = useLocation();
+  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
 
   useEffect(() => {
     // Nếu đã đăng nhập, tự động chuyển hướng về dashboard tương ứng
@@ -53,9 +54,15 @@ export default function Home() {
 
   // Lọc event dựa theo Location Context "Tất cả địa điểm", "Hồ Chí Minh", "Hà Nội", "Đà Nẵng"
   const allEvents = searchResults || events;
-  const displayEvents = currentLocation === 'all'
+  let displayEvents = currentLocation === 'all'
     ? allEvents
     : allEvents.filter(e => (e as any).city === currentLocation);
+
+  if (selectedCategory && selectedCategory !== 'more') {
+    displayEvents = displayEvents.filter(e =>
+      (e as any).categoryIds?.includes(selectedCategory)
+    );
+  }
 
   return (
     <div className="pb-16">
@@ -78,11 +85,15 @@ export default function Home() {
         {/* Categories Shortcut */}
         <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 flex flex-wrap justify-center md:justify-between gap-4">
           {CATEGORIES.map(cat => (
-            <div key={cat.id} className="flex flex-col items-center gap-3 cursor-pointer group">
-              <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl ${cat.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+            <div
+              key={cat.id}
+              onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+              className={`flex flex-col items-center gap-3 cursor-pointer group transition-all ${selectedCategory === cat.id ? 'scale-110' : ''}`}
+            >
+              <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl ${selectedCategory === cat.id ? 'bg-amber-600 text-white shadow-xl shadow-amber-200' : cat.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                 <cat.icon className="w-6 h-6 md:w-8 md:h-8" />
               </div>
-              <span className="text-xs md:text-sm font-semibold text-gray-700">{cat.name}</span>
+              <span className={`text-xs md:text-sm font-semibold transition-colors ${selectedCategory === cat.id ? 'text-amber-600 font-bold' : 'text-gray-700'}`}>{cat.name}</span>
             </div>
           ))}
         </div>
@@ -94,6 +105,8 @@ export default function Home() {
               <h2 className="text-2xl font-bold text-red-600">
                 {searchResults ? (
                   <>Kết quả cho: <span className="text-black italic">"{searchQuery}"</span></>
+                ) : selectedCategory ? (
+                  <>Sự kiện: <span className="text-black italic">{CATEGORIES.find(c => c.id === selectedCategory)?.name}</span></>
                 ) : (
                   <>
                     Sự Kiện Nổi Bật
@@ -104,12 +117,15 @@ export default function Home() {
                 )}
               </h2>
               <p className="text-gray-500 mt-2">
-                {searchResults ? `Tìm thấy ${searchResults.length} sự kiện` : 'Khám phá các sự kiện hot nhất đang diễn ra'}
+                {searchResults ? `Tìm thấy ${searchResults.length} sự kiện` : selectedCategory ? `Đang hiển thị các sự kiện thuộc danh mục này` : 'Khám phá các sự kiện hot nhất đang diễn ra'}
               </p>
             </div>
-            {searchResults ? (
+            {(searchResults || selectedCategory) ? (
               <button
-                onClick={() => dispatch(clearSearch())}
+                onClick={() => {
+                  dispatch(clearSearch());
+                  setSelectedCategory(null);
+                }}
                 className="text-red-600 font-semibold hover:underline flex items-center gap-1"
               >
                 <X className="w-4 h-4" /> Quay lại tất cả

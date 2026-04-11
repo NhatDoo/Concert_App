@@ -57,6 +57,7 @@ model Concert {
   name         String
   startDate    DateTime
   location     String
+  seatMapUrl   String?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   imageUrl     String?
@@ -65,6 +66,7 @@ model Concert {
   organize     Organize?
   performances Performance[]
   staffs       Staff[]
+  seats        Seat[]
   tickets      Ticket[]
   ticketPools  TicketPool[]
   requirements EventRequirement[]
@@ -115,6 +117,7 @@ model Booking {
   concert     Concert   @relation(fields: [concertId], references: [id])
   user        User      @relation(fields: [userId], references: [id])
   invoices    Invoice[]
+  seats       Seat[]
   tickets     Ticket[]
 
   @@index([userId])
@@ -140,14 +143,38 @@ model Ticket {
   bookingId  String?
   concertId  String
   userId     String?
+  seatId     String?
+  seatLabel  String?
   ticketType String
   price      Float
   version    Int      @default(1)
   booking    Booking? @relation(fields: [bookingId], references: [id])
   concert    Concert  @relation(fields: [concertId], references: [id])
+  seat       Seat?    @relation(fields: [seatId], references: [id])
 
   @@index([bookingId])
   @@index([concertId])
+  @@index([seatId])
+}
+
+model Seat {
+  id         String   @id @default(uuid())
+  concertId  String
+  bookingId  String?
+  label      String
+  ticketType String
+  price      Float
+  status     String   @default("AVAILABLE")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+  concert    Concert  @relation(fields: [concertId], references: [id])
+  tickets    Ticket[]
+
+  @@unique([concertId, label])
+  @@index([concertId])
+  @@index([bookingId])
+  @@index([status])
 }
 
 model Invoice {
@@ -503,8 +530,6 @@ model Category {
   id        String    @id @default(uuid())
   name      String    @unique
   slug      String    @unique
-  icon      String?
-  color     String?
   concerts  Concert[] @relation("ConcertToCategory")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

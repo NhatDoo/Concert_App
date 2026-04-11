@@ -28,30 +28,41 @@ export class VnpayGateway implements IPaymentGateway {
 
     async generatePaymentUrl(request: PaymentRequest): Promise<string> {
         try {
-            const attemptKey = crypto.randomBytes(4).toString('hex');
-            // VNPay npm library handles amount * 100
-            const amount = Math.floor(request.amount.getAmount());
-            const vnpTxnRef = `${request.orderId}_${attemptKey}`;
+            const attemptKey = crypto.randomBytes(3).toString('hex');
+            // Nhân 100 thủ công để đảm bảo tuyệt đối đúng spec VNPAY
+            const amount = Math.floor(request.amount.getAmount() * 100);
+            const vnpTxnRef = `${request.orderId.split('-')[0]}_${attemptKey}`;
             const createDate = dateFormat(new Date());
 
-            const paymentUrl = this.vnpay.buildPaymentUrl({
+            // Đính kèm full orderId (UUID) vào ReturnUrl để lấy lại lúc verify
+            const separator = request.returnUrl.includes('?') ? '&' : '?';
+            const returnUrlWithId = `${request.returnUrl}${separator}orderId=${request.orderId}`;
+
+            const params: any = {
+                vnp_Version: '2.1.0',
+                vnp_Command: 'pay',
+                vnp_TmnCode: this.vnp_TmnCode,
                 vnp_Amount: amount,
-                vnp_IpAddr: request.ipAddress || '127.0.0.1',
+                vnp_CurrCode: 'VND',
                 vnp_TxnRef: vnpTxnRef,
-                vnp_OrderInfo: request.orderInfo,
-                vnp_OrderType: ProductCode.Other,
-                vnp_ReturnUrl: request.returnUrl,
-                vnp_Locale: VnpLocale.VN,
-                vnp_CreateDate: createDate as any, // Library types might expect number but it returns string YYYYMMDDHHmmss
-            });
+                vnp_OrderInfo: `Thanh-toan-hoa-don-${request.orderId.split('-')[0]}`,
+                vnp_OrderType: 'other',
+                vnp_Locale: 'vn',
+                vnp_ReturnUrl: returnUrlWithId,
+                vnp_IpAddr: request.ipAddress && request.ipAddress.includes('.') ? request.ipAddress : '127.0.0.1',
+                vnp_CreateDate: createDate,
+            };
+
+            const paymentUrl = this.vnpay.buildPaymentUrl(params);
+
+            console.log('--- [VNPay URL Generated] ---');
+            console.log('Actual Amount:', amount);
+            console.log('URL:', paymentUrl);
 
             return paymentUrl;
         } catch (error: any) {
             console.error('VNPay generation error:', error);
-            throw new InternalServerErrorException({
-                message: 'Error generating VNPay URL',
-                error: error.message,
-            });
+            throw new InternalServerErrorException(error.message);
         }
     }
 
@@ -59,12 +70,8 @@ export class VnpayGateway implements IPaymentGateway {
         try {
             const verify = this.vnpay.verifyReturnUrl(query);
 
-            const txnRef = query.vnp_TxnRef || "";
-            const [orderId, attemptKey] = txnRef.split('_');
-
-            if (!orderId) {
-                throw new BadRequestException(`Invalid order ID in vnp_TxnRef: ${txnRef}`);
-            }
+            // Ưu tiên lấy orderId từ query (ta đã gắn vào ReturnUrl)
+            const orderId = query.orderId || query.vnp_TxnRef.split('_')[0];
 
             const isSuccess = verify.isSuccess && query.vnp_ResponseCode === '00';
             const amountFromVnpay = Math.round(Number(query.vnp_Amount) / 100);
@@ -74,8 +81,7 @@ export class VnpayGateway implements IPaymentGateway {
                 orderId: orderId,
                 transactionId: query.vnp_TransactionNo || "",
                 amount: Money.create(amountFromVnpay),
-                // We'll fix the dynamic import issue by putting it cleanly in imports later, actually let's just use a top-level import
-                message: isSuccess ? 'Payment successful' : 'Payment failed'
+                message: isSuccess ? 'Payment successful' : `Payment failed with code ${query.vnp_ResponseCode}`
             };
         } catch (error: any) {
             throw new InternalServerErrorException({

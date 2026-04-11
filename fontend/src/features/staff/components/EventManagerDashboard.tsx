@@ -21,7 +21,10 @@ import {
     TrendingUp,
     Target,
     Send,
-    Calendar
+    Calendar,
+    Plus,
+    X,
+    Trash,
 } from 'lucide-react';
 import { RootState } from '../../../stores/store';
 import { ManagementHub } from './ManagementHub';
@@ -37,6 +40,17 @@ import { StaffApplyModal } from './StaffApplyModal';
 import { JobPost } from './types';
 import { useJobManagement } from '../hooks/useJobManagement';
 import { CollaborationInvitations } from './CollaborationInvitations';
+
+interface Concert {
+    id: string;
+    name: string;
+    startDate: string;
+    location: string;
+    imageUrl: string | null;
+    organizerId: string;
+    category?: string;
+    categoryIds?: string[];
+}
 
 export const EventManagerDashboard = () => {
     const { user, token } = useSelector((state: RootState) => state.auth);
@@ -72,22 +86,15 @@ export const EventManagerDashboard = () => {
     const [selectedDiscoverJob, setSelectedDiscoverJob] = useState<JobPost | null>(null);
     const [showApplyModal, setShowApplyModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-
-    console.log('[EventManagerDashboard] staffRecords:', staffRecords);
-    console.log('[EventManagerDashboard] user:', user?.id);
-    console.log('[EventManagerDashboard] concertId:', staffRecords[0]?.concertId);
-    console.log('[EventManagerDashboard] organizerId:', staffRecords[0]?.organizerId);
+    const [dashboardCategory, setDashboardCategory] = useState<{ slug: string, name: string } | null>(null);
 
     // Concert selection for team view
-    const [concerts, setConcerts] = useState<{ id: string, name: string, startDate: string, imageUrl?: string }[]>([]);
+    const [concerts, setConcerts] = useState<Concert[]>([]);
     const [selectedConcertId, setSelectedConcertId] = useState<string>('');
 
     // Calculate organizerId - EventManager may have organizerId as user.id or staff record
     const staffConcertId = staffRecords[0]?.concertId;
     const organizerId = staffRecords[0]?.organizerId || user?.id || '';
-    console.log('[EventManagerDashboard] staffConcertId:', staffConcertId);
-    console.log('[EventManagerDashboard] organizerId:', organizerId);
-    console.log('[EventManagerDashboard] full staffRecords[0]:', staffRecords[0]);
 
     useEffect(() => {
         const fetchConcerts = async () => {
@@ -254,8 +261,8 @@ export const EventManagerDashboard = () => {
     return (
         <div className="min-h-screen bg-[#fcfcfd] text-slate-800 flex [font-family:var(--font-outfit)] selection:bg-amber-500/10">
             {/* GOLD PREMIUM SIDEBAR */}
-            <aside className="w-80 border-r border-slate-200/40 flex flex-col p-8 sticky top-0 h-screen bg-white shadow-[20px_0_40px_-20px_rgba(0,0,0,0.03)] z-40">
-                <div className="flex items-center gap-4 mb-16 px-2">
+            <aside className="w-80 border-r border-slate-200/40 flex flex-col p-6 sticky top-0 h-screen bg-white shadow-[20px_0_40px_-20px_rgba(0,0,0,0.03)] z-40">
+                <div className="flex items-center gap-4 mb-10 px-2">
                     <div className="w-12 h-12 bg-gradient-to-tr from-amber-600 to-yellow-400 rounded-2xl flex items-center justify-center shadow-xl shadow-amber-500/20 rotate-3">
                         <ShieldCheck className="w-7 h-7 text-white" />
                     </div>
@@ -265,7 +272,7 @@ export const EventManagerDashboard = () => {
                     </div>
                 </div>
 
-                <nav className="flex-1 space-y-4">
+                <nav className="flex-1 space-y-2 overflow-y-auto pr-2 custom-scrollbar">
                     {[
                         { id: 'overview', icon: LayoutDashboard, label: 'Trung tâm Chỉ huy' },
                         { id: 'concerts', icon: Calendar, label: 'Danh sách Concert' },
@@ -276,7 +283,7 @@ export const EventManagerDashboard = () => {
                         { id: 'invitations', icon: Send, label: 'Lời Mời Hợp Tác' },
                         { id: 'settings', icon: Settings, label: 'Hồ sơ chuyên môn' },
                     ].map((item, i) => (
-                        <button key={i} onClick={() => setActiveTab(item.id)} className={`w-full group flex items-center justify-between p-4 rounded-3xl transition-all duration-500 font-bold ${activeTab === item.id ? 'bg-amber-600 text-white shadow-2xl shadow-amber-600/30 -translate-y-1' : 'text-slate-500 hover:bg-amber-50 hover:text-amber-700'}`}>
+                        <button key={i} onClick={() => setActiveTab(item.id)} className={`w-full group flex items-center justify-between p-3.5 rounded-2xl transition-all duration-500 font-bold ${activeTab === item.id ? 'bg-amber-600 text-white shadow-2xl shadow-amber-600/30 -translate-y-1' : 'text-slate-500 hover:bg-amber-50 hover:text-amber-700'}`}>
                             <div className="flex items-center gap-4">
                                 <item.icon className={`w-5 h-5 transition-transform duration-500 ${activeTab === item.id ? 'text-white scale-110' : 'text-slate-300 group-hover:scale-110'}`} />
                                 <span className="text-[10px] uppercase tracking-[0.15em] leading-none">{item.label}</span>
@@ -316,8 +323,6 @@ export const EventManagerDashboard = () => {
                         <p className="font-black text-[10px] uppercase tracking-[0.25em]">{notification.msg}</p>
                     </div>
                 )}
-
-
 
                 <header className="flex justify-between items-end">
                     <div className="animate-in fade-in slide-in-from-left-8 duration-1000">
@@ -390,7 +395,6 @@ export const EventManagerDashboard = () => {
                                 onToggleStatus={toggleStatus}
                                 accentColor="amber-600"
                             />
-
                         </div>
                     </div>
                 )}
@@ -402,6 +406,18 @@ export const EventManagerDashboard = () => {
                             <p className="text-slate-500 text-sm font-medium">Tất cả sự kiện thuộc tổ chức của bạn</p>
                         </div>
 
+                        {dashboardCategory && (
+                            <div className="mb-6 flex items-center gap-4 animate-in fade-in slide-in-from-left-4 duration-500">
+                                <span className="px-4 py-2 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-amber-600/20">
+                                    {dashboardCategory.name}
+                                    <button onClick={() => setDashboardCategory(null)} className="hover:text-amber-200 transition-colors">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </span>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest italic">Đang lọc theo chuyên mục</p>
+                            </div>
+                        )}
+
                         {concerts.length === 0 ? (
                             <div className="bg-white/40 shadow-inner rounded-[3.5rem] p-24 flex flex-col items-center justify-center border-2 border-dashed border-amber-100">
                                 <div className="w-24 h-24 bg-amber-50 rounded-[2.5rem] flex items-center justify-center mb-8 border border-amber-100">
@@ -411,39 +427,55 @@ export const EventManagerDashboard = () => {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {concerts.map((concert) => (
-                                    <div
-                                        key={concert.id}
-                                        className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 hover:shadow-2xl hover:shadow-amber-200/40 hover:border-amber-100 transition-all duration-500 group cursor-pointer"
-                                        onClick={() => {
-                                            setSelectedConcertId(concert.id);
-                                            setActiveTab('team');
-                                        }}
-                                    >
-                                        <div className="relative h-40 bg-slate-100 rounded-[2rem] mb-6 overflow-hidden">
-                                            {concert.imageUrl ? (
-                                                <img
-                                                    src={concert.imageUrl}
-                                                    alt={concert.name}
-                                                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                                />
-                                            ) : (
-                                                <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-yellow-100" />
-                                            )}
-                                            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
-                                            <div className="absolute bottom-4 left-4">
-                                                <span className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-amber-700 shadow-xl">
-                                                    {new Date(concert.startDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                </span>
+                                {concerts
+                                    .filter(c => !dashboardCategory || c.categoryIds?.includes(dashboardCategory.slug))
+                                    .map((concert) => (
+                                        <div
+                                            key={concert.id}
+                                            className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 hover:shadow-2xl hover:shadow-amber-200/40 hover:border-amber-100 transition-all duration-500 group cursor-pointer"
+                                            onClick={() => {
+                                                setSelectedConcertId(concert.id);
+                                                setActiveTab('team');
+                                            }}
+                                        >
+                                            <div className="relative h-40 bg-slate-100 rounded-[2rem] mb-6 overflow-hidden">
+                                                {concert.imageUrl ? (
+                                                    <img
+                                                        src={concert.imageUrl}
+                                                        alt={concert.name}
+                                                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                                    />
+                                                ) : (
+                                                    <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-yellow-100" />
+                                                )}
+                                                <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
+                                                <div className="absolute bottom-4 left-4">
+                                                    <span className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-amber-700 shadow-xl">
+                                                        {new Date(concert.startDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                    </span>
+                                                </div>
+                                                {concert.category && (
+                                                    <div
+                                                        className="absolute top-4 right-4 z-10"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const slug = concert.categoryIds?.[0] || '';
+                                                            if (slug) setDashboardCategory({ slug, name: concert.category || '' });
+                                                        }}
+                                                    >
+                                                        <span className="px-3 py-1.5 bg-amber-600/90 backdrop-blur-md rounded-xl text-[9px] font-black uppercase tracking-widest text-white shadow-xl hover:bg-amber-500 hover:scale-110 transition-all cursor-pointer">
+                                                            {concert.category}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <h3 className="text-xl font-black text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-2">{concert.name}</h3>
+                                            <div className="flex items-center gap-2 mt-3 text-slate-400 text-sm">
+                                                <Calendar className="w-4 h-4" />
+                                                <span className="font-medium">Xem nhân sự & tiến độ</span>
                                             </div>
                                         </div>
-                                        <h3 className="text-xl font-black text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-2">{concert.name}</h3>
-                                        <div className="flex items-center gap-2 mt-3 text-slate-400 text-sm">
-                                            <Calendar className="w-4 h-4" />
-                                            <span className="font-medium">Xem nhân sự & tiến độ</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    ))}
                             </div>
                         )}
                     </div>
@@ -631,16 +663,10 @@ export const EventManagerDashboard = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setAssignTaskModal(null);
-                                        setTaskTitle('');
-                                        setTaskDescription('');
-                                        setTaskLocation('');
-                                        setTaskTime('');
-                                    }}
-                                    className="py-4 font-black text-slate-400 hover:text-slate-600 transition-all text-[10px] tracking-widest uppercase"
+                                    onClick={() => setAssignTaskModal(null)}
+                                    className="py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-600 transition-colors"
                                 >
-                                    HỦY BỎ
+                                    Hủy bỏ
                                 </button>
                             </div>
                         </form>

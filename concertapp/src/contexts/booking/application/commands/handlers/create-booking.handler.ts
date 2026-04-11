@@ -22,46 +22,41 @@ export class CreateBookingHandler implements ICommandHandler<CreateBookingComman
     ) { }
 
     async execute(command: CreateBookingCommand): Promise<string> {
-        const { userId, concertId, items } = command;
+        const { userId, concertId, seatIds } = command;
 
         console.log(`Executing CreateBookingCommand for User: ${userId}, Concert: ${concertId}`);
 
-        // 1. Fetch available ticket pools for this concert
-        const pools = await this.prisma.ticketPool.findMany({
+        const seats = await this.prisma.seat.findMany({
             where: {
                 concertId,
-                ticketType: { in: items.map(i => i.ticketType) }
-            }
+                id: { in: seatIds },
+            },
         });
 
-        if (pools.length === 0) {
-            throw new NotFoundException(`No ticket pools found for Concert: ${concertId}`);
+        if (seats.length !== seatIds.length) {
+            throw new NotFoundException(`Some seats were not found for Concert: ${concertId}`);
+        }
+
+        const duplicateSeatIds = seatIds.filter((seatId, index) => seatIds.indexOf(seatId) !== index);
+        if (duplicateSeatIds.length > 0) {
+            throw new BadRequestException('Duplicate seats are not allowed in one booking');
         }
 
         const tickets: Ticket[] = [];
-
-        // 2. Map items to real tickets using current pool prices and check for availability
-        for (const item of items) {
-            const pool = pools.find(p => p.ticketType === item.ticketType);
-            if (!pool) {
-                throw new BadRequestException(`Ticket type "${item.ticketType}" not offered for this concert`);
+        for (const seat of seats) {
+            if (seat.status === 'BOOKED') {
+                throw new ConflictException(`Seat "${seat.label}" is already booked`);
             }
 
-            const available = pool.totalQuantity - pool.soldCount;
-            if (available < item.quantity) {
-                throw new ConflictException(`Only ${available} tickets left for type "${item.ticketType}"`);
-            }
-
-            // Generate "quantity" of tickets
-            for (let i = 0; i < item.quantity; i++) {
-                tickets.push(Ticket.create(
-                    uuidv4(),
-                    concertId,
-                    userId,
-                    Money.create(pool.price),
-                    Tickettype.from(pool.ticketType)
-                ));
-            }
+            tickets.push(Ticket.create(
+                uuidv4(),
+                concertId,
+                userId,
+                Money.create(seat.price),
+                Tickettype.from(seat.ticketType),
+                seat.id,
+                seat.label
+            ));
         }
 
         // 3. Build Aggregate using Factory Method

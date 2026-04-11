@@ -7,6 +7,7 @@ import { ISTORAGE_SERVICE } from '../../../domain/service/storage.service.interf
 import type { IStorageService } from '../../../domain/service/storage.service.interface';
 import { StartDate } from '../../../domain/VO/startdate.vo';
 import { RedisService } from '../../../infrastructure/redis/redis.service';
+import { PrismaService } from '../../../../../prisma.service';
 
 const IMAGE_BUCKET = 'images';
 
@@ -17,12 +18,13 @@ export class UpdateConcertHandler implements ICommandHandler<UpdateConcertComman
     constructor(
         @Inject(ICONCERT_REPOSITORY) private readonly repository: IConcertRepository,
         @Inject(ISTORAGE_SERVICE) private readonly storageService: IStorageService,
+        private readonly prisma: PrismaService,
         private readonly redisService: RedisService,
         private readonly publisher: EventPublisher,
     ) { }
 
     async execute(command: UpdateConcertCommand): Promise<void> {
-        const { concertId, organizerId, name, startDate, location, imageFile, categories, hashtags } = command;
+        const { concertId, organizerId, name, startDate, location, imageFile, seatMapFile, seats, categories, hashtags } = command;
 
         const concert = await this.repository.findById(concertId);
         if (!concert) {
@@ -61,7 +63,77 @@ export class UpdateConcertHandler implements ICommandHandler<UpdateConcertComman
             concertModel.updateImageUrl(imageUrl);
         }
 
+        if (seatMapFile) {
+            const fileExtension = seatMapFile.originalname.split('.').pop();
+            const objectName = `concert-seat-maps/${concertId}.${fileExtension}`;
+            const seatMapUrl = await this.storageService.uploadFile(
+                IMAGE_BUCKET,
+                objectName,
+                seatMapFile.buffer,
+                seatMapFile.mimetype,
+            );
+            concertModel.updateSeatMapUrl(seatMapUrl);
+        }
+
         await this.repository.save(concertModel);
+
+        if (seats !== undefined) {
+            await this.prisma.$transaction(async (tx) => {
+                await tx.ticket.deleteMany({
+                    where: {
+                        concertId,
+                        seatId: { not: null },
+                    },
+                });
+
+                await tx.seat.deleteMany({
+                    where: { concertId },
+                });
+
+                if (seats.length > 0) {
+                    await tx.seat.createMany({
+                        data: seats.map((seat) => ({
+                            concertId,
+                            label: seat.label,
+                            ticketType: seat.ticketType,
+                            price: seat.price,
+                            status: 'AVAILABLE',
+                        })),
+                    });
+                }
+
+                await tx.ticketPool.deleteMany({
+                    where: { concertId },
+                });
+
+                const groupedPools = new Map<string, { price: number; totalQuantity: number }>();
+
+                for (const seat of seats) {
+                    const current = groupedPools.get(seat.ticketType);
+                    if (current) {
+                        current.totalQuantity += 1;
+                        current.price = Math.min(current.price, seat.price);
+                    } else {
+                        groupedPools.set(seat.ticketType, {
+                            price: seat.price,
+                            totalQuantity: 1,
+                        });
+                    }
+                }
+
+                for (const [ticketType, pool] of groupedPools.entries()) {
+                    await tx.ticketPool.create({
+                        data: {
+                            concertId,
+                            ticketType,
+                            price: pool.price,
+                            totalQuantity: pool.totalQuantity,
+                            soldCount: 0,
+                        },
+                    });
+                }
+            });
+        }
 
         // Clear Cache
         try {

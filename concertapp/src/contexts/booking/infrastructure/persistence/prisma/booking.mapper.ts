@@ -16,7 +16,9 @@ export class BookingMapper {
                 t.concertId,
                 t.userId || "",
                 Money.create(t.price),
-                Tickettype.from(t.ticketType)
+                Tickettype.from(t.ticketType),
+                t.seatId || null,
+                t.seatLabel || null
             )
         ) || [];
 

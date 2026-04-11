@@ -10,13 +10,18 @@ interface ConcertFormModalProps {
         startDate: string;
         location: string;
         image: File | null;
+        seatMap: File | null;
+        seats: string;
         categoryIds: string[];
         hashtags: string;
     };
     setFormData: (data: any) => void;
+    onSeatExcelSelected: (file: File | null) => void;
+    onDownloadSeatTemplate: () => void;
     isSubmitting: boolean;
     mode: 'create' | 'edit';
     categories: any[];
+    seatSummary?: string | null;
 }
 
 export const ConcertFormModal: React.FC<ConcertFormModalProps> = ({
@@ -25,9 +30,12 @@ export const ConcertFormModal: React.FC<ConcertFormModalProps> = ({
     onSubmit,
     formData,
     setFormData,
+    onSeatExcelSelected,
+    onDownloadSeatTemplate,
     isSubmitting,
     mode,
-    categories
+    categories,
+    seatSummary
 }) => {
     if (!isOpen) return null;
 
@@ -97,6 +105,39 @@ export const ConcertFormModal: React.FC<ConcertFormModalProps> = ({
                     <div>
                         <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest mb-3">Thể loại (Categories)</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div className="col-span-full space-y-4 mb-3">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest mb-2">Seat Map {mode === 'edit' && '(Optional)'}</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                        onChange={e => setFormData({ ...formData, seatMap: e.target.files?.[0] || null })}
+                                    />
+                                </div>
+                                <div>
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <label className="block text-sm font-bold text-gray-700 uppercase tracking-widest">Seats Excel</label>
+                                        <button
+                                            type="button"
+                                            onClick={onDownloadSeatTemplate}
+                                            className="text-xs font-bold text-blue-700 hover:text-blue-900 underline underline-offset-4"
+                                        >
+                                            Táº£i file máº«u
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        accept=".xlsx,.xls"
+                                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                                        onChange={e => onSeatExcelSelected(e.target.files?.[0] || null)}
+                                    />
+                                    <p className="mt-2 text-xs text-gray-500">Excel cáº§n 3 cá»™t: `label`, `ticketType`, `price`.</p>
+                                    {seatSummary && (
+                                        <p className="mt-2 text-xs font-semibold text-emerald-700">{seatSummary}</p>
+                                    )}
+                                </div>
+                            </div>
                             {categories.map((cat) => {
                                 const Icon = cat.icon;
                                 const isSelected = formData.categoryIds.includes(cat.id);

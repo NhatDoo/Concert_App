@@ -27,6 +27,9 @@ export class GetConcertByIdHandler implements IQueryHandler<GetConcertByIdQuery>
             where: { id: query.id },
             include: {
                 organizer: true,
+                seats: {
+                    orderBy: { label: 'asc' }
+                },
                 ticketPools: true,
                 performances: {
                     include: {
@@ -40,6 +43,38 @@ export class GetConcertByIdHandler implements IQueryHandler<GetConcertByIdQuery>
             throw new NotFoundException('Concert not found');
         }
 
+        const tickets = concert.seats.length > 0
+            ? Array.from(
+                concert.seats.reduce((map, seat) => {
+                    const existing = map.get(seat.ticketType) || {
+                        ticketType: seat.ticketType,
+                        price: seat.price,
+                        total: 0,
+                        available: 0,
+                        sold: 0,
+                    };
+
+                    existing.total += 1;
+                    existing.price = Math.min(existing.price, seat.price);
+                    if (seat.status === 'BOOKED') {
+                        existing.sold += 1;
+                    } else {
+                        existing.available += 1;
+                    }
+
+                    map.set(seat.ticketType, existing);
+                    return map;
+                }, new Map<string, { ticketType: string; price: number; total: number; available: number; sold: number }>())
+                    .values()
+            )
+            : concert.ticketPools.map(p => ({
+                ticketType: p.ticketType,
+                price: p.price,
+                total: p.totalQuantity,
+                available: p.totalQuantity - p.soldCount,
+                sold: p.soldCount,
+            }));
+
         // Map Prisma format
         const responseData = {
             id: concert.id,
@@ -47,14 +82,16 @@ export class GetConcertByIdHandler implements IQueryHandler<GetConcertByIdQuery>
             startDate: concert.startDate,
             location: concert.location,
             imageUrl: concert.imageUrl,
+            seatMapUrl: concert.seatMapUrl,
             organizerId: concert.organizerId,
             organizer: concert.organizer?.name || 'Chưa cập nhật',
-            tickets: concert.ticketPools.map(p => ({
-                ticketType: p.ticketType,
-                price: p.price,
-                total: p.totalQuantity,
-                available: p.totalQuantity - p.soldCount,
-                sold: p.soldCount,
+            tickets,
+            seats: concert.seats.map(seat => ({
+                id: seat.id,
+                label: seat.label,
+                ticketType: seat.ticketType,
+                price: seat.price,
+                status: seat.status,
             })),
             performances: concert.performances.map(p => ({
                 id: p.id,

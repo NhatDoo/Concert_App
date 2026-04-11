@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, Suspense } from 'react';
+import * as XLSX from 'xlsx';
 import { useSelector } from 'react-redux';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { RootState } from '../../src/stores/store';
@@ -70,11 +71,14 @@ function DashboardContent() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [seatSummary, setSeatSummary] = useState<string | null>(null);
     const [createForm, setCreateForm] = useState({
         name: '',
         startDate: '',
         location: '',
         image: null as File | null,
+        seatMap: null as File | null,
+        seats: '',
         categoryIds: [] as string[],
         hashtags: ''
     });
@@ -116,6 +120,78 @@ function DashboardContent() {
         setTimeout(() => setNotification(null), 3000);
     };
 
+    const resetConcertForm = () => {
+        setCreateForm({
+            name: '',
+            startDate: '',
+            location: '',
+            image: null,
+            seatMap: null,
+            seats: '',
+            categoryIds: [],
+            hashtags: ''
+        });
+        setSeatSummary(null);
+    };
+
+    const downloadSeatTemplate = () => {
+        const templateRows = [
+            { label: 'A1', ticketType: 'VIP', price: 1500000 },
+            { label: 'A2', ticketType: 'VIP', price: 1500000 },
+            { label: 'B1', ticketType: 'REGULAR', price: 700000 },
+            { label: 'B2', ticketType: 'REGULAR', price: 700000 },
+        ];
+        const worksheet = XLSX.utils.json_to_sheet(templateRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Seats');
+        XLSX.writeFile(workbook, 'seat-template.xlsx');
+    };
+
+    const importSeatExcel = async (file: File | null) => {
+        if (!file) {
+            setCreateForm(prev => ({ ...prev, seats: '' }));
+            setSeatSummary(null);
+            return;
+        }
+
+        try {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' });
+
+            const seats = rows.map((row, index) => {
+                const label = String(row.label ?? '').trim();
+                const ticketType = String(row.ticketType ?? '').trim();
+                const rawPrice = row.price;
+                const price = typeof rawPrice === 'number' ? rawPrice : Number(rawPrice);
+
+                if (!label || !ticketType || Number.isNaN(price)) {
+                    throw new Error(`Dong ${index + 2} khong hop le`);
+                }
+
+                return { label, ticketType, price };
+            });
+
+            if (seats.length === 0) {
+                throw new Error('File Excel khong co du lieu ghe');
+            }
+
+            const labels = seats.map(seat => seat.label);
+            if (new Set(labels).size !== labels.length) {
+                throw new Error('File Excel co ghe bi trung label');
+            }
+
+            setCreateForm(prev => ({ ...prev, seats: JSON.stringify(seats) }));
+            setSeatSummary(`Da nap ${seats.length} ghe tu file ${file.name}`);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Khong doc duoc file Excel';
+            setCreateForm(prev => ({ ...prev, seats: '' }));
+            setSeatSummary(null);
+            notify('error', message);
+        }
+    };
+
     const fetchStats = async () => {
         if (!user) return;
         try {
@@ -153,7 +229,8 @@ function DashboardContent() {
     };
 
     useEffect(() => {
-        if (!user || user.role !== 'ORGANIZER') {
+        const allowedRoles = ['ORGANIZER', 'EVENT_MANAGER', 'MANAGER'];
+        if (!user || !user.role || !allowedRoles.includes(user.role)) {
             router.push('/');
             return;
         }
@@ -172,6 +249,8 @@ function DashboardContent() {
             formData.append('startDate', createForm.startDate);
             formData.append('location', createForm.location);
             if (createForm.image) formData.append('image', createForm.image);
+            if (createForm.seatMap) formData.append('seatMap', createForm.seatMap);
+            if (createForm.seats.trim()) formData.append('seats', createForm.seats);
             formData.append('categories', JSON.stringify(createForm.categoryIds));
             formData.append('hashtags', createForm.hashtags);
 
@@ -182,7 +261,7 @@ function DashboardContent() {
 
             if (response.ok) {
                 setShowModal(false);
-                setCreateForm({ name: '', startDate: '', location: '', image: null, categoryIds: [], hashtags: '' });
+                resetConcertForm();
                 notify('success', 'Đã tạo sự kiện mới thành công!');
                 fetchMyConcerts();
             } else {
@@ -203,10 +282,13 @@ function DashboardContent() {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
             const formData = new FormData();
+            formData.append('organizerId', user!.id);
             formData.append('name', createForm.name);
             formData.append('startDate', createForm.startDate);
             formData.append('location', createForm.location);
             if (createForm.image) formData.append('image', createForm.image);
+            if (createForm.seatMap) formData.append('seatMap', createForm.seatMap);
+            formData.append('seats', createForm.seats);
             formData.append('categories', JSON.stringify(createForm.categoryIds));
             formData.append('hashtags', createForm.hashtags);
 
@@ -218,7 +300,7 @@ function DashboardContent() {
             if (response.ok) {
                 setShowEditModal(false);
                 setEditingEventId(null);
-                setCreateForm({ name: '', startDate: '', location: '', image: null, categoryIds: [], hashtags: '' });
+                resetConcertForm();
                 notify('success', 'Cập nhật sự kiện thành công!');
                 fetchMyConcerts();
             } else {
@@ -239,9 +321,16 @@ function DashboardContent() {
             startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : '',
             location: event.location || '',
             image: null,
+            seatMap: null,
+            seats: event.seats ? JSON.stringify(event.seats.map((seat: any) => ({
+                label: seat.label,
+                ticketType: seat.ticketType,
+                price: seat.price,
+            })), null, 2) : '',
             categoryIds: event.categoryIds || [],
             hashtags: (event.hashtags || []).join(' ')
         });
+        setSeatSummary(event.seats?.length ? `Da tai san ${event.seats.length} ghe hien co` : null);
         setShowEditModal(true);
     };
 
@@ -401,24 +490,36 @@ function DashboardContent() {
             {/* Modals */}
             <ConcertFormModal
                 isOpen={showModal}
-                onClose={() => setShowModal(false)}
+                onClose={() => {
+                    setShowModal(false);
+                    resetConcertForm();
+                }}
                 onSubmit={handleCreateConcert}
                 formData={createForm}
                 setFormData={setCreateForm}
+                onSeatExcelSelected={importSeatExcel}
+                onDownloadSeatTemplate={downloadSeatTemplate}
                 isSubmitting={isSubmitting}
                 mode="create"
                 categories={CATEGORIES}
+                seatSummary={seatSummary}
             />
 
             <ConcertFormModal
                 isOpen={showEditModal}
-                onClose={() => setShowEditModal(false)}
+                onClose={() => {
+                    setShowEditModal(false);
+                    resetConcertForm();
+                }}
                 onSubmit={handleUpdateConcert}
                 formData={createForm}
                 setFormData={setCreateForm}
+                onSeatExcelSelected={importSeatExcel}
+                onDownloadSeatTemplate={downloadSeatTemplate}
                 isSubmitting={isSubmitting}
                 mode="edit"
                 categories={CATEGORIES}
+                seatSummary={seatSummary}
             />
 
             {showCreateJobModal && (

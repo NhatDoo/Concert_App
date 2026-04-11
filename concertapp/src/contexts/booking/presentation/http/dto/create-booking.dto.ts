@@ -13,14 +13,12 @@ export class CreateBookingDto {
     @ApiProperty({
         type: 'array',
         items: {
-            type: 'object',
-            properties: {
-                ticketType: { type: 'string', example: 'VIP' },
-                quantity: { type: 'number', example: 1 }
-            }
-        }
+            type: 'string',
+            example: '123e4567-e89b-12d3-a456-426614174002'
+        },
+        example: ['123e4567-e89b-12d3-a456-426614174002']
     })
     @IsArray()
     @ArrayNotEmpty()
-    items: { ticketType: string; quantity: number }[];
+    seatIds: string[];
 }

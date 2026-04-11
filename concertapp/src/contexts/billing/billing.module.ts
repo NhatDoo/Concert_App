@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { BillingInfrastructureModule } from './infrastructure/billing-infrastructure.module';
+import { IdentityInfrastructureModule } from '../identity/infrastructure/identity-infrastructure.module';
 import { BillingController } from './presentation/http/billing.controller';
 import { CreateInvoiceHandler } from './application/commands/handlers/create-invoice.handler';
 import { IssueInvoiceHandler } from './application/commands/handlers/issue-invoice.handler';
@@ -21,6 +22,7 @@ export const EventHandlers = [BookingCreatedEventHandler];
     imports: [
         CqrsModule,
         BillingInfrastructureModule,
+        IdentityInfrastructureModule,
     ],
     controllers: [
         BillingController,

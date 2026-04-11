@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaService } from '../../../prisma.service';
@@ -9,10 +10,13 @@ import { PrismaUserRepository } from './persistence/prisma/prisma-user.repositor
 import { ITOKEN_SERVICE } from '../domain/service/token.service.interface';
 import { JwtTokenService } from './auth/jwt-token.service';
 import { MailService } from './mail/mail.service';
+import { JwtStrategy } from './auth/jwt.strategy';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
     imports: [
         ConfigModule,
+        PassportModule.register({ defaultStrategy: 'jwt' }),
         JwtModule.registerAsync({
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
@@ -34,8 +38,10 @@ import { MailService } from './mail/mail.service';
             provide: ITOKEN_SERVICE,
             useClass: JwtTokenService,
         },
-        MailService
+        MailService,
+        JwtStrategy,
+        JwtAuthGuard,
     ],
-    exports: [IUSER_REPOSITORY, ITOKEN_SERVICE, JwtModule, PrismaService, MailService],
+    exports: [IUSER_REPOSITORY, ITOKEN_SERVICE, JwtModule, PassportModule, PrismaService, MailService, JwtAuthGuard],
 })
 export class IdentityInfrastructureModule { }

@@ -47,7 +47,9 @@ export class GetBookingsByUserHandler implements IQueryHandler<GetBookingsByUser
             tickets: b.tickets.map(t => ({
                 id: t.id,
                 type: t.ticketType,
-                price: t.price
+                price: t.price,
+                seatId: t.seatId,
+                seatLabel: t.seatLabel,
             }))
         }));
     }

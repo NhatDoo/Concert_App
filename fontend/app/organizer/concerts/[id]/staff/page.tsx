@@ -4,7 +4,6 @@ import React, { useEffect, useState, use } from "react";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import * as XLSX from "xlsx";
 import { RootState } from "../../../../../src/stores/store";
 import {
     Users,
@@ -81,7 +80,7 @@ export default function StaffManagementPage({
     const fetchStaff = async () => {
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-            const res = await fetch(`${apiUrl}/organize/${concertId}/staff`);
+            const res = await fetch(`${apiUrl}/organize/concert/${concertId}/staffs`);
             if (res.ok) {
                 const data = await res.json();
                 setStaffList(data);
@@ -98,7 +97,8 @@ export default function StaffManagementPage({
     };
 
     useEffect(() => {
-        if (!currentUser || currentUser.role !== "ORGANIZER") {
+        const allowedRoles = ["ORGANIZER", "EVENT_MANAGER", "MANAGER"];
+        if (!currentUser || !currentUser.role || !allowedRoles.includes(currentUser.role)) {
             router.push("/");
             return;
         }
@@ -261,18 +261,6 @@ export default function StaffManagementPage({
                         <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition" />
                         Quay lại Dashboard
                     </Link>
-                    <div className="flex flex-wrap gap-3">
-                        <button
-                            onClick={() => {
-                                setShowAssignModal(true);
-                                fetchMyStaff();
-                            }}
-                            className="bg-cyan-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-cyan-700 transition shadow-lg"
-                        >
-                            <Users className="w-5 h-5" />
-                            Chọn từ Đội ngũ
-                        </button>
-                    </div>
                 </div>
 
                 <div className="flex items-center gap-4 mb-10">
@@ -337,23 +325,6 @@ export default function StaffManagementPage({
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => setShowAddTask(staff.id)}
-                                                    className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-500 hover:text-cyan-600 hover:border-cyan-200 transition"
-                                                    title="Giao việc mới"
-                                                >
-                                                    <Plus className="w-5 h-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleUnassignStaff(staff.id, staff.name)}
-                                                    disabled={isUnassigning === staff.id}
-                                                    className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-500 hover:text-red-600 hover:border-red-200 transition disabled:opacity-50"
-                                                    title="Gỡ khỏi sự kiện"
-                                                >
-                                                    {isUnassigning === staff.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserMinus className="w-5 h-5" />}
-                                                </button>
-                                            </div>
                                         </div>
 
                                         <div className="p-6 space-y-4">
@@ -373,14 +344,16 @@ export default function StaffManagementPage({
                                                     {staff.tasks.map((task) => (
                                                         <div
                                                             key={task.id}
-                                                            onClick={() =>
-                                                                handleUpdateTaskStatus(
-                                                                    staff.id,
-                                                                    task.id,
-                                                                    task.status,
-                                                                )
-                                                            }
-                                                            className={`group flex items-start gap-3 p-3 rounded-2xl border transition cursor-pointer ${task.status === "COMPLETED" ? "bg-green-50 border-green-100" : "bg-white border-gray-100 hover:border-cyan-200"}`}
+                                                            onClick={() => {
+                                                                if (currentUser?.role === "ORGANIZER") {
+                                                                    handleUpdateTaskStatus(
+                                                                        staff.id,
+                                                                        task.id,
+                                                                        task.status,
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className={`group flex items-start gap-3 p-3 rounded-2xl border transition ${currentUser?.role === "ORGANIZER" ? "cursor-pointer hover:border-cyan-200" : "cursor-default"} ${task.status === "COMPLETED" ? "bg-green-50 border-green-100" : "bg-white border-gray-100"}`}
                                                         >
                                                             <div className="mt-0.5">
                                                                 {task.status === "COMPLETED" ? (

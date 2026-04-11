@@ -21,9 +21,10 @@ interface EventManagerTeamHubProps {
     organizerId?: string;
     token: string | null;
     onAssignTask?: (staffId: string, concertId: string, staffName: string) => void;
+    isReadOnly?: boolean;
 }
 
-export const EventManagerTeamHub: React.FC<EventManagerTeamHubProps> = ({ concertId, organizerId, token, onAssignTask }) => {
+export const EventManagerTeamHub: React.FC<EventManagerTeamHubProps> = ({ concertId, organizerId, token, onAssignTask, isReadOnly }) => {
     const [team, setTeam] = useState<EventStaffRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedMember, setSelectedMember] = useState<EventStaffRecord | null>(null);
@@ -161,15 +162,13 @@ export const EventManagerTeamHub: React.FC<EventManagerTeamHubProps> = ({ concer
     });
 
     const topLevelRoles = ['EVENT_MANAGER', 'PRODUCTION_MANAGER', 'TECHNICAL_MANAGER', 'MARKETING_MANAGER', 'TALENT_MANAGER', 'MANAGER'];
-    const topLevelMembers = team.filter(m =>
-        (topLevelRoles.includes(m.role) || getSubordinates(m).length > 0) && !allSubordinateIds.has(m.id)
-    );
 
-    const staffMembers = team.filter(m =>
-        !topLevelRoles.includes(m.role) &&
-        (m.concertId === concertId || m.concert?.id === concertId) &&
-        allSubordinateIds.has(m.id)
-    );
+    // Top levels are those who don't have a manager in this list, OR those who have a manager role
+    // and are not subordinates of someone else in the current list.
+    const topLevelMembers = team.filter(m => !allSubordinateIds.has(m.id));
+
+    // Staff members are everyone else
+    const staffMembers = team.filter(m => allSubordinateIds.has(m.id));
 
     const closeDetails = () => setSelectedMember(null);
 
@@ -482,12 +481,14 @@ export const EventManagerTeamHub: React.FC<EventManagerTeamHubProps> = ({ concer
                                 <Trash className="w-3.5 h-3.5" />
                                 Loại khỏi sự kiện
                             </button>
+
                             <button
                                 onClick={closeDetails}
                                 className="px-8 py-3.5 bg-slate-100 text-slate-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-200 hover:text-slate-900 transition-colors"
                             >
                                 Đóng
                             </button>
+
                             <button
                                 onClick={() => { closeDetails(); onAssignTask?.(selectedMember.id, selectedMember.concertId || concertId, selectedMember.name); }}
                                 className="px-8 py-3.5 bg-amber-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-amber-700 transition-all shadow-xl shadow-amber-200 flex items-center gap-2"

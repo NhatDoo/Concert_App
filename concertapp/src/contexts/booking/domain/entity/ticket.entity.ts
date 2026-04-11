@@ -5,19 +5,23 @@ export class Ticket {
     private readonly id: string;
     private readonly concertId: string;
     private readonly userId: string | null;
+    private readonly seatId: string | null;
+    private readonly seatLabel: string | null;
     private ticketType: Tickettype;
     private price: Money;
 
-    private constructor(id: string, concertId: string, userId: string | null, price: Money, ticketType: Tickettype) {
+    private constructor(id: string, concertId: string, userId: string | null, price: Money, ticketType: Tickettype, seatId: string | null, seatLabel: string | null) {
         this.id = id;
         this.concertId = concertId;
         this.userId = userId;
         this.price = price;
         this.ticketType = ticketType;
+        this.seatId = seatId;
+        this.seatLabel = seatLabel;
     }
 
-    static create(id: string, concertId: string, userId: string | null, price: Money, ticket: Tickettype): Ticket {
-        return new Ticket(id, concertId, userId, price, ticket);
+    static create(id: string, concertId: string, userId: string | null, price: Money, ticket: Tickettype, seatId: string | null = null, seatLabel: string | null = null): Ticket {
+        return new Ticket(id, concertId, userId, price, ticket, seatId, seatLabel);
     }
 
     getId(): string {
@@ -31,6 +35,12 @@ export class Ticket {
     }
     getUserId(): string | null {
         return this.userId;
+    }
+    getSeatId(): string | null {
+        return this.seatId;
+    }
+    getSeatLabel(): string | null {
+        return this.seatLabel;
     }
     getPrice(): Money {
         return this.price;

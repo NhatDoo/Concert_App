@@ -30,7 +30,8 @@ export class ConcertSearchService implements OnModuleInit {
                             artists: { type: 'text', analyzer: 'standard' },
                             organizerName: { type: 'text', analyzer: 'standard' },
                             minPrice: { type: 'double' },
-                            category: { type: 'keyword' }
+                            category: { type: 'keyword' },
+                            categoryIds: { type: 'keyword' }
                         }
                     }
                 });
@@ -55,7 +56,8 @@ export class ConcertSearchService implements OnModuleInit {
                     artists: concert.artists || [],
                     organizerName: concert.organizerName || '',
                     minPrice: concert.minPrice || 0,
-                    category: concert.category || 'Music'
+                    category: concert.category || 'Music',
+                    categoryIds: concert.categoryIds || []
                 }
             });
         } catch (error: any) {
@@ -71,7 +73,7 @@ export class ConcertSearchService implements OnModuleInit {
                 query: {
                     multi_match: {
                         query: query,
-                        fields: ['name', 'location', 'artists', 'organizerName'],
+                        fields: ['name', 'location', 'artists', 'organizerName', 'categoryIds'],
                         fuzziness: 'AUTO'
                     }
                 }

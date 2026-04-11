@@ -43,6 +43,7 @@ export const fetchConcerts = createAsyncThunk(
                 city: item.city || 'all',
                 priceStr: item.price ? `Từ ${item.price}đ` : 'Từ 0đ',
                 category: item.category || 'Nhạc Sống',
+                categoryIds: item.categoryIds || [],
                 organizer: item.organizer || 'Chưa cập nhật'
             })) as Event[];
         } catch (error: any) {
@@ -73,6 +74,7 @@ export const searchConcerts = createAsyncThunk(
                 city: item.city || 'all',
                 priceStr: item.minPrice > 0 ? `Từ ${item.minPrice.toLocaleString('vi-VN')}đ` : 'Miễn phí / Đang cập nhật',
                 category: item.category || 'Nhạc Sống',
+                categoryIds: item.categoryIds || [],
                 organizer: item.organizerName || 'Chưa cập nhật'
             })) as Event[];
         } catch (error: any) {

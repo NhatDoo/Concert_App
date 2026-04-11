@@ -38,7 +38,6 @@ export default function ConcertDetailPage() {
                 const data = await response.json();
                 setConcert(data);
 
-                // Initial quantities
                 const initialQuantities: Record<string, number> = {};
                 if (data.tickets) {
                     data.tickets.forEach((t: any) => {
@@ -77,6 +76,18 @@ export default function ConcertDetailPage() {
             .filter(([_, qty]) => qty > 0)
             .map(([type, qty]) => ({ ticketType: type, quantity: qty }));
 
+        const seatIds = items.flatMap(({ ticketType, quantity }) => {
+            const availableSeats = (concert?.seats || []).filter((seat: any) =>
+                seat.ticketType === ticketType && seat.status !== 'BOOKED'
+            );
+            return availableSeats.slice(0, quantity).map((seat: any) => seat.id);
+        });
+
+        if (seatIds.length !== items.reduce((sum, item) => sum + item.quantity, 0)) {
+            setBookingError('Khong du ghe trong cho lua chon cua ban');
+            return;
+        }
+
         if (items.length === 0) {
             setBookingError('Vui lòng chọn ít nhất một loại vé');
             return;
@@ -95,7 +106,7 @@ export default function ConcertDetailPage() {
                 body: JSON.stringify({
                     userId: user.id,
                     concertId: id,
-                    items
+                    seatIds: []
                 }),
             });
 
@@ -224,6 +235,20 @@ export default function ConcertDetailPage() {
                     </div>
 
                     <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+                        {concert.seatMapUrl && (
+                            <div className="mb-8">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <TicketIcon className="w-6 h-6 text-blue-600" />
+                                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">So do cho ngoi</h2>
+                                </div>
+                                <img
+                                    src={concert.seatMapUrl}
+                                    alt={`Seat map for ${concert.name}`}
+                                    className="w-full rounded-2xl border border-gray-100 shadow-sm"
+                                />
+                            </div>
+                        )}
+
                         <div className="flex items-center gap-3 mb-8">
                             <Music className="w-6 h-6 text-red-600" />
                             <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Nghệ sĩ tham gia</h2>

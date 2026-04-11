@@ -55,6 +55,8 @@ export class PrismaBookingRepository implements IBookingRepository {
                                 id: t.getId(),
                                 userId: t.getUserId(),
                                 concertId: t.getConcertId(),
+                                seatId: t.getSeatId(),
+                                seatLabel: t.getSeatLabel(),
                                 ticketType: t.getTicketType().getValue(),
                                 price: t.getPrice().getAmount(),
                                 version: 1
@@ -65,6 +67,16 @@ export class PrismaBookingRepository implements IBookingRepository {
 
                 // Update TicketPool soldCount
                 for (const ticket of tickets) {
+                    if (ticket.getSeatId()) {
+                        await tx.seat.update({
+                            where: { id: ticket.getSeatId()! },
+                            data: {
+                                bookingId: persistence.id,
+                                status: 'BOOKED',
+                            }
+                        });
+                    }
+
                     await tx.ticketPool.update({
                         where: {
                             concertId_ticketType: {
@@ -105,6 +117,16 @@ export class PrismaBookingRepository implements IBookingRepository {
                 // If status changed to CANCELLED, decrement TicketPool sold counts
                 if (existing?.status !== 'CANCELLED' && persistence.status === 'CANCELLED') {
                     for (const t of tickets) {
+                        if (t.getSeatId()) {
+                            await tx.seat.update({
+                                where: { id: t.getSeatId()! },
+                                data: {
+                                    bookingId: null,
+                                    status: 'AVAILABLE',
+                                }
+                            });
+                        }
+
                         await tx.ticketPool.update({
                             where: {
                                 concertId_ticketType: {
@@ -130,6 +152,8 @@ export class PrismaBookingRepository implements IBookingRepository {
                         bookingId: persistence.id,
                         userId: t.getUserId() || null,
                         concertId: t.getConcertId(),
+                        seatId: t.getSeatId(),
+                        seatLabel: t.getSeatLabel(),
                         ticketType: t.getTicketType().getValue(),
                         price: t.getPrice().getAmount(),
                         version: 1

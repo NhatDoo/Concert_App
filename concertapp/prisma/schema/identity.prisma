@@ -1,0 +1,26 @@
+// ─── IDENTITY CONTEXT ────────────────────────────────────────────────────────
+// Quản lý người dùng và xác thực
+
+model User {
+  id                String    @id @default(uuid())
+  name              String
+  phoneNumber       String?
+  email             String    @unique
+  password          String
+  role              String
+  provider          String    @default("LOCAL")
+  googleId          String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  refreshToken      String?
+  bookings          Booking[]
+  concerts          Concert[]
+  invoices          Invoice[]
+  staffs            Staff[]
+  vendor            Vendor?
+  resetToken        String?
+  resetTokenExpires DateTime?
+  jobPosts          JobPost[] @relation("UserJobPosts")
+
+  @@index([role])
+}

@@ -113,7 +113,8 @@ export default function GlobalStaffManagement() {
     };
 
     useEffect(() => {
-        if (!user || user.role !== 'ORGANIZER') {
+        const allowedRoles = ['ORGANIZER', 'EVENT_MANAGER', 'MANAGER'];
+        if (!user || !user.role || !allowedRoles.includes(user.role)) {
             router.push('/');
             return;
         }

@@ -24,6 +24,10 @@ export class CreateConcertDto {
     @IsOptional()
     image?: Express.Multer.File;
 
+    @ApiPropertyOptional({ type: 'string', format: 'binary', description: 'Seat map image stored on MinIO' })
+    @IsOptional()
+    seatMap?: Express.Multer.File;
+
     @ApiPropertyOptional({ example: '["music", "comedy"]', description: 'JSON string of category IDs' })
     @IsString()
     @IsOptional()
@@ -33,4 +37,12 @@ export class CreateConcertDto {
     @IsString()
     @IsOptional()
     hashtags?: string;
+
+    @ApiPropertyOptional({
+        example: '[{"label":"A1","ticketType":"VIP","price":1500000},{"label":"B1","ticketType":"REGULAR","price":500000}]',
+        description: 'JSON string of seat definitions for the concert'
+    })
+    @IsString()
+    @IsOptional()
+    seats?: string;
 }

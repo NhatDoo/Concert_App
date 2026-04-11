@@ -1,7 +1,7 @@
-import { Controller, Post, Put, Delete, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile, Query, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
+import { Controller, Post, Put, Delete, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFiles, Query, BadRequestException } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CreateConcertCommand } from '../../application/commands/create-concert.command';
 import { UpdateConcertCommand } from '../../application/commands/update-concert.command';
 import { GenerateTicketsCommand } from '../../application/commands/generate-tickets.command';
@@ -37,6 +37,50 @@ export class ConcertController {
         @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
         private readonly prisma: PrismaService,
     ) { }
+
+    private parseJsonArray<T>(raw: string | undefined, fieldName: string): T[] | undefined {
+        if (!raw) return undefined;
+
+        try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                throw new BadRequestException(`${fieldName} must be a JSON array`);
+            }
+            return parsed as T[];
+        } catch {
+            throw new BadRequestException(`${fieldName} must be valid JSON`);
+        }
+    }
+
+    private parseHashtags(raw?: string): string[] | undefined {
+        if (!raw) return undefined;
+        return raw.split(/[\s,]+/).filter(tag => tag.trim() !== '');
+    }
+
+    private parseSeats(raw?: string): Array<{ label: string; ticketType: string; price: number }> | undefined {
+        const seats = this.parseJsonArray<{ label: string; ticketType: string; price: number }>(raw, 'seats');
+        if (!seats) return undefined;
+
+        const normalizedSeats = seats.map((seat, index) => {
+            if (!seat?.label || !seat?.ticketType || typeof seat?.price !== 'number' || Number.isNaN(seat.price)) {
+                throw new BadRequestException(`Seat at index ${index} is invalid`);
+            }
+
+            return {
+                label: seat.label.trim(),
+                ticketType: seat.ticketType.trim(),
+                price: seat.price,
+            };
+        });
+
+        const labels = normalizedSeats.map(seat => seat.label);
+        const hasDuplicates = new Set(labels).size !== labels.length;
+        if (hasDuplicates) {
+            throw new BadRequestException('Seat labels must be unique within a concert');
+        }
+
+        return normalizedSeats;
+    }
 
     // ==================== ARTIST ====================
     @Post('artists')
@@ -120,7 +164,10 @@ export class ConcertController {
             orderBy: { startDate: 'desc' },
             include: {
                 organizer: { select: { id: true, name: true } },
-                categories: true
+                categories: true,
+                seats: {
+                    orderBy: { label: 'asc' }
+                }
             }
         });
         return concerts.map(c => ({
@@ -129,6 +176,14 @@ export class ConcertController {
             startDate: c.startDate,
             location: c.location,
             imageUrl: c.imageUrl,
+            seatMapUrl: c.seatMapUrl,
+            seats: c.seats.map(seat => ({
+                id: seat.id,
+                label: seat.label,
+                ticketType: seat.ticketType,
+                price: seat.price,
+                status: seat.status,
+            })),
             organizerId: c.organizerId,
             categoryIds: c.categories.map(cat => cat.slug),
             hashtags: c.hashtags || []
@@ -151,16 +206,21 @@ export class ConcertController {
 
     @Post()
     @HttpCode(HttpStatus.CREATED)
-    @UseInterceptors(FileInterceptor('image'))
+    @UseInterceptors(FileFieldsInterceptor([
+        { name: 'image', maxCount: 1 },
+        { name: 'seatMap', maxCount: 1 },
+    ]))
     @ApiOperation({ summary: 'Create a new concert' })
     @ApiConsumes('multipart/form-data')
     @ApiResponse({ status: 201, description: 'Concert successfully created, returning concert ID' })
     @ApiResponse({ status: 400, description: 'Validation error (e.g. date in the past)' })
     async createConcert(
         @Body() dto: CreateConcertDto,
-        @UploadedFile() image?: Express.Multer.File,
+        @UploadedFiles() files?: { image?: Express.Multer.File[]; seatMap?: Express.Multer.File[] },
     ): Promise<{ message: string, concertId: string }> {
         const parsedDate = new Date(dto.startDate);
+        const image = files?.image?.[0];
+        const seatMap = files?.seatMap?.[0];
 
         const command = new CreateConcertCommand(
             dto.organizerId,
@@ -168,8 +228,10 @@ export class ConcertController {
             parsedDate,
             dto.location,
             image,
-            dto.categories ? JSON.parse(dto.categories) : [],
-            dto.hashtags ? dto.hashtags.split(/[\s,]+/).filter(tag => tag.trim() !== '') : [],
+            seatMap,
+            this.parseSeats(dto.seats) || [],
+            this.parseJsonArray<string>(dto.categories, 'categories') || [],
+            this.parseHashtags(dto.hashtags) || [],
         );
 
         const concertId = await this.commandBus.execute(command);
@@ -181,7 +243,10 @@ export class ConcertController {
     }
 
     @Put(':id')
-    @UseInterceptors(FileInterceptor('image'))
+    @UseInterceptors(FileFieldsInterceptor([
+        { name: 'image', maxCount: 1 },
+        { name: 'seatMap', maxCount: 1 },
+    ]))
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Update an existing concert' })
     @ApiConsumes('multipart/form-data')
@@ -189,16 +254,10 @@ export class ConcertController {
     async updateConcert(
         @Param('id') id: string,
         @Body() dto: UpdateConcertDto,
-        @UploadedFile(
-            new ParseFilePipe({
-                validators: [
-                    new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-                    new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
-                ],
-                fileIsRequired: false,
-            }),
-        ) image?: Express.Multer.File,
+        @UploadedFiles() files?: { image?: Express.Multer.File[]; seatMap?: Express.Multer.File[] },
     ) {
+        const image = files?.image?.[0];
+        const seatMap = files?.seatMap?.[0];
         let parsedDate: Date | undefined;
         if (dto.startDate) {
             parsedDate = new Date(dto.startDate);
@@ -214,11 +273,62 @@ export class ConcertController {
             parsedDate,
             dto.location,
             image,
-            dto.categories ? JSON.parse(dto.categories) : undefined,
-            dto.hashtags ? dto.hashtags.split(/[\s,]+/).filter(tag => tag.trim() !== '') : undefined,
+            seatMap,
+            this.parseSeats(dto.seats),
+            this.parseJsonArray<string>(dto.categories, 'categories'),
+            this.parseHashtags(dto.hashtags),
         );
 
         return this.commandBus.execute(command);
+    }
+
+    @Delete(':id')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Delete a concert and all related data' })
+    @ApiResponse({ status: 200, description: 'Concert deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Cannot delete concert with active bookings' })
+    async deleteConcert(@Param('id') concertId: string) {
+        const concert = await this.prisma.concert.findUnique({ where: { id: concertId } });
+        if (!concert) throw new BadRequestException(`Concert ${concertId} not found`);
+
+        const activeBookings = await this.prisma.booking.count({
+            where: { concertId, status: { in: ['PENDING', 'CONFIRMED'] } }
+        });
+        if (activeBookings > 0) {
+            throw new BadRequestException(
+                `Không thể xóa: còn ${activeBookings} booking đang hoạt động. Vui lòng hủy tất cả booking trước.`
+            );
+        }
+
+        await this.prisma.$transaction(async (tx) => {
+            const zones = await tx.zone.findMany({ where: { concertId }, select: { id: true } });
+            const zoneIds = zones.map(z => z.id);
+            if (zoneIds.length > 0) {
+                const shifts = await tx.shift.findMany({ where: { zoneId: { in: zoneIds } }, select: { id: true } });
+                const shiftIds = shifts.map(s => s.id);
+                if (shiftIds.length > 0) {
+                    await tx.shiftAssignment.deleteMany({ where: { shiftId: { in: shiftIds } } });
+                    await tx.shift.deleteMany({ where: { id: { in: shiftIds } } });
+                }
+                await tx.zone.deleteMany({ where: { concertId } });
+            }
+            await tx.eventRequirement.deleteMany({ where: { concertId } });
+            const jobPosts = await tx.jobPost.findMany({ where: { concertId }, select: { id: true } });
+            const jobIds = jobPosts.map(j => j.id);
+            if (jobIds.length > 0) {
+                await tx.staffApplication.deleteMany({ where: { jobPostId: { in: jobIds } } });
+                await tx.jobPost.deleteMany({ where: { id: { in: jobIds } } });
+            }
+            await tx.performance.deleteMany({ where: { concertId } });
+            await tx.staff.updateMany({ where: { concertId }, data: { concertId: null } });
+            await tx.concert.update({ where: { id: concertId }, data: { eventManagerId: null } });
+            await tx.ticket.deleteMany({ where: { concertId } });
+            await tx.seat.deleteMany({ where: { concertId } });
+            await tx.ticketPool.deleteMany({ where: { concertId } });
+            await tx.concert.delete({ where: { id: concertId } });
+        });
+
+        return { message: 'Concert đã được xóa thành công', concertId };
     }
 
     @Post(':id/tickets')

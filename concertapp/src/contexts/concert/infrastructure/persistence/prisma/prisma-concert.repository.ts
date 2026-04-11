@@ -11,6 +11,7 @@ export class PrismaConcertRepository implements IConcertRepository {
     async findAll(): Promise<any[]> {
         const raws = await this.prisma.concert.findMany({
             include: {
+                seats: true,
                 ticketPools: true,
                 performances: {
                     include: {
@@ -27,7 +28,10 @@ export class PrismaConcertRepository implements IConcertRepository {
             if (!domain) return null;
 
             // Đính kèm thêm thông tin mở rộng (Metadata) vào object trả về
-            const minPrice = raw.ticketPools.length > 0 ? Math.min(...raw.ticketPools.map((tp: any) => tp.price)) : 0;
+            const seatPrices = raw.seats.map((seat: any) => seat.price);
+            const poolPrices = raw.ticketPools.map((tp: any) => tp.price);
+            const availablePrices = seatPrices.length > 0 ? seatPrices : poolPrices;
+            const minPrice = availablePrices.length > 0 ? Math.min(...availablePrices) : 0;
 
             return {
                 id: domain.getId(),
@@ -37,6 +41,7 @@ export class PrismaConcertRepository implements IConcertRepository {
                 dateStr: new Date(domain.getDate().getValue()).toLocaleDateString('vi-VN'), // Frontend expects 'dateStr'
                 startDate: domain.getDate().getValue(), // For internal/Elasticsearch compatibility
                 imageUrl: domain.getImageUrl() || 'https://images.unsplash.com/photo-1540039155732-6761b54f222a',
+                seatMapUrl: domain.getSeatMapUrl(),
                 organizer: raw.organizer.name,
                 organizerName: raw.organizer.name, // For compatibility
                 priceStr: minPrice > 0 ? `${minPrice.toLocaleString('vi-VN')} VND` : 'Liên hệ',
@@ -73,6 +78,7 @@ export class PrismaConcertRepository implements IConcertRepository {
                 startDate: persistence.startDate,
                 location: persistence.location,
                 imageUrl: persistence.imageUrl,
+                seatMapUrl: persistence.seatMapUrl,
                 hashtags: persistence.hashtags,
                 categories: {
                     set: persistence.categoryIds.map(slug => ({ slug }))
@@ -85,6 +91,7 @@ export class PrismaConcertRepository implements IConcertRepository {
                 startDate: persistence.startDate,
                 location: persistence.location,
                 imageUrl: persistence.imageUrl,
+                seatMapUrl: persistence.seatMapUrl,
                 hashtags: persistence.hashtags,
                 categories: {
                     connect: persistence.categoryIds.map(slug => ({ slug }))
