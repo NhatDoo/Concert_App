@@ -5,5 +5,7 @@ export class CreateConcertCommand {
         public readonly startDate: Date,
         public readonly location: string,
         public readonly imageFile?: Express.Multer.File,
+        public readonly categories?: string[],
+        public readonly hashtags?: string[],
     ) { }
 }

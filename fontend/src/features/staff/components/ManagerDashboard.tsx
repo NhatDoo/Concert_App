@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { RootState } from '../../../stores/store';
 import { ManagementHub } from './ManagementHub';
-import { TeamHub } from './TeamHub';
+import { ManagerTeamHub } from './ManagerTeamHub';
 import { CreateJobModal } from './CreateJobModal';
 import { EditJobModal } from './EditJobModal';
 import { StaffProfile } from './StaffProfile';
@@ -135,9 +135,9 @@ export const ManagerDashboard = () => {
                 },
                 body: JSON.stringify({
                     taskName: taskTitle,
-                    description: taskDescription || `Vị trí: ${taskLocation}\nThời gian: ${taskTime}`,
+                    description: taskDescription || `Vị trí: ${taskLocation}`,
                     managerId: staffRecords[0]?.id,
-                    dueDate: new Date(Date.now() + 86400000).toISOString()
+                    dueDate: taskTime ? new Date(taskTime).toISOString() : new Date(Date.now() + 86400000).toISOString()
                 })
             });
 
@@ -323,10 +323,11 @@ export const ManagerDashboard = () => {
                 )}
 
                 {activeTab === 'team' && (
-                    <TeamHub
+                    <ManagerTeamHub
                         organizerId={staffRecords[0]?.vendorId || staffRecords[0]?.organizerId || user?.id}
                         token={token}
                         onAssignTask={(staffId, concertId, name) => setAssignTaskModal({ staffId, concertId, staffName: name })}
+                        viewMode="flat"
                     />
                 )}
 
@@ -438,8 +439,8 @@ export const ManagerDashboard = () => {
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Thời gian</label>
                                     <input
-                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-rose-500 transition-all text-slate-900 font-bold text-sm"
-                                        placeholder="Hạn chót..."
+                                        type="datetime-local"
+                                        className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-rose-500 transition-all text-slate-900 font-bold text-sm h-[58px]"
                                         value={taskTime}
                                         onChange={(e) => setTaskTime(e.target.value)}
                                     />

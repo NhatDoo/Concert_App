@@ -75,11 +75,12 @@ export const MyTasks: React.FC<MyTasksProps> = ({ staffRecords, loading, onUpdat
             {allTasks.map(task => {
                 const isPending = task.status === 'PENDING';
                 const isWorking = task.status === 'WORKING';
-                const isFinish = task.status === 'FINISH' || task.status === 'COMPLETED';
+                const isFinish = task.status === 'COMPLETED' || task.status === 'FINISH';
 
                 const statusColor = isFinish ? 'text-emerald-600' : isWorking ? 'text-blue-600' : 'text-amber-600';
                 const statusBg = isFinish ? 'bg-emerald-50' : isWorking ? 'bg-blue-50' : 'bg-amber-50';
                 const dotColor = isFinish ? 'bg-emerald-600' : isWorking ? 'bg-blue-600 animate-pulse' : 'bg-amber-600 animate-bounce';
+                const statusText = isFinish ? 'Hoàn thành' : isWorking ? 'Đang xử lý' : 'Chờ thực hiện';
 
                 return (
                     <div key={task.id} className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:border-blue-100 transition-all group flex flex-col justify-between animate-in zoom-in-95 duration-500">
@@ -90,7 +91,7 @@ export const MyTasks: React.FC<MyTasksProps> = ({ staffRecords, loading, onUpdat
                                 </div>
                                 <div className={`px-4 py-2 rounded-full text-[10px] uppercase tracking-widest flex items-center gap-2 ${statusBg} ${statusColor}`}>
                                     <div className={`w-2 h-2 rounded-full ${dotColor}`}></div>
-                                    {task.status}
+                                    {statusText}
                                 </div>
                             </div>
 
@@ -125,17 +126,29 @@ export const MyTasks: React.FC<MyTasksProps> = ({ staffRecords, loading, onUpdat
                                     <p className="text-[10px] text-slate-900 truncate uppercase tracking-widest">{task.staffName}</p>
                                     <p className="text-[8px] text-slate-400 uppercase tracking-widest">{task.staffRole}</p>
                                 </div>
-                                {onUpdateStatus && (
+                                {onUpdateStatus && !isFinish && (
                                     <button
                                         onClick={() => onUpdateStatus(task.concertId, task.staffId, task.id, task.status)}
-                                        className={`w-10 h-10 rounded-xl transition-all flex items-center justify-center ${isFinish ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' :
-                                            isWorking ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' :
-                                                'bg-amber-600 text-white shadow-lg shadow-amber-100'
+                                        className={`px-5 py-2.5 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg ${isWorking
+                                                ? 'bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700'
+                                                : 'bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700'
                                             }`}
-                                        title="Chuyển trạng thái"
                                     >
-                                        {isFinish ? <CheckCircle className="w-4 h-4" /> : isWorking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
+                                        {isWorking ? (
+                                            <>
+                                                <CheckCircle className="w-3.5 h-3.5" /> HOÀN THÀNH
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Clock className="w-3.5 h-3.5" /> BẮT ĐẦU LÀM
+                                            </>
+                                        )}
                                     </button>
+                                )}
+                                {isFinish && (
+                                    <div className="px-4 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-2 border border-emerald-100 italic">
+                                        <CheckCircle className="w-3.5 h-3.5" /> ĐÃ KẾT THÚC
+                                    </div>
                                 )}
                             </div>
 

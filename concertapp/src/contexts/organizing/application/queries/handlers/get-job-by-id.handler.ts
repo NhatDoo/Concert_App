@@ -21,7 +21,7 @@ export class GetJobByIdHandler implements IQueryHandler<GetJobByIdQuery> {
         return await this.prisma.jobPost.findUnique({
             where: { id: query.id },
             include: {
-                author: {
+                authorStaff: {
                     select: {
                         name: true,
                         role: true,
@@ -32,6 +32,12 @@ export class GetJobByIdHandler implements IQueryHandler<GetJobByIdQuery> {
                                 email: true
                             }
                         }
+                    }
+                },
+                authorUser: {
+                    select: {
+                        name: true,
+                        email: true
                     }
                 }
             }

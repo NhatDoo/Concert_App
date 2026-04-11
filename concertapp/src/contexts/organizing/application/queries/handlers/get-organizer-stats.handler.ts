@@ -33,7 +33,9 @@ export class GetOrganizerStatsHandler implements IQueryHandler<GetOrganizerStats
 
         // 3. Staff and Task Stats
         const staffMembers = await this.prisma.staff.findMany({
-            where: { organizerId },
+            where: {
+                concert: { organizerId: organizerId }
+            },
             include: {
                 tasks: true,
                 user: true,

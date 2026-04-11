@@ -36,17 +36,31 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
         fetchTeam();
     }, [organizerId, token]);
 
-    const handleRemoveStaff = async (staffId: string) => {
-        if (!confirm('Bạn có chắc chắn muốn xóa nhân sự này khỏi team? Toàn bộ task và đơn xin việc liên quan của họ cũng sẽ bị hủy!')) return;
+    const [deleteConfirm, setDeleteConfirm] = useState<{ id: string, name: string, code: string } | null>(null);
+    const [deleteInput, setDeleteInput] = useState('');
+
+    const handleRemoveStaff = (staffId: string, name: string) => {
+        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        setDeleteConfirm({ id: staffId, name, code });
+        setDeleteInput('');
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
+        if (deleteInput !== deleteConfirm.code) {
+            alert('Mã xác nhận không đúng!');
+            return;
+        }
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/staff/${staffId}`, {
+            const res = await fetch(`${apiUrl}/organize/staff/${deleteConfirm.id}`, {
                 method: 'DELETE',
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             if (res.ok) {
-                setTeam(prev => prev.filter(member => member.id !== staffId));
+                setTeam(prev => prev.filter(member => member.id !== deleteConfirm.id));
+                setDeleteConfirm(null);
                 alert('Nhân sự đã được gỡ bỏ khỏi Team.');
             } else {
                 alert('Không thể xóa nhân sự. Vui lòng thử lại.');
@@ -80,41 +94,73 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
     const closeDetails = () => setSelectedMember(null);
 
     const getSubordinates = (member: StaffRecord) => {
+        const mRole = (member.role || 'STAFF').toUpperCase();
+
         return team.filter(t => {
-            // Priority 1: Explicit database managerId link
+            const tRole = (t.role || 'STAFF').toUpperCase();
+            if (t.id === member.id) return false;
+
+            // 1. Explicit database managerId link
             if (t.managerId === member.id) return true;
 
-            // Priority 2: VENDOR hierarchy
-            const isVendorAdmin = ['VENDOR_ADMIN', 'VENDOR'].includes(member.role);
-            const isManager = member.role === 'MANAGER';
+            // 2. VENDOR Context
+            const isVendorLeader = ['VENDOR_ADMIN', 'VENDOR'].includes(mRole);
+            if (isVendorLeader && member.vendorId) {
+                // Anyone with same vendorId is a subordinate of the Vendor/Vendor Admin
+                if (t.vendorId === member.vendorId) return true;
+            }
 
-            if (isVendorAdmin && member.vendorId) {
-                // Vendor Admin sees EVERYONE in their vendor (including MANAGERs)
-                if (t.vendorId === member.vendorId && t.id !== member.id && !['VENDOR_ADMIN', 'VENDOR', 'ORGANIZER', 'EVENT_MANAGER'].includes(t.role)) {
-                    return true;
-                }
-            } else if (isManager && member.vendorId) {
-                // Manager sees lower-level staff in their vendor
-                if (t.vendorId === member.vendorId && t.id !== member.id && !['VENDOR_ADMIN', 'VENDOR', 'MANAGER', 'ORGANIZER', 'EVENT_MANAGER'].includes(t.role)) {
-                    return true;
+            // 3. ORGANIZER/CONCERT Context (Event Manager)
+            const isOrganizerLeader = ['ORGANIZER', 'EVENT_MANAGER'].includes(mRole);
+            const mConcertId = member.concertId;
+            const mOrgId = member.organizerId || (member as any).concert?.organizerId;
+
+            if (isOrganizerLeader) {
+                if (mRole === 'ORGANIZER') {
+                    // Organizer sees all managers/vendors in their organization
+                    if (['EVENT_MANAGER', 'VENDOR', 'VENDOR_ADMIN'].includes(tRole)) return true;
+                } else {
+                    // EVENT_MANAGER Context
+                    // A: Direct concert match
+                    if (mConcertId && t.concertId === mConcertId && !['ORGANIZER', 'EVENT_MANAGER'].includes(tRole)) return true;
+
+                    // B: Link via Vendor! 
+                    // If member (EM) is in a concert, and t belongs to a vendor that is also in that concert
+                    if (mConcertId && t.vendorId) {
+                        const tVendor = team.find(v => v.id === t.vendorId || (v.vendorId === t.vendorId && ['VENDOR', 'VENDOR_ADMIN'].includes(v.role.toUpperCase())));
+                        if (tVendor && tVendor.concertId === mConcertId) return true;
+                    }
+
+                    // C: Organization fallback
+                    if (!mConcertId && mOrgId && (t.organizerId === mOrgId || (t as any).concert?.organizerId === mOrgId) && !['ORGANIZER', 'EVENT_MANAGER'].includes(tRole)) return true;
                 }
             }
 
-            // Fallback if they share the same manager (Vendor Admin) and member is a MANAGER
-            if (isManager && member.managerId && t.managerId === member.managerId && t.id !== member.id && !['VENDOR_ADMIN', 'VENDOR', 'MANAGER'].includes(t.role)) {
+            // 4. Fallback for Managers
+            if (mRole === 'MANAGER' && member.vendorId && t.vendorId === member.vendorId && tRole === 'STAFF') {
                 return true;
-            }
-
-            // Priority 3: ORGANIZER hierarchy - ORGANIZER and EVENT_MANAGER see all direct staff
-            const isOrganizerLeader = ['ORGANIZER', 'EVENT_MANAGER'].includes(member.role);
-            if (isOrganizerLeader && member.organizerId) {
-                if (t.organizerId === member.organizerId && t.id !== member.id && !['ORGANIZER', 'EVENT_MANAGER', 'VENDOR_ADMIN', 'VENDOR', 'MANAGER'].includes(t.role)) {
-                    return true;
-                }
             }
 
             return false;
         });
+    };
+
+    // Recursive function to get ALL subordinates (total subtree)
+    const getAllSubordinates = (member: StaffRecord): StaffRecord[] => {
+        const results = new Map<string, StaffRecord>();
+
+        const traverse = (current: StaffRecord) => {
+            const subs = getSubordinates(current);
+            subs.forEach(s => {
+                if (!results.has(s.id)) {
+                    results.set(s.id, s);
+                    traverse(s);
+                }
+            });
+        };
+
+        traverse(member);
+        return Array.from(results.values());
     };
 
     // Build set of staff IDs that ARE subordinates of someone — these won't show as top-level cards
@@ -124,16 +170,18 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
     });
 
     // Top-level = explicitly managers, and anyone who isn't a subordinate
-    const topLevelRoles = ['ORGANIZER', 'EVENT_MANAGER', 'VENDOR_ADMIN', 'VENDOR', 'MANAGER'];
+    // BUT we always want to see EVENT_MANAGER and VENDOR at the top level even if they are managed by others
+    const alwaysShowTop = ['EVENT_MANAGER', 'VENDOR', 'VENDOR_ADMIN'];
     const topLevelMembers = team.filter(m =>
-        (topLevelRoles.includes(m.role) || getSubordinates(m).length > 0) && !allSubordinateIds.has(m.id)
+        alwaysShowTop.includes(m.role) ||
+        ((getSubordinates(m).length > 0 || m.role === 'MANAGER') && !allSubordinateIds.has(m.id))
     );
 
     return (
         <div className="animate-in slide-in-from-bottom-10 duration-700 font-sans">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {topLevelMembers.map(member => {
-                    const subordinates = getSubordinates(member);
+                    const allSubordinates = getAllSubordinates(member);
 
                     return (
                         <div
@@ -171,10 +219,10 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
                                 </div>
 
                                 <div className="pt-2 flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-widest mt-2">
-                                    {subordinates.length > 0 && (
+                                    {allSubordinates.length > 0 && (
                                         <span className="bg-white border border-slate-100 text-blue-500 px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
                                             <Users className="w-3 h-3" />
-                                            QL {subordinates.length} người
+                                            Tổng QL {allSubordinates.length} người
                                         </span>
                                     )}
                                     {(member.tasks?.length || 0) > 0 && (
@@ -194,7 +242,7 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
                                     <Calendar className="w-4 h-4" /> Giao hạng mục
                                 </button>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveStaff(member.id); }}
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveStaff(member.id, member.name); }}
                                     className="p-4 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm flex items-center justify-center border border-rose-100"
                                     title="Loại bỏ nhân sự"
                                 >
@@ -205,6 +253,50 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
                     );
                 })}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setDeleteConfirm(null)}></div>
+                    <div className="relative bg-white rounded-[2.5rem] shadow-2xl p-10 max-w-sm w-full animate-in zoom-in-95 duration-300 border border-rose-100">
+                        <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <Trash className="w-8 h-8 text-rose-500" />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-800 text-center uppercase tracking-tight mb-2">Xác nhận gỡ bỏ</h3>
+                        <p className="text-slate-500 text-xs text-center font-bold mb-8">
+                            Bạn đang chuẩn bị xóa <span className="text-rose-600 underline font-black">{deleteConfirm.name}</span>.<br />
+                            Vui lòng nhập mã bên dưới để xác nhận hành động này.
+                        </p>
+
+                        <div className="bg-slate-50 rounded-2xl p-6 text-center mb-8 border border-slate-100">
+                            <span className="text-3xl font-black tracking-[0.5em] text-slate-900 select-none">{deleteConfirm.code}</span>
+                        </div>
+
+                        <input
+                            value={deleteInput}
+                            onChange={(e) => setDeleteInput(e.target.value)}
+                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 outline-none focus:border-rose-500 transition-all text-center text-xl font-black mb-6"
+                            placeholder="Nhập mã xác nhận..."
+                            autoFocus
+                        />
+
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="flex-1 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
+                            >
+                                Xác nhận xóa
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {selectedMember && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 font-sans">
@@ -290,14 +382,14 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
                                         <div className="w-6 h-6 bg-blue-50 rounded-lg flex items-center justify-center">
                                             <Users className="w-3.5 h-3.5 text-blue-500" />
                                         </div>
-                                        Nhân Sự Quản Lý
+                                        Nhân Sự Quản Lý (Cây Phân Cấp)
                                     </h4>
                                     <div className="bg-blue-50 px-3 py-1.5 rounded-full text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100/50">
-                                        {getSubordinates(selectedMember).length} người
+                                        {getAllSubordinates(selectedMember).length} người
                                     </div>
                                 </div>
 
-                                {getSubordinates(selectedMember).length === 0 ? (
+                                {getAllSubordinates(selectedMember).length === 0 ? (
                                     <div className="bg-white rounded-3xl p-8 border border-slate-200 border-dashed text-center shadow-sm">
                                         <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
                                             <Users className="w-5 h-5 text-slate-300" />
@@ -306,7 +398,7 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {getSubordinates(selectedMember).map(sub => (
+                                        {getAllSubordinates(selectedMember).map(sub => (
                                             <div key={sub.id} className="bg-white p-5 rounded-[1.5rem] shadow-sm border border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-100/50 transition-all flex items-center gap-4 group">
                                                 <div className="w-12 h-12 bg-slate-50 rounded-[1.2rem] flex items-center justify-center text-slate-400 border border-slate-100 shrink-0 group-hover:text-blue-500 group-hover:bg-blue-50 transition-colors">
                                                     <UserIcon className="w-5 h-5" />

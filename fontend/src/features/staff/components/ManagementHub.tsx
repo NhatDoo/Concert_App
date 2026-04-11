@@ -148,7 +148,7 @@ export const ManagementHub: React.FC<ManagementHubProps> = ({
                                     <div className="flex-1 text-center md:text-left">
                                         <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
                                             <span className={`${bgAccentLight} ${textAccent} text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase`}>Ứng viên</span>
-                                            <p className="text-xs text-gray-400 flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{new Date(app.createdAt).toLocaleDateString('vi-VN')}</p>
+                                            <p className="text-xs text-gray-400 flex items-center gap-1" suppressHydrationWarning><Calendar className="w-3.5 h-3.5" />{new Date(app.createdAt).toLocaleDateString('vi-VN')}</p>
                                         </div>
                                         <h4 className="text-2xl font-bold text-gray-900">{app.applicant.name}</h4>
                                     </div>

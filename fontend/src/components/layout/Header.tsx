@@ -18,6 +18,11 @@ export const Header = () => {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [suggestions, setSuggestions] = React.useState<any[]>([]);
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
     const [isFocused, setIsFocused] = React.useState(false);
 
     // Debounce tìm kiếm khi gõ
@@ -170,13 +175,16 @@ export const Header = () => {
                         </Link>
                     )}
 
-                    {user?.role === 'ORGANIZER' && (
+                    {mounted && user?.role === 'ORGANIZER' && (
                         <div className="hidden sm:flex gap-2">
-                            <Link href="/organizer" className="text-red-600 hover:text-red-700 transition items-center gap-1 font-bold text-sm bg-red-50 px-4 py-2 rounded-full">
-                                Quản lý sự kiện
+                            <Link href="/organizer" className={`transition items-center gap-1 font-bold text-sm px-4 py-2 rounded-full ${router.hasOwnProperty('asPath') ? '' : 'bg-red-50 text-red-600'}`}>
+                                Sự kiện
                             </Link>
-                            <Link href="/organizer/staff" className="text-blue-600 hover:text-blue-700 transition items-center gap-1 font-bold text-sm bg-blue-50 px-4 py-2 rounded-full">
-                                Quản lý nhân sự
+                            <Link href="/organizer?tab=staff" className="text-blue-600 hover:text-blue-700 transition items-center gap-1 font-bold text-sm bg-blue-50 px-4 py-2 rounded-full">
+                                Nhân sự
+                            </Link>
+                            <Link href="/organizer?tab=revenue" className="text-green-600 hover:text-green-700 transition items-center gap-1 font-bold text-sm bg-green-50 px-4 py-2 rounded-full">
+                                Doanh thu
                             </Link>
                         </div>
                     )}
@@ -185,7 +193,7 @@ export const Header = () => {
                         <button className="text-gray-600 hover:text-black transition">
                             <Globe className="w-5 h-5" />
                         </button>
-                        {user ? (
+                        {mounted && user ? (
                             <div className="flex items-center gap-4">
                                 <Link
                                     href="/profile"

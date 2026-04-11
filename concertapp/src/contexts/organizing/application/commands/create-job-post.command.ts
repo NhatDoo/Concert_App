@@ -7,8 +7,9 @@ export class CreateJobPostCommand {
         public readonly companyLogo: string,
         public readonly location: string,
         public readonly salary: string,
-        public readonly organizerId: string,
-        public readonly authorId: string,
+        public readonly concertId?: string,
+        public readonly authorStaffId?: string,
+        public readonly authorUserId?: string,
         public readonly category?: string
     ) { }
 }

@@ -67,37 +67,71 @@ export const useJobManagement = (user: any, token: string | null) => {
     }, []);
 
     const fetchData = useCallback(async () => {
-        if (!user) return;
+        if (!user?.id) {
+            console.log('[JobManagement] No user.id, skipping fetch');
+            return;
+        }
+        console.log('[JobManagement] fetchData called with user:', user);
         setLoading(true);
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const staffRes = await fetch(`${apiUrl}/organize/staff/me?userId=${user.id}`);
-            const staffData = await staffRes.json();
-            const staff = Array.isArray(staffData) ? staffData[0] : staffData;
-            setStaffRecords(Array.isArray(staffData) ? staffData : [staffData]);
 
-            const authorIdToFetch = staff?.id || user.id;
-            const contextIdToFetch = staff?.organizerId || staff?.vendorId || user.id;
-
-            console.log('[JobManagement] Fetching jobs:', { authorId: authorIdToFetch, contextId: contextIdToFetch });
-
-            // Search for jobs authored by this manager OR belonging to this organizer/vendor
-            const jobsRes = await fetch(`${apiUrl}/organize/jobs?authorId=${authorIdToFetch}&includeClosed=true`);
-            const jobsData = await jobsRes.json();
-            const allJobs = Array.isArray(jobsData) ? jobsData : [];
-            setManagerJobs(allJobs);
-
-            if (allJobs.length > 0) {
-                fetchJobApplications(allJobs[0].id, allJobs);
+            // Fetch staff record — swallow errors gracefully
+            let staff: any = null;
+            try {
+                const staffRes = await fetch(`${apiUrl}/organize/staff/me?userId=${user.id}`);
+                if (staffRes.ok) {
+                    const staffData = await staffRes.json();
+                    console.log('[JobManagement] staffData raw:', staffData);
+                    staff = Array.isArray(staffData) ? staffData[0] : staffData;
+                    setStaffRecords(Array.isArray(staffData) ? staffData : (staffData ? [staffData] : []));
+                    console.log('[JobManagement] staff record:', staff);
+                    console.log('[JobManagement] staff.concertId:', staff?.concertId);
+                    console.log('[JobManagement] staff.organizerId:', staff?.organizerId);
+                }
+            } catch (staffErr) {
+                console.warn('[JobManagement] Could not fetch staff record:', staffErr);
             }
 
-            // Also fetch discovery data
+            const useOrganizerFilter = user.role === 'ORGANIZER' || staff?.vendorId;
+            const queryParam = useOrganizerFilter
+                ? `organizerId=${staff?.vendorId || user.id}`
+                : `authorId=${staff?.id || user.id}`;
+
+            // Search for jobs authored by this manager OR belonging to this organizer/vendor
+            try {
+                const jobsRes = await fetch(`${apiUrl}/organize/jobs?${queryParam}&includeClosed=true`);
+                if (jobsRes.ok) {
+                    const jobsData = await jobsRes.json();
+                    const allJobs = Array.isArray(jobsData) ? jobsData : [];
+                    setManagerJobs(allJobs);
+                    if (allJobs.length > 0) {
+                        fetchJobApplications(allJobs[0].id, allJobs);
+                    }
+                }
+            } catch (jobsErr) {
+                console.warn('[JobManagement] Could not fetch jobs:', jobsErr);
+            }
+
+            // Fetch concert data for EventManager
+            if (staff?.concertId) {
+                try {
+                    const concertRes = await fetch(`${apiUrl}/concerts/${staff.concertId}`);
+                    if (concertRes.ok) {
+                        const concertData = await concertRes.json();
+                        // Update staff record with concert info if needed
+                    }
+                } catch (concertErr) {
+                    console.warn('[JobManagement] Could not fetch concert:', concertErr);
+                }
+            }
+
             fetchDiscoverJobs();
             if (staff?.id) {
                 fetchMyApplications(staff.id);
             }
         } catch (e) {
-            console.error(e);
+            console.error('[JobManagement] fetchData failed:', e);
         } finally {
             setLoading(false);
         }
@@ -138,29 +172,44 @@ export const useJobManagement = (user: any, token: string | null) => {
     };
 
     const createJob = async (jobData: any, onSuccess?: () => void) => {
-
         if (!user) return;
-        if (!staffRecords[0]) {
+
+        // Check if user is allowed to post (must be Organizer or have a Staff record)
+        if (!staffRecords[0] && user.role !== 'ORGANIZER') {
             notify('error', 'Hồ sơ tuyển dụng của bạn đang được chuẩn bị. Vui lòng thử lại sau giây lát.');
             return;
         }
+
         setIsCreating(true);
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const body = JSON.stringify({
-                ...jobData,
-                organizerId: staffRecords[0]?.organizerId || staffRecords[0]?.vendorId || user?.id,
-                authorId: staffRecords[0]?.id || user?.id
-            });
-            console.log('[JobManagement] Final POST Body:', body);
+
+            // Adapt body to new schema field names
+            const payload: any = { ...jobData };
+
+            if (staffRecords[0]) {
+                // If posting as a Staff member (e.g. Vendor Manager or Event Manager staff)
+                payload.authorStaffId = staffRecords[0].id;
+                // Default to staff's concert if not explicitly provided in jobData
+                if (!payload.concertId && staffRecords[0].concertId) {
+                    payload.concertId = staffRecords[0].concertId;
+                }
+            } else if (user.role === 'ORGANIZER') {
+                // If posting directly as an Organizer (User)
+                payload.authorUserId = user.id;
+            }
+
+            console.log('[JobManagement] Create Job Payload:', payload);
+
             const res = await fetch(`${apiUrl}/organize/jobs`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token && { 'Authorization': `Bearer ${token}` })
                 },
-                body
+                body: JSON.stringify(payload)
             });
+
             if (res.ok) {
                 fetchData();
                 notify('success', 'Đã đăng tin tuyển dụng thành công!');
@@ -170,7 +219,11 @@ export const useJobManagement = (user: any, token: string | null) => {
                 alert(`Không thể tạo tin tuyển dụng: ${Array.isArray(errorData.message) ? errorData.message.join(', ') : errorData.message || 'Lỗi không xác định'}`);
             }
         } catch (e) {
-        } finally { setIsCreating(false); }
+            console.error('[JobManagement] createJob failed:', e);
+            notify('error', 'Lỗi kết nối máy chủ');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
     const updateJob = async (id: string, data: any, onSuccess?: () => void) => {

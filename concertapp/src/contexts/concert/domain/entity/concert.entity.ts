@@ -12,8 +12,10 @@ export class Concert extends AggregateRoot {
     private startdate: StartDate;
     private location: string;
     private imageUrl: string | null;
+    private hashtags: string[] = [];
+    private categoryIds: string[] = [];
 
-    private constructor(id: string, organizerId: string, name: string, date: StartDate, location: string, imageUrl: string | null) {
+    private constructor(id: string, organizerId: string, name: string, date: StartDate, location: string, imageUrl: string | null, hashtags: string[] = [], categoryIds: string[] = []) {
         super();
         this.id = id;
         this.organizerId = organizerId;
@@ -21,18 +23,20 @@ export class Concert extends AggregateRoot {
         this.startdate = date;
         this.location = location;
         this.imageUrl = imageUrl;
+        this.hashtags = hashtags;
+        this.categoryIds = categoryIds;
     }
 
-    static create(id: string, organizerId: string, name: string, startdate: StartDate, location: string, imageUrl: string | null = null): Concert {
+    static create(id: string, organizerId: string, name: string, startdate: StartDate, location: string, imageUrl: string | null = null, hashtags: string[] = [], categoryIds: string[] = []): Concert {
         if (!name) throw new Error("Name is required");
 
-        const concert = new Concert(id, organizerId, name, startdate, location, imageUrl);
-        concert.apply(new ConcertCreatedEvent(id, name, startdate.getValue(), location));
+        const concert = new Concert(id, organizerId, name, startdate, location, imageUrl, hashtags, categoryIds);
+        concert.apply(new ConcertCreatedEvent(id, name, startdate.getValue(), location, hashtags, categoryIds));
         return concert;
     }
 
-    static hydrate(id: string, organizerId: string, name: string, startdate: StartDate, location: string, imageUrl: string | null): Concert {
-        return new Concert(id, organizerId, name, startdate, location, imageUrl);
+    static hydrate(id: string, organizerId: string, name: string, startdate: StartDate, location: string, imageUrl: string | null, hashtags: string[] = [], categoryIds: string[] = []): Concert {
+        return new Concert(id, organizerId, name, startdate, location, imageUrl, hashtags, categoryIds);
     }
 
     getId(): string {
@@ -53,6 +57,12 @@ export class Concert extends AggregateRoot {
     getImageUrl(): string | null {
         return this.imageUrl;
     }
+    getHashtags(): string[] {
+        return this.hashtags;
+    }
+    getCategoryIds(): string[] {
+        return this.categoryIds;
+    }
 
     // --- Domain Behaviors ---
     rename(newName: string): void {
@@ -72,6 +82,11 @@ export class Concert extends AggregateRoot {
 
     updateImageUrl(newImageUrl: string): void {
         this.imageUrl = newImageUrl;
+    }
+
+    setMetadata(hashtags: string[], categoryIds: string[]): void {
+        this.hashtags = hashtags;
+        this.categoryIds = categoryIds;
     }
 
     addPerformance(performanceName: string): void {

@@ -1,8 +1,9 @@
-import { Controller, Post, Put, Delete, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
+import { Controller, Post, Put, Delete, Body, HttpCode, HttpStatus, Param, Get, Inject, UseInterceptors, UploadedFile, Query, ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CreateConcertCommand } from '../../application/commands/create-concert.command';
+import { UpdateConcertCommand } from '../../application/commands/update-concert.command';
 import { GenerateTicketsCommand } from '../../application/commands/generate-tickets.command';
 import { GetAllConcertsQuery } from '../../application/queries/get-all-concerts.query';
 import { GetConcertByIdQuery } from '../../application/queries/get-concert-by-id.query';
@@ -14,6 +15,7 @@ import { CreateArtistCommand, UpdateArtistCommand, DeleteArtistCommand } from '.
 import { AddPerformanceCommand, UpdatePerformanceScheduleCommand, RemovePerformanceCommand } from '../../application/commands/performance.command';
 import { SyncElasticsearchCommand } from '../../application/commands/sync-elasticsearch.command';
 import { CreateConcertDto } from './dto/create-concert.dto';
+import { UpdateConcertDto } from './dto/update-concert.dto';
 import { GenerateTicketsDto } from './dto/generate-tickets.dto';
 import { CreateArtistDto, UpdateArtistDto } from './dto/artist.dto';
 import { AddPerformanceDto, UpdatePerformanceScheduleDto } from './dto/performance.dto';
@@ -23,6 +25,7 @@ import { IARTIST_REPOSITORY } from '../../domain/repository/artist.repository.in
 import type { IArtistRepository } from '../../domain/repository/artist.repository.interface';
 import { IPERFORMANCE_REPOSITORY } from '../../domain/repository/performance.repository.interface';
 import type { IPerformanceRepository } from '../../domain/repository/performance.repository.interface';
+import { PrismaService } from '../../../../prisma.service';
 
 @ApiTags('Concerts')
 @Controller('concerts')
@@ -32,6 +35,7 @@ export class ConcertController {
         private readonly queryBus: QueryBus,
         @Inject(IARTIST_REPOSITORY) private readonly artistRepo: IArtistRepository,
         @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
+        private readonly prisma: PrismaService,
     ) { }
 
     // ==================== ARTIST ====================
@@ -107,6 +111,30 @@ export class ConcertController {
         return this.queryBus.execute(new GetAllConcertsQuery());
     }
 
+    @Get('organizer/:organizerId')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get all concerts by organizer ID' })
+    async getConcertsByOrganizer(@Param('organizerId') organizerId: string) {
+        const concerts = await this.prisma.concert.findMany({
+            where: { organizerId },
+            orderBy: { startDate: 'desc' },
+            include: {
+                organizer: { select: { id: true, name: true } },
+                categories: true
+            }
+        });
+        return concerts.map(c => ({
+            id: c.id,
+            name: c.name,
+            startDate: c.startDate,
+            location: c.location,
+            imageUrl: c.imageUrl,
+            organizerId: c.organizerId,
+            categoryIds: c.categories.map(cat => cat.slug),
+            hashtags: c.hashtags || []
+        }));
+    }
+
     @Get('search')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Search concerts by name or location (Optimized with Bloom Filter)' })
@@ -140,6 +168,8 @@ export class ConcertController {
             parsedDate,
             dto.location,
             image,
+            dto.categories ? JSON.parse(dto.categories) : [],
+            dto.hashtags ? dto.hashtags.split(/[\s,]+/).filter(tag => tag.trim() !== '') : [],
         );
 
         const concertId = await this.commandBus.execute(command);
@@ -148,6 +178,47 @@ export class ConcertController {
             message: 'Concert successfully created',
             concertId
         };
+    }
+
+    @Put(':id')
+    @UseInterceptors(FileInterceptor('image'))
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update an existing concert' })
+    @ApiConsumes('multipart/form-data')
+    @ApiResponse({ status: 200, description: 'Concert successfully updated' })
+    async updateConcert(
+        @Param('id') id: string,
+        @Body() dto: UpdateConcertDto,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [
+                    new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+                    new FileTypeValidator({ fileType: '.(png|jpeg|jpg)' }),
+                ],
+                fileIsRequired: false,
+            }),
+        ) image?: Express.Multer.File,
+    ) {
+        let parsedDate: Date | undefined;
+        if (dto.startDate) {
+            parsedDate = new Date(dto.startDate);
+            if (isNaN(parsedDate.getTime())) {
+                throw new Error('Invalid start date format');
+            }
+        }
+
+        const command = new UpdateConcertCommand(
+            id,
+            (dto as any).organizerId,
+            dto.name,
+            parsedDate,
+            dto.location,
+            image,
+            dto.categories ? JSON.parse(dto.categories) : undefined,
+            dto.hashtags ? dto.hashtags.split(/[\s,]+/).filter(tag => tag.trim() !== '') : undefined,
+        );
+
+        return this.commandBus.execute(command);
     }
 
     @Post(':id/tickets')

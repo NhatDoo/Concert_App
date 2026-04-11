@@ -13,10 +13,12 @@ interface CreateJobModalProps {
         location: string;
         companyName: string;
         companyLogo: string;
+        concertId?: string;
     };
     setNewJob: (job: any) => void;
     isCreatingJob: boolean;
     accentColor?: string;
+    concerts?: { id: string; name: string }[];
 }
 
 export const CreateJobModal: React.FC<CreateJobModalProps> = ({
@@ -26,7 +28,8 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
     newJob,
     setNewJob,
     isCreatingJob,
-    accentColor = 'rose-600'
+    accentColor = 'rose-600',
+    concerts = []
 }) => {
     if (!show) return null;
 
@@ -78,6 +81,37 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
                                 onChange={e => setNewJob({ ...newJob, salary: e.target.value })}
                             />
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                            <label className="text-[10px] text-gray-400 uppercase tracking-widest font-bold ml-2">Danh mục công việc</label>
+                            <select
+                                required
+                                className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:bg-white ${focusBorderAccent} ${focusShadowAccent} outline-none transition-all duration-300 font-bold appearance-none cursor-pointer`}
+                                value={(newJob as any).category || 'STAFF'}
+                                onChange={e => setNewJob({ ...newJob, category: e.target.value })}
+                            >
+                                <option value="STAFF">Nhân sự (STAFF)</option>
+                                <option value="EVENT_MANAGER">Quản lý sự kiện (EVENT MANAGER)</option>
+                                <option value="MANAGER">Quản lý chuyên môn (MANAGER)</option>
+                            </select>
+                        </div>
+                        {concerts && concerts.length > 0 && (
+                            <div className="space-y-3">
+                                <label className="text-[10px] text-gray-400 uppercase tracking-widest font-bold ml-2">Dự án / Sự kiện</label>
+                                <select
+                                    className={`w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 py-4 focus:bg-white ${focusBorderAccent} ${focusShadowAccent} outline-none transition-all duration-300 font-bold appearance-none cursor-pointer`}
+                                    value={newJob.concertId || ''}
+                                    onChange={e => setNewJob({ ...newJob, concertId: e.target.value })}
+                                >
+                                    <option value="">-- Chọn sự kiện --</option>
+                                    {concerts.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-3">

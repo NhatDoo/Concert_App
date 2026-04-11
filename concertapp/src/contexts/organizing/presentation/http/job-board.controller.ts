@@ -39,8 +39,9 @@ export class JobBoardController {
                 dto.companyLogo || '',
                 dto.location || '',
                 dto.salary || '',
-                dto.organizerId,
-                dto.authorId,
+                dto.concertId,
+                dto.authorStaffId,
+                dto.authorUserId,
                 dto.category
             );
             return await this.commandBus.execute(command);
@@ -92,6 +93,21 @@ export class JobBoardController {
         return await this.queryBus.execute(new GetJobByIdQuery(id));
     }
 
+    @Get('jobs/:id/applications')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get applications for a specific job post' })
+    async getJobApplications(@Param('id') id: string) {
+        return await this.prisma.staffApplication.findMany({
+            where: { jobPostId: id },
+            include: {
+                applicant: {
+                    include: { user: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+    }
+
     @Get('applications')
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Get all applications' })
@@ -141,36 +157,52 @@ export class JobBoardController {
     async reviewApplication(@Param('id') id: string, @Body() dto: ReviewApplicationDto) {
         const app = await this.prisma.staffApplication.findUnique({
             where: { id },
-            include: { jobPost: true }
+            include: {
+                jobPost: {
+                    include: {
+                        authorStaff: true,
+                        concert: true
+                    }
+                }
+            }
         });
 
         if (!app) return { message: 'Application not found' };
 
         if (dto.status === 'APPROVED') {
-            // Check if this job belongs to a vendor (jobPost.organizerId is actually vendorId)
-            const isVendorJob = await this.prisma.vendor.findUnique({
-                where: { id: app.jobPost.organizerId }
-            });
+            const jobPost = app.jobPost;
+            const authorStaff = jobPost.authorStaff;
 
-            if (isVendorJob) {
+            if (authorStaff && authorStaff.vendorId) {
+                // If the job belongs to a vendor
                 await this.prisma.staff.update({
                     where: { id: app.applicantId },
                     data: {
-                        vendorId: app.jobPost.organizerId,
-                        organizerId: null,
-                        managerId: app.jobPost.authorId,
-                        role: app.jobPost.title
+                        vendorId: authorStaff.vendorId,
+                        managerId: authorStaff.id,
+                        role: jobPost.category || 'STAFF'
                     }
                 });
             } else {
-                await this.prisma.staff.update({
+                // Otherwise, assign to the concert
+                const recruitedRole = (jobPost.category || 'STAFF').toUpperCase();
+                const updatedStaff = await this.prisma.staff.update({
                     where: { id: app.applicantId },
                     data: {
-                        organizerId: app.jobPost.organizerId,
-                        managerId: app.jobPost.authorId,
-                        role: app.jobPost.title
+                        concertId: jobPost.concertId || (authorStaff ? authorStaff.concertId : null),
+                        // Only assign managerId if it refers to a valid Staff member (authorStaff)
+                        managerId: authorStaff ? authorStaff.id : null,
+                        role: recruitedRole
                     }
                 });
+
+                // If recruited as EVENT_MANAGER or similar management role, link to the concert
+                if (recruitedRole === 'EVENT_MANAGER' && updatedStaff.concertId) {
+                    await this.prisma.concert.update({
+                        where: { id: updatedStaff.concertId },
+                        data: { eventManagerId: updatedStaff.id }
+                    });
+                }
             }
         }
 

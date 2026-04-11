@@ -22,7 +22,7 @@ export class CreateConcertHandler implements ICommandHandler<CreateConcertComman
     ) { }
 
     async execute(command: CreateConcertCommand): Promise<string> {
-        const { organizerId, name, startDate, location, imageFile } = command;
+        const { organizerId, name, startDate, location, imageFile, categories, hashtags } = command;
 
         // Xử lý tạo Value Object StartDate (sẽ check validation ngày)
         const startDateVO = StartDate.create(startDate);
@@ -36,6 +36,9 @@ export class CreateConcertHandler implements ICommandHandler<CreateConcertComman
                 name,
                 startDateVO,
                 location,
+                null,
+                hashtags || [],
+                categories || [],
             )
         );
 

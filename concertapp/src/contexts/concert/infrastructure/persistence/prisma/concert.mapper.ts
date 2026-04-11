@@ -12,6 +12,8 @@ export class ConcertMapper {
             StartDate.hydrate(raw.startDate),
             raw.location,
             raw.imageUrl ?? null,
+            raw.hashtags ?? [],
+            raw.categories?.map((c: any) => c.slug) || [],
         );
     }
 
@@ -23,6 +25,8 @@ export class ConcertMapper {
             startDate: concert.getDate().getValue(),
             location: concert.getLocation(),
             imageUrl: concert.getImageUrl(),
+            hashtags: concert.getHashtags(),
+            categoryIds: concert.getCategoryIds(),
         };
     }
 }

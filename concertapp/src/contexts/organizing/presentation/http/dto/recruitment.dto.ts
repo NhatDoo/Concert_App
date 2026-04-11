@@ -37,15 +37,22 @@ export class CreateJobPostDto {
     @IsOptional()
     salary?: string;
 
-    @ApiProperty()
+    @ApiProperty({ required: false })
     @IsUUID()
-    organizerId: string;
+    @IsOptional()
+    concertId?: string;
 
-    @ApiProperty()
+    @ApiProperty({ required: false })
     @IsUUID()
-    authorId: string; // Staff manager ID
+    @IsOptional()
+    authorStaffId?: string;
 
-    @ApiProperty({ required: false, enum: ['STAFF', 'MANAGER'] })
+    @ApiProperty({ required: false })
+    @IsUUID()
+    @IsOptional()
+    authorUserId?: string;
+
+    @ApiProperty({ required: false, enum: ['STAFF', 'MANAGER', 'EVENT_MANAGER'] })
     @IsString()
     @IsOptional()
     category?: string;

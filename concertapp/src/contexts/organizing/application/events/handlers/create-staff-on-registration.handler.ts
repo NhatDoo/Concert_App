@@ -32,7 +32,6 @@ export class CreateStaffOnRegistrationHandler implements IEventHandler<UserRegis
                     name: name,
                     role: 'VENDOR_ADMIN',
                     vendorId: vendorId,
-                    organizerId: null,
                     concertId: null,
                     managerId: null
                 }
@@ -64,7 +63,6 @@ export class CreateStaffOnRegistrationHandler implements IEventHandler<UserRegis
                         userId: userId,
                         name: name,
                         role: invitation.role,
-                        organizerId: invitation.organizerId,
                         concertId: null,
                         managerId: invitation.managerId
                     }
@@ -83,7 +81,6 @@ export class CreateStaffOnRegistrationHandler implements IEventHandler<UserRegis
                         userId: userId,
                         name: name,
                         role: staffRole || 'APPLICANT',
-                        organizerId: null,
                         concertId: null,
                         managerId: null
                     }

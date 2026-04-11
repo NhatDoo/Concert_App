@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsDateString, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsUUID, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateConcertDto {
@@ -21,5 +21,16 @@ export class CreateConcertDto {
     location: string;
 
     @ApiPropertyOptional({ type: 'string', format: 'binary', description: 'Thumbnail image for the concert' })
+    @IsOptional()
     image?: Express.Multer.File;
+
+    @ApiPropertyOptional({ example: '["music", "comedy"]', description: 'JSON string of category IDs' })
+    @IsString()
+    @IsOptional()
+    categories?: string;
+
+    @ApiPropertyOptional({ example: '#music #fun', description: 'Hashtags string' })
+    @IsString()
+    @IsOptional()
+    hashtags?: string;
 }

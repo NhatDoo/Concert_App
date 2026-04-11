@@ -19,8 +19,11 @@ export class CreateJobPostHandler implements ICommandHandler<CreateJobPostComman
             command.title,
             command.description,
             command.requirements,
-            command.organizerId,
-            command.authorId,
+            {
+                authorStaffId: command.authorStaffId,
+                authorUserId: command.authorUserId,
+                concertId: command.concertId
+            },
             {
                 companyName: command.companyName,
                 companyLogo: command.companyLogo,

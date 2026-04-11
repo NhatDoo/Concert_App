@@ -10,6 +10,7 @@ export class UpdateJobPostCommand {
             location?: string;
             salary?: string;
             status?: 'OPEN' | 'CLOSED';
+            category?: string;
         }
     ) { }
 }

@@ -4,5 +4,7 @@ export class ConcertCreatedEvent {
         public readonly name: string,
         public readonly startDate: Date,
         public readonly location: string,
+        public readonly hashtags?: string[],
+        public readonly categoryIds?: string[],
     ) { }
 }

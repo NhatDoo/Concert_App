@@ -28,10 +28,12 @@ export class UpdateJobPostHandler implements ICommandHandler<UpdateJobPostComman
             command.data.companyLogo ?? existingJobPost.companyLogo,
             command.data.location ?? existingJobPost.location,
             command.data.salary ?? existingJobPost.salary,
-            existingJobPost.organizerId,
-            existingJobPost.authorId,
+            existingJobPost.concertId,
+            existingJobPost.authorStaffId,
+            existingJobPost.authorUserId,
             existingJobPost.createdAt,
-            new Date()
+            new Date(),
+            command.data.category || existingJobPost.category
         );
 
         await this.jobPostRepository.update(updatedJobPost);

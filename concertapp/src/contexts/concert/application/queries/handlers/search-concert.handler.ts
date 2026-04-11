@@ -24,14 +24,13 @@ export class SearchConcertHandler implements IQueryHandler<SearchConcertQuery> {
 
         return results.map((c: any) => ({
             id: c.id,
-            name: c.name,
-            startDate: c.startDate,
+            title: c.name,
             location: c.location,
-            imageUrl: c.imageUrl,
-            artists: c.artists || [],
-            organizerName: c.organizerName || '',
-            minPrice: c.minPrice || 0,
-            category: c.category || 'Music'
+            dateStr: new Date(c.startDate).toLocaleDateString('vi-VN'),
+            imageUrl: c.imageUrl || 'https://images.unsplash.com/photo-1540039155732-6761b54f222a',
+            organizer: c.organizerName || 'Ban tổ chức',
+            priceStr: c.minPrice > 0 ? `${c.minPrice.toLocaleString('vi-VN')} VND` : 'Liên hệ',
+            category: c.category || 'Nhạc Sống'
         }));
     }
 }

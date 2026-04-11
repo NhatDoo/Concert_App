@@ -20,13 +20,14 @@ import {
     Award,
     TrendingUp,
     Target,
-    Send
+    Send,
+    Calendar
 } from 'lucide-react';
 import { RootState } from '../../../stores/store';
 import { ManagementHub } from './ManagementHub';
 import { EventPhaseWorkflow } from './EventPhaseWorkflow';
 import { StaffDiscover } from './StaffDiscover';
-import { TeamHub } from './TeamHub';
+import { EventManagerTeamHub } from './EventManagerTeamHub';
 import { CreateJobModal } from './CreateJobModal';
 import { EditJobModal } from './EditJobModal';
 import { StaffProfile } from './StaffProfile';
@@ -72,6 +73,80 @@ export const EventManagerDashboard = () => {
     const [showApplyModal, setShowApplyModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
+    console.log('[EventManagerDashboard] staffRecords:', staffRecords);
+    console.log('[EventManagerDashboard] user:', user?.id);
+    console.log('[EventManagerDashboard] concertId:', staffRecords[0]?.concertId);
+    console.log('[EventManagerDashboard] organizerId:', staffRecords[0]?.organizerId);
+
+    // Concert selection for team view
+    const [concerts, setConcerts] = useState<{ id: string, name: string, startDate: string, imageUrl?: string }[]>([]);
+    const [selectedConcertId, setSelectedConcertId] = useState<string>('');
+
+    // Calculate organizerId - EventManager may have organizerId as user.id or staff record
+    const staffConcertId = staffRecords[0]?.concertId;
+    const organizerId = staffRecords[0]?.organizerId || user?.id || '';
+    console.log('[EventManagerDashboard] staffConcertId:', staffConcertId);
+    console.log('[EventManagerDashboard] organizerId:', organizerId);
+    console.log('[EventManagerDashboard] full staffRecords[0]:', staffRecords[0]);
+
+    useEffect(() => {
+        const fetchConcerts = async () => {
+            try {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+                // 1. Collect all unique concerts from staffRecords
+                const uniqueStaffConcertsMap = new Map();
+                staffRecords.forEach(record => {
+                    if (record.concert && record.concert.id) {
+                        uniqueStaffConcertsMap.set(record.concert.id, record.concert);
+                    }
+                });
+                const concertsFromStaff = Array.from(uniqueStaffConcertsMap.values());
+
+                let updatedConcerts = [...concertsFromStaff];
+
+                // 2. Also fetch all concerts of the organizer/vendor if applicable
+                const targetOrganizerId = staffRecords[0]?.organizerId || user?.id;
+                if (targetOrganizerId) {
+                    const listUrl = `${apiUrl}/concerts/organizer/${targetOrganizerId}`;
+                    const allRes = await fetch(listUrl);
+                    if (allRes.ok) {
+                        const allData = await allRes.json();
+                        if (Array.isArray(allData)) {
+                            // Merge without duplicates
+                            const existingIds = new Set(updatedConcerts.map(c => c.id));
+                            const uniqueNew = allData.filter((c: any) => !existingIds.has(c.id));
+                            updatedConcerts = [...updatedConcerts, ...uniqueNew];
+                        }
+                    }
+                }
+
+                // Fallback: If no concerts found yet and no organizer ID, fetch all (for global roles)
+                if (updatedConcerts.length === 0 && !targetOrganizerId) {
+                    const allRes = await fetch(`${apiUrl}/concerts`);
+                    if (allRes.ok) {
+                        updatedConcerts = await allRes.json();
+                    }
+                }
+
+                setConcerts(updatedConcerts);
+
+                // Auto-select first concert if none selected
+                if (!selectedConcertId && updatedConcerts.length > 0) {
+                    setSelectedConcertId(updatedConcerts[0].id);
+                } else if (staffConcertId && !selectedConcertId) {
+                    setSelectedConcertId(staffConcertId);
+                }
+            } catch (e) {
+                console.error('Failed to fetch concerts', e);
+            }
+        };
+
+        if (staffRecords.length > 0 || user?.id) {
+            fetchConcerts();
+        }
+    }, [staffRecords, user?.id, staffConcertId, selectedConcertId]);
+
     const [newJob, setNewJob] = useState({
         title: '',
         description: '',
@@ -79,8 +154,13 @@ export const EventManagerDashboard = () => {
         salary: '',
         location: '',
         companyName: '',
-        companyLogo: ''
+        companyLogo: '',
+        concertId: selectedConcertId
     });
+
+    useEffect(() => {
+        setNewJob(prev => ({ ...prev, concertId: selectedConcertId }));
+    }, [selectedConcertId]);
 
     // Task Assignment States
     const [assignTaskModal, setAssignTaskModal] = useState<{ staffId: string, concertId: string, staffName: string } | null>(null);
@@ -94,7 +174,16 @@ export const EventManagerDashboard = () => {
         e.preventDefault();
         await createJob(newJob, () => {
             setShowCreateModal(false);
-            setNewJob({ title: '', description: '', requirements: '', salary: '', location: '', companyName: '', companyLogo: '' });
+            setNewJob({
+                title: '',
+                description: '',
+                requirements: '',
+                salary: '',
+                location: '',
+                companyName: '',
+                companyLogo: '',
+                concertId: selectedConcertId
+            });
         });
     };
 
@@ -179,6 +268,7 @@ export const EventManagerDashboard = () => {
                 <nav className="flex-1 space-y-4">
                     {[
                         { id: 'overview', icon: LayoutDashboard, label: 'Trung tâm Chỉ huy' },
+                        { id: 'concerts', icon: Calendar, label: 'Danh sách Concert' },
                         { id: 'phases', icon: ClipboardList, label: 'Lộ trình Concert' },
                         { id: 'job-board', icon: Briefcase, label: 'Cơ hội cộng tác' },
                         { id: 'marketplace', icon: ShoppingBag, label: 'Sàn nhân sự (Market)' },
@@ -305,6 +395,60 @@ export const EventManagerDashboard = () => {
                     </div>
                 )}
 
+                {activeTab === 'concerts' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+                        <div className="mb-8">
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase mb-2">Danh sách Concert</h2>
+                            <p className="text-slate-500 text-sm font-medium">Tất cả sự kiện thuộc tổ chức của bạn</p>
+                        </div>
+
+                        {concerts.length === 0 ? (
+                            <div className="bg-white/40 shadow-inner rounded-[3.5rem] p-24 flex flex-col items-center justify-center border-2 border-dashed border-amber-100">
+                                <div className="w-24 h-24 bg-amber-50 rounded-[2.5rem] flex items-center justify-center mb-8 border border-amber-100">
+                                    <Calendar className="w-10 h-10 text-amber-300" />
+                                </div>
+                                <p className="text-amber-500 uppercase tracking-[0.3em] text-[10px] font-black">Chưa có concert nào</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {concerts.map((concert) => (
+                                    <div
+                                        key={concert.id}
+                                        className="bg-white rounded-[2.5rem] p-6 shadow-sm border border-slate-100 hover:shadow-2xl hover:shadow-amber-200/40 hover:border-amber-100 transition-all duration-500 group cursor-pointer"
+                                        onClick={() => {
+                                            setSelectedConcertId(concert.id);
+                                            setActiveTab('team');
+                                        }}
+                                    >
+                                        <div className="relative h-40 bg-slate-100 rounded-[2rem] mb-6 overflow-hidden">
+                                            {concert.imageUrl ? (
+                                                <img
+                                                    src={concert.imageUrl}
+                                                    alt={concert.name}
+                                                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 bg-gradient-to-br from-amber-100 to-yellow-100" />
+                                            )}
+                                            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/30 transition-colors" />
+                                            <div className="absolute bottom-4 left-4">
+                                                <span className="px-4 py-2 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-black uppercase tracking-widest text-amber-700 shadow-xl">
+                                                    {new Date(concert.startDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <h3 className="text-xl font-black text-slate-900 group-hover:text-amber-700 transition-colors line-clamp-2">{concert.name}</h3>
+                                        <div className="flex items-center gap-2 mt-3 text-slate-400 text-sm">
+                                            <Calendar className="w-4 h-4" />
+                                            <span className="font-medium">Xem nhân sự & tiến độ</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {activeTab === 'phases' && (
                     <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
                         <EventPhaseWorkflow />
@@ -324,8 +468,23 @@ export const EventManagerDashboard = () => {
 
                 {activeTab === 'team' && (
                     <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
-                        <TeamHub
-                            organizerId={staffRecords[0]?.organizerId || user?.id}
+                        {concerts.length > 1 && (
+                            <div className="mb-6 flex items-center gap-4">
+                                <label className="text-sm font-black text-slate-600 uppercase tracking-wider">Chọn sự kiện:</label>
+                                <select
+                                    value={selectedConcertId}
+                                    onChange={(e) => setSelectedConcertId(e.target.value)}
+                                    className="bg-white border-2 border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-800 focus:border-amber-500 outline-none"
+                                >
+                                    {concerts.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <EventManagerTeamHub
+                            concertId={selectedConcertId}
+                            organizerId={staffRecords[0]?.organizerId || user?.id || ''}
                             token={token}
                             onAssignTask={(staffId, concertId, name) => setAssignTaskModal({ staffId, concertId, staffName: name })}
                         />
@@ -371,6 +530,8 @@ export const EventManagerDashboard = () => {
                 newJob={newJob}
                 setNewJob={setNewJob}
                 isCreatingJob={isCreating}
+                concerts={concerts}
+                accentColor="amber-600"
             />
             <EditJobModal
                 show={!!editingJob}

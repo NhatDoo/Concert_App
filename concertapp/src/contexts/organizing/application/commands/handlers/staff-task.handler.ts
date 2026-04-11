@@ -5,11 +5,13 @@ import { AssignStaffTaskCommand, UpdateStaffTaskCommand } from '../staff-task.co
 import { IORGANIZE_REPOSITORY } from '../../../domain/repository/organize.repository.interface';
 import type { IOrganizeRepository } from '../../../domain/repository/organize.repository.interface';
 import { StaffTask } from '../../../domain/entity/staff-task.entity';
+import { PrismaService } from '../../../../../prisma.service';
 
 @CommandHandler(AssignStaffTaskCommand)
 export class AssignStaffTaskHandler implements ICommandHandler<AssignStaffTaskCommand, void> {
     constructor(
         @Inject(IORGANIZE_REPOSITORY) private readonly repository: IOrganizeRepository,
+        private readonly prisma: PrismaService
     ) { }
 
     async execute(command: AssignStaffTaskCommand): Promise<void> {
@@ -21,10 +23,17 @@ export class AssignStaffTaskHandler implements ICommandHandler<AssignStaffTaskCo
         }
 
         const taskId = uuidv4();
-        const task = StaffTask.create(taskId, taskName, description, staffId, managerId, dueDate);
-        organize.assignTaskToStaff(staffId, task);
-
-        await this.repository.save(organize);
+        await this.prisma.staffTask.create({
+            data: {
+                id: taskId,
+                taskName,
+                description,
+                status: 'PENDING',
+                dueDate: dueDate,
+                staffId: staffId,
+                managerId: managerId || null
+            }
+        });
     }
 }
 
@@ -32,6 +41,7 @@ export class AssignStaffTaskHandler implements ICommandHandler<AssignStaffTaskCo
 export class UpdateStaffTaskHandler implements ICommandHandler<UpdateStaffTaskCommand, void> {
     constructor(
         @Inject(IORGANIZE_REPOSITORY) private readonly repository: IOrganizeRepository,
+        private readonly prisma: PrismaService
     ) { }
 
     async execute(command: UpdateStaffTaskCommand): Promise<void> {
@@ -42,8 +52,9 @@ export class UpdateStaffTaskHandler implements ICommandHandler<UpdateStaffTaskCo
             throw new NotFoundException('Organization for this concert not found');
         }
 
-        organize.updateStaffTaskStatus(staffId, taskId, status);
-
-        await this.repository.save(organize);
+        await this.prisma.staffTask.update({
+            where: { id: taskId },
+            data: { status }
+        });
     }
 }

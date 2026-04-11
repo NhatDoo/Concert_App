@@ -43,7 +43,7 @@ export class StaffController {
                     user: { connect: { id: dto.userId } },
                     name: dto.name,
                     role: 'ORGANIZER',
-                    organizerId: dto.userId
+
                 }
             });
             console.log('[Provision] Successfully created staff record:', newStaff.id);
@@ -137,7 +137,7 @@ export class StaffController {
                 userId: dto.userId,
                 name: dto.name,
                 role: invitation.role,
-                organizerId: invitation.organizerId,
+
                 managerId: invitation.managerId
             }
         });
@@ -152,45 +152,63 @@ export class StaffController {
 
     @Get('staff/list/:organizerId')
     @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Get all staff members belonging to an organizer (or vendor) with hierarchy' })
+    @ApiOperation({ summary: 'Get all staff members belonging to an organizer via concert and vendor relations' })
     async getStaffList(@Param('organizerId') paramId: string) {
-        // Step 1: Get direct staff belonging to this organizer
-        const directStaff = await this.prisma.staff.findMany({
+        // Step 1: Find all concerts belonging to the organizer
+        const concerts = await this.prisma.concert.findMany({
             where: { organizerId: paramId },
-            select: { id: true }
+            select: { id: true, name: true, organizerId: true, eventManagerId: true }
         });
-        const directIds = directStaff.map(s => s.id);
 
-        // Step 2: Find vendor IDs from accepted event requirements for this organizer's concerts
-        const requirements = await this.prisma.eventRequirement.findMany({
+        const concertIds = concerts.map(c => c.id);
+        const eventManagerIds = concerts
+            .map(c => c.eventManagerId)
+            .filter((id): id is string => id !== null);
+
+        // Step 2: Find all unique vendorIds assigned to these concerts
+        const staffWithVendors = await this.prisma.staff.findMany({
             where: {
-                concert: { organizerId: paramId },
-                status: 'ACCEPTED',
+                concertId: { in: concertIds },
                 vendorId: { not: null }
             },
             select: { vendorId: true }
         });
-        const vendorIds = requirements.map(r => r.vendorId).filter((v): v is string => v !== null);
+        const vendorIds = Array.from(new Set(staffWithVendors.map(s => s.vendorId as string)));
 
-        // Step 3: Build the full team:
-        //  - direct organizer staff
-        //  - subordinates of those direct staff (via managerId)
-        //  - all staff belonging to vendors serving this organizer
-        return await this.prisma.staff.findMany({
+        // Step 3: Find staff based on concert, direct management, or belonging to a participating vendor
+        const staff = await this.prisma.staff.findMany({
             where: {
                 OR: [
-                    { organizerId: paramId },
-                    { managerId: { in: directIds } },
-                    ...(vendorIds.length > 0 ? [{ vendorId: { in: vendorIds } }] : [])
+                    { concertId: { in: concertIds } },
+                    { id: { in: eventManagerIds } },
+                    { vendorId: { in: vendorIds } } // Pull all employees of vendors assigned to these concerts
                 ]
             },
             include: {
                 manager: {
                     select: { id: true, name: true, role: true }
                 },
-                tasks: true
+                tasks: true,
+                concert: {
+                    select: { id: true, name: true, organizerId: true }
+                },
+                managedConcert: {
+                    where: { organizerId: paramId },
+                    select: { id: true, name: true, organizerId: true }
+                }
             },
             orderBy: { role: 'asc' }
+        });
+
+        // Step 3: Map results to ensure each staff has a 'concert' object for the UI
+        return (staff as any[]).map(s => {
+            if (!s.concert && s.managedConcert && s.managedConcert.length > 0) {
+                return {
+                    ...s,
+                    concert: s.managedConcert[0]
+                };
+            }
+            return s;
         });
     }
 
@@ -201,7 +219,7 @@ export class StaffController {
         @Query('role') role?: string,
         @Query('filterRole') filterRole?: string
     ) {
-        let whereClause: any = { organizerId: null };
+        let whereClause: any = { concertId: null, vendorId: null };
 
         if (filterRole) {
             // Support multiple roles and check both Staff.role and User.role
@@ -281,8 +299,12 @@ export class StaffController {
         return await this.prisma.staff.findMany({
             where: { userId: userId },
             include: {
-                tasks: true
+                tasks: true,
+                concert: true,
+
             }
+
+
         });
     }
 
@@ -300,6 +322,61 @@ export class StaffController {
             dto.cvUrl
         );
         return await this.commandBus.execute(command);
+    }
+
+    @Patch('staff/tasks/:taskId/status')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update staff task status by ID only' })
+    async updateTaskStatusOnly(@Param('taskId') taskId: string, @Body() dto: { status: string }) {
+        return await this.prisma.staffTask.update({
+            where: { id: taskId },
+            data: { status: dto.status }
+        });
+    }
+
+    @Get('concert/:concertId/staffs')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get all staff members related to a specific concert' })
+    async getStaffsByConcert(@Param('concertId') concertId: string) {
+        const concert = await this.prisma.concert.findUnique({
+            where: { id: concertId },
+            select: { organizerId: true }
+        });
+
+        if (!concert) {
+            return [];
+        }
+
+        const requirements = await this.prisma.eventRequirement.findMany({
+            where: {
+                concertId: concertId,
+                status: 'ACCEPTED',
+                vendorId: { not: null }
+            },
+            select: { vendorId: true }
+        });
+        const vendorIds = requirements.map(r => r.vendorId).filter((v): v is string => v !== null);
+
+        return await this.prisma.staff.findMany({
+            where: {
+                OR: [
+                    { concertId: concertId },
+                    { manager: { concertId: concertId } },
+
+                    ...(vendorIds.length > 0 ? [{ vendorId: { in: vendorIds } }] : [])
+                ]
+            },
+            include: {
+                manager: {
+                    select: { id: true, name: true, role: true }
+                },
+                tasks: true,
+                concert: {
+                    select: { id: true, name: true, startDate: true }
+                }
+            },
+            orderBy: { role: 'asc' }
+        });
     }
 
     @Get('staff/my-tasks/:userId')

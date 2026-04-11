@@ -30,7 +30,6 @@ export class ConcertController {
     async getVendors(@Param('organizerId') organizerId: string) {
         return await this.prisma.staff.findMany({
             where: {
-                organizerId: organizerId,
                 OR: [
                     { role: 'VENDOR' },
                     { user: { role: 'VENDOR' } }
@@ -101,13 +100,26 @@ export class ConcertController {
         return { message: 'Equipment added' };
     }
 
-    @Post(':concertId/staff')
-    @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Add staff member to the concert organization' })
-    async addStaff(@Param('concertId') concertId: string, @Body() dto: AddStaffDto) {
-        const command = new AddStaffCommand(concertId, dto.userId, dto.name, dto.role);
-        await this.commandBus.execute(command);
-        return { message: 'Staff member added' };
+    @Patch(':concertId/staff/:staffId/assign')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Assign an existing staff member to the concert' })
+    async assignStaffToConcert(@Param('concertId') concertId: string, @Param('staffId') staffId: string) {
+        await this.prisma.staff.update({
+            where: { id: staffId },
+            data: { concertId }
+        });
+        return { message: 'Staff member assigned to concert' };
+    }
+
+    @Patch(':concertId/staff/:staffId/unassign')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Remove a staff member from the concert' })
+    async unassignStaffFromConcert(@Param('concertId') concertId: string, @Param('staffId') staffId: string) {
+        await this.prisma.staff.update({
+            where: { id: staffId },
+            data: { concertId: null }
+        });
+        return { message: 'Staff member removed from concert' };
     }
 
     @Post(':concertId/staff/bulk')

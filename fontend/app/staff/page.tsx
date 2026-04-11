@@ -301,12 +301,12 @@ export default function StaffDashboard() {
     const handleUpdateTaskStatus = async (concertId: string, staffId: string, taskId: string, currentStatus: string) => {
         let nextStatus = 'PENDING';
         if (currentStatus === 'PENDING') nextStatus = 'WORKING';
-        else if (currentStatus === 'WORKING') nextStatus = 'FINISH';
+        else if (currentStatus === 'WORKING') nextStatus = 'COMPLETED';
         else nextStatus = 'PENDING';
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/${concertId}/staff/${staffId}/tasks/${taskId}`, {
+            const res = await fetch(`${apiUrl}/organize/staff/tasks/${taskId}/status`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: nextStatus })

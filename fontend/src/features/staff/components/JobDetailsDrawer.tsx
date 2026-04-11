@@ -100,18 +100,18 @@ export const JobDetailsDrawer: React.FC<JobDetailsDrawerProps> = ({ job, onClose
                                         <UserIcon className="w-6 h-6 text-white" />
                                     </div>
                                     <div>
-                                        <p className="font-black text-white truncate max-w-[120px]">{job.author.name}</p>
-                                        <p className="text-[10px] text-slate-400 uppercase font-black">{job.author.role}</p>
+                                        <p className="font-black text-white truncate max-w-[120px]">{job.author?.name || 'N/A'}</p>
+                                        <p className="text-[10px] text-slate-400 uppercase font-black">{job.author?.role || 'ORGANIZER'}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-4 pt-4 border-t border-white/10 overflow-hidden">
-                                    <div className="text-xs flex items-center gap-3 truncate" title={job.author.user?.email}>
+                                    <div className="text-xs flex items-center gap-3 truncate" title={job.author?.user?.email}>
                                         <div className="w-2 h-2 bg-blue-400 rounded-full shrink-0"></div>
-                                        {job.author.user?.email || 'N/A'}
+                                        {job.author?.user?.email || 'N/A'}
                                     </div>
                                     <div className="text-xs flex items-center gap-3">
                                         <div className="w-2 h-2 bg-blue-400 rounded-full shrink-0"></div>
-                                        {job.author.user?.phoneNumber || 'N/A'}
+                                        {job.author?.user?.phoneNumber || 'N/A'}
                                     </div>
                                 </div>
                             </div>

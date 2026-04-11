@@ -27,6 +27,7 @@ model User {
   vendor            Vendor?
   resetToken        String?
   resetTokenExpires DateTime?
+  jobPosts          JobPost[] @relation("UserJobPosts")
 
   @@index([role])
 }
@@ -68,6 +69,11 @@ model Concert {
   ticketPools  TicketPool[]
   requirements EventRequirement[]
   zones        Zone[]
+  jobPosts       JobPost[]
+  hashtags       String[]           @default([])
+  categories     Category[]         @relation("ConcertToCategory")
+  eventManagerId String?            
+  eventManager   Staff?             @relation("ConcertToEventManager", fields: [eventManagerId], references: [id])
 
   @@index([organizerId])
   @@index([startDate])
@@ -251,7 +257,6 @@ model Staff {
   name           String
   role           String
   concertId      String?
-  organizerId    String?
   managerId      String?
   bio            String?
   cvUrl          String?
@@ -269,33 +274,44 @@ model Staff {
   requirements   EventRequirement[] @relation("RequirementAuthor")
   managedShifts  Shift[]            @relation("ShiftManager")
   assignedShifts ShiftAssignment[]
+  managedConcert Concert[]           @relation("ConcertToEventManager")
+  
+  
 
   @@index([concertId])
   @@index([userId])
-  @@index([organizerId])
   @@index([managerId])
 }
 
 model JobPost {
-  id           String             @id @default(uuid())
+  id           String   @id @default(uuid())
   title        String
   description  String
   requirements String
-  status       String             @default("OPEN")
+
+  status       String   @default("OPEN")
+
+  concertId    String?
+  concert      Concert? @relation(fields: [concertId], references: [id])
+
+  authorStaffId String?
+  authorUserId  String?
+
+  authorStaff   Staff? @relation("ManagerJobPosts", fields: [authorStaffId], references: [id])
+  authorUser    User?  @relation("UserJobPosts", fields: [authorUserId], references: [id])
+
   companyName  String?
   companyLogo  String?
   location     String?
   salary       String?
-  organizerId  String
-  category     String             @default("STAFF")
-  authorId     String
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  author       Staff              @relation("ManagerJobPosts", fields: [authorId], references: [id])
+  category     String   @default("STAFF")
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   applications StaffApplication[] @relation("JobApplications")
 
-  @@index([organizerId])
-  @@index([authorId])
+  @@index([concertId])
   @@index([status])
 }
 
@@ -481,4 +497,17 @@ model ShiftAssignment {
 
   @@index([shiftId])
   @@index([staffId])
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  icon      String?
+  color     String?
+  concerts  Concert[] @relation("ConcertToCategory")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([slug])
 }

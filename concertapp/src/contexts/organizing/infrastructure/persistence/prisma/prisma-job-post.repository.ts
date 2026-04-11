@@ -7,28 +7,39 @@ import { IJobPostRepository } from '../../../domain/repository/job-post.reposito
 export class PrismaJobPostRepository implements IJobPostRepository {
     constructor(private readonly prisma: PrismaService) { }
 
-    private mapToEntity(prismaJobPost: any): JobPost {
-        return new JobPost(
-            prismaJobPost.id,
-            prismaJobPost.title,
-            prismaJobPost.description,
-            prismaJobPost.requirements,
-            prismaJobPost.status as 'OPEN' | 'CLOSED',
-            prismaJobPost.companyName || '',
-            prismaJobPost.companyLogo || '',
-            prismaJobPost.location || '',
-            prismaJobPost.salary || '',
-            prismaJobPost.organizerId,
-            prismaJobPost.authorId,
-            prismaJobPost.createdAt,
-            prismaJobPost.updatedAt,
-            prismaJobPost.category || 'STAFF',
-            prismaJobPost.author ? {
-                name: prismaJobPost.author.name,
-                role: prismaJobPost.author.role,
-                user: prismaJobPost.author.user
-            } : undefined
-        );
+    private mapToEntity(prismaJobPost: any): any {
+        const author = prismaJobPost.authorStaff
+            ? {
+                id: prismaJobPost.authorStaffId,
+                name: prismaJobPost.authorStaff.name,
+                role: prismaJobPost.authorStaff.role,
+                user: prismaJobPost.authorStaff.user
+            }
+            : {
+                id: prismaJobPost.authorUserId,
+                name: prismaJobPost.authorUser?.name || 'Ban tổ chức',
+                role: 'ORGANIZER',
+                user: { email: prismaJobPost.authorUser?.email }
+            };
+
+        return {
+            id: prismaJobPost.id,
+            title: prismaJobPost.title,
+            description: prismaJobPost.description,
+            requirements: prismaJobPost.requirements,
+            status: prismaJobPost.status,
+            companyName: prismaJobPost.companyName || '',
+            companyLogo: prismaJobPost.companyLogo || '',
+            location: prismaJobPost.location || '',
+            salary: prismaJobPost.salary || '',
+            concertId: prismaJobPost.concertId,
+            organizerId: prismaJobPost.concert?.organizerId || prismaJobPost.authorUserId, // Added for frontend
+            authorId: prismaJobPost.authorStaffId || prismaJobPost.authorUserId, // Added for frontend
+            createdAt: prismaJobPost.createdAt,
+            updatedAt: prismaJobPost.updatedAt,
+            category: prismaJobPost.category || 'STAFF',
+            author: author
+        };
     }
 
     async save(jobPost: JobPost): Promise<void> {
@@ -43,8 +54,9 @@ export class PrismaJobPostRepository implements IJobPostRepository {
                 companyLogo: jobPost.companyLogo,
                 location: jobPost.location,
                 salary: jobPost.salary,
-                organizerId: jobPost.organizerId,
-                authorId: jobPost.authorId,
+                concertId: jobPost.concertId,
+                authorStaffId: jobPost.authorStaffId,
+                authorUserId: jobPost.authorUserId,
                 category: jobPost.category
             }
         });
@@ -61,7 +73,8 @@ export class PrismaJobPostRepository implements IJobPostRepository {
                 companyName: jobPost.companyName,
                 companyLogo: jobPost.companyLogo,
                 location: jobPost.location,
-                salary: jobPost.salary
+                salary: jobPost.salary,
+                category: jobPost.category
             }
         });
     }
@@ -75,12 +88,18 @@ export class PrismaJobPostRepository implements IJobPostRepository {
         const prismaJobPost = await this.prisma.jobPost.findUnique({
             where: { id },
             include: {
-                author: {
+                authorStaff: {
                     select: {
                         name: true,
                         role: true,
                         user: { select: { email: true, phoneNumber: true } }
                     }
+                },
+                authorUser: {
+                    select: { name: true, email: true }
+                },
+                concert: {
+                    select: { organizerId: true }
                 }
             }
         });
@@ -89,14 +108,26 @@ export class PrismaJobPostRepository implements IJobPostRepository {
 
     async findByOrganizer(organizerId: string): Promise<JobPost[]> {
         const prismaJobPosts = await this.prisma.jobPost.findMany({
-            where: { organizerId },
+            where: {
+                OR: [
+                    { concert: { organizerId: organizerId } },
+                    { authorUserId: organizerId },
+                    { authorStaff: { vendorId: organizerId } }
+                ]
+            },
             include: {
-                author: {
+                authorStaff: {
                     select: {
                         name: true,
                         role: true,
                         user: { select: { email: true, phoneNumber: true } }
                     }
+                },
+                authorUser: {
+                    select: { name: true, email: true }
+                },
+                concert: {
+                    select: { organizerId: true }
                 }
             }
         });
@@ -105,10 +136,21 @@ export class PrismaJobPostRepository implements IJobPostRepository {
 
     async findAll(filters?: { authorId?: string; organizerId?: string; authorRole?: string; includeClosed?: boolean }): Promise<JobPost[]> {
         const where: any = {};
-        if (filters?.authorId) where.authorId = filters.authorId;
-        if (filters?.organizerId) where.organizerId = filters.organizerId;
+        if (filters?.authorId) {
+            where.OR = [
+                { authorStaffId: filters.authorId },
+                { authorUserId: filters.authorId }
+            ];
+        }
+        if (filters?.organizerId) {
+            where.OR = [
+                { concert: { organizerId: filters.organizerId } },
+                { authorUserId: filters.organizerId },
+                { authorStaff: { vendorId: filters.organizerId } }
+            ];
+        }
         if (filters?.authorRole) {
-            where.author = { role: filters.authorRole };
+            where.authorStaff = { role: filters.authorRole };
         }
         if (!filters?.includeClosed) where.status = 'OPEN';
 
@@ -116,17 +158,22 @@ export class PrismaJobPostRepository implements IJobPostRepository {
             where,
             orderBy: { createdAt: 'desc' },
             include: {
-                author: {
+                authorStaff: {
                     select: {
                         name: true,
                         role: true,
                         user: { select: { email: true, phoneNumber: true } }
                     }
+                },
+                authorUser: {
+                    select: { name: true, email: true }
+                },
+                concert: {
+                    select: { organizerId: true }
                 }
             }
         });
 
-        // We might want to keep the author info in the return, but for strict DDD entity mapping:
         return prismaJobPosts.map(post => this.mapToEntity(post));
     }
 }

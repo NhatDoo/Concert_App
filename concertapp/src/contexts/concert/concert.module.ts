@@ -3,6 +3,7 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { ConcertInfrastructureModule } from './infrastructure/concert-infrastructure.module';
 import { ConcertController } from './presentation/http/concert.controller';
 import { CreateConcertHandler } from './application/commands/handlers/create-concert.handler';
+import { UpdateConcertHandler } from './application/commands/handlers/update-concert.handler';
 import { GenerateTicketsHandler } from './application/commands/handlers/generate-tickets.handler';
 import { CreateArtistHandler, UpdateArtistHandler, DeleteArtistHandler } from './application/commands/handlers/artist.handler';
 import { AddPerformanceHandler, UpdatePerformanceScheduleHandler, RemovePerformanceHandler } from './application/commands/handlers/performance.handler';
@@ -24,6 +25,7 @@ export const QueryHandlers = [
 
 export const CommandHandlers = [
     CreateConcertHandler,
+    UpdateConcertHandler,
     GenerateTicketsHandler,
     CreateArtistHandler,
     UpdateArtistHandler,
