@@ -25,6 +25,7 @@ import QRCode from 'qrcode';
 
 interface Booking {
     id: string;
+    concertId: string;
     concertName: string;
     concertDate: string;
     concertLocation: string;
@@ -37,6 +38,7 @@ interface Booking {
         type: string;
         price: number;
         seatLabel?: string | null;
+        isCheckedIn?: boolean;
     }>;
     invoiceId?: string | null;
 }
@@ -128,37 +130,87 @@ function DeleteConfirmModal({ booking, onConfirm, onCancel, isDeleting }: Delete
 interface QRModalProps {
     booking: Booking;
     onClose: () => void;
+    onCheckInSuccess?: () => void;
 }
 
-function QRModal({ booking, onClose }: QRModalProps) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+function QRModal({ booking, onClose, onCheckInSuccess }: QRModalProps) {
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
-    const invoiceId = booking.invoiceId!;
+    const [verificationData, setVerificationData] = useState<{ token: string, tId: string } | null>(null);
+    const [isCheckingIn, setIsCheckingIn] = useState(false);
 
+    const invoiceId = booking.invoiceId!;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+    // ─── POLLING ĐỂ PHÁT HIỆN STAFF ĐÃ QUÉT BƯỚC 1 ──────────────────
     useEffect(() => {
-        // Dữ liệu encode vào QR: JSON chứa đầy đủ thông tin vé
-        const payload = JSON.stringify({
-            invoiceId,
-            bookingId: booking.id,
-            concert: booking.concertName,
-            date: booking.concertDate,
-            location: booking.concertLocation,
-            amount: booking.totalAmount,
-            tickets: booking.tickets.map(t => t.type),
-            status: booking.status,
-        });
+        if (isCheckingIn) return;
+
+        const pollStatus = async () => {
+            const firstTicketId = booking.tickets[0]?.id;
+            if (!firstTicketId) return;
+
+            try {
+                const res = await fetch(`${apiUrl}/concerts/${booking.concertId}/tickets/${firstTicketId}/status`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data.isCheckedIn) {
+                    setIsCheckingIn(true);
+                    if (onCheckInSuccess) onCheckInSuccess();
+                    return;
+                }
+
+                if (data.pendingStatus === 'WAITING_CONFIRMATION' && data.verificationToken) {
+                    setVerificationData({
+                        token: data.verificationToken,
+                        tId: firstTicketId
+                    });
+                } else if (data.pendingStatus === 'NONE' && verificationData) {
+                    // Reset nếu hết hạn hoặc bị hủy
+                    setVerificationData(null);
+                }
+            } catch (err) {
+                console.error("Polling check-in error:", err);
+            }
+        };
+
+        const timer = setInterval(pollStatus, 2500);
+        return () => clearInterval(timer);
+    }, [booking.id, verificationData, isCheckingIn]);
+
+    // ─── GENERATE QR CODE ──────────────────────────────────────────
+    useEffect(() => {
+        let payload = "";
+
+        if (verificationData) {
+            // QR cho bước 2: Xác thực (Sử dụng key ngắn nhất có thể)
+            payload = JSON.stringify({
+                v: verificationData.token,
+                t: verificationData.tId,
+                c: booking.concertId,
+                type: "V"
+            });
+        } else {
+            // QR cho bước 1: Thông tin vé
+            payload = JSON.stringify({
+                cId: booking.concertId,
+                cName: booking.concertName,
+                tIds: booking.tickets.map(t => t.id),
+                tTypes: booking.tickets.map(t => t.type),
+            });
+        }
 
         QRCode.toDataURL(payload, {
             width: 280,
             margin: 2,
             color: {
-                dark: '#111827',
+                dark: '#000000', // Sử dụng màu đen thuần để tăng độ tương phản tuyệt đối
                 light: '#ffffff',
             },
-            errorCorrectionLevel: 'H',
+            errorCorrectionLevel: 'M', // Giảm mức sửa lỗi xuống M để mã QR đỡ bị chi chít (dễ quét hơn)
         }).then(url => setQrDataUrl(url)).catch(console.error);
-    }, [booking, invoiceId]);
+    }, [booking, verificationData]);
 
     const handleDownload = () => {
         if (!qrDataUrl) return;
@@ -174,6 +226,24 @@ function QRModal({ booking, onClose }: QRModalProps) {
         setTimeout(() => setCopied(false), 2000);
     };
 
+    if (isCheckingIn) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+                <div className="relative bg-white rounded-3xl p-10 text-center max-w-sm w-full shadow-2xl">
+                    <div className="w-20 h-20 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle2 className="w-12 h-12" />
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-900 mb-2">Check-in thành công!</h2>
+                    <p className="text-gray-500 text-sm mb-8">Cảm ơn bạn. Chúc bạn có một trải nghiệm sự kiện tuyệt vời.</p>
+                    <button onClick={onClose} className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl hover:bg-black transition">
+                        Đóng
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
@@ -185,7 +255,7 @@ function QRModal({ booking, onClose }: QRModalProps) {
                 style={{ animation: 'fadeInScale 0.25s ease-out' }}
             >
                 {/* Header */}
-                <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 px-6 pt-6 pb-8 text-white text-center">
+                <div className={`relative px-6 pt-6 pb-8 text-white text-center transition-colors duration-500 ${verificationData ? 'bg-gradient-to-br from-red-600 to-red-700' : 'bg-gradient-to-br from-gray-900 to-gray-800'}`}>
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition"
@@ -193,10 +263,14 @@ function QRModal({ booking, onClose }: QRModalProps) {
                         <X className="w-4 h-4" />
                     </button>
                     <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                        <QrCode className="w-6 h-6" />
+                        {verificationData ? <CheckCircle2 className="w-6 h-6" /> : <QrCode className="w-6 h-6" />}
                     </div>
-                    <h2 className="text-xl font-black mb-1">QR Vé điện tử</h2>
-                    <p className="text-white/60 text-xs font-medium">Xuất trình mã này tại cổng vào sự kiện</p>
+                    <h2 className="text-xl font-black mb-1">
+                        {verificationData ? 'Xác nhận Check-in' : 'QR Vé điện tử'}
+                    </h2>
+                    <p className="text-white/60 text-xs font-medium">
+                        {verificationData ? 'Vui lòng đưa máy cho Staff quét mã đỏ này' : 'Xuất trình mã này tại cổng vào sự kiện'}
+                    </p>
 
                     {/* Ticket notch */}
                     <div className="absolute -bottom-4 left-0 right-0 flex justify-between px-4">
@@ -216,23 +290,23 @@ function QRModal({ booking, onClose }: QRModalProps) {
                                 <Calendar className="w-3 h-3" />
                                 {new Date(booking.concertDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}
                             </span>
-                            <span className="text-gray-300">|</span>
-                            <span className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3" />
-                                {booking.concertLocation}
-                            </span>
                         </div>
                     </div>
 
                     {/* QR Canvas */}
                     <div className="flex justify-center mb-5">
-                        <div className="p-3 bg-white rounded-2xl border-2 border-gray-100 shadow-inner">
+                        <div className={`p-3 bg-white rounded-2xl border-2 shadow-inner transition-colors duration-500 ${verificationData ? 'border-red-100' : 'border-gray-100'}`}>
                             {qrDataUrl ? (
-                                <img
-                                    src={qrDataUrl}
-                                    alt="QR Ticket"
-                                    className="w-52 h-52 rounded-lg"
-                                />
+                                <div className="relative">
+                                    <img
+                                        src={qrDataUrl}
+                                        alt="QR Ticket"
+                                        className="w-52 h-52 rounded-lg"
+                                    />
+                                    {verificationData && (
+                                        <div className="absolute inset-0 border-4 border-red-500 rounded-lg pointer-events-none animate-pulse" />
+                                    )}
+                                </div>
                             ) : (
                                 <div className="w-52 h-52 flex items-center justify-center bg-gray-50 rounded-lg">
                                     <Loader2 className="w-8 h-8 animate-spin text-gray-300" />
@@ -240,6 +314,14 @@ function QRModal({ booking, onClose }: QRModalProps) {
                             )}
                         </div>
                     </div>
+
+                    {verificationData && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-center">
+                            <p className="text-xs font-bold text-red-600 animate-bounce">
+                                Đã sẵn sàng xác thực!
+                            </p>
+                        </div>
+                    )}
 
                     {/* Ticket Types */}
                     <div className="flex flex-wrap justify-center gap-2 mb-4">
@@ -253,28 +335,9 @@ function QRModal({ booking, onClose }: QRModalProps) {
                     {/* Invoice ID */}
                     <div className="bg-gray-50 rounded-2xl px-4 py-3 flex items-center gap-3 border border-gray-100 mb-5">
                         <div className="flex-1 min-w-0">
-                            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Mã hóa đơn (Invoice ID)</p>
+                            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Mã hóa đơn</p>
                             <p className="font-mono text-xs font-bold text-gray-700 truncate">{invoiceId}</p>
                         </div>
-                        <button
-                            onClick={handleCopy}
-                            className="flex-shrink-0 w-8 h-8 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-100 transition"
-                            title="Sao chép Invoice ID"
-                        >
-                            {copied ? (
-                                <Check className="w-3.5 h-3.5 text-green-600" />
-                            ) : (
-                                <Copy className="w-3.5 h-3.5 text-gray-500" />
-                            )}
-                        </button>
-                    </div>
-
-                    {/* Total */}
-                    <div className="text-center mb-4">
-                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Tổng thanh toán</p>
-                        <p className="text-2xl font-black text-gray-900">
-                            {booking.totalAmount.toLocaleString('vi-VN')} <span className="text-sm">₫</span>
-                        </p>
                     </div>
                 </div>
 
@@ -285,14 +348,6 @@ function QRModal({ booking, onClose }: QRModalProps) {
                         className="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-2xl hover:bg-gray-200 transition text-sm"
                     >
                         Đóng
-                    </button>
-                    <button
-                        onClick={handleDownload}
-                        disabled={!qrDataUrl}
-                        className="flex-1 bg-gray-900 text-white font-bold py-3 rounded-2xl hover:bg-black transition text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                        <Download className="w-4 h-4" />
-                        Tải QR
                     </button>
                 </div>
             </div>
@@ -355,7 +410,14 @@ export default function BookingsPage() {
             setSuccessMessage(`Đã hủy đặt vé "${deleteTarget.concertName}" thành công!`);
             setTimeout(() => setSuccessMessage(null), 4000);
         } catch (err: any) {
-            setError(err.message);
+            let msg = err.message;
+            if (msg.includes('CHECKED_IN')) {
+                msg = "Không thể hủy vé vì bạn đã thực hiện soát vé (Check-in) cho sự kiện này.";
+            } else if (msg.includes('CONFIRMED')) {
+                msg = "Vé đã được xác nhận. Vui lòng liên hệ bộ phận hỗ trợ để được xử lý hoàn tiền.";
+            }
+            setError(msg);
+            setTimeout(() => setError(null), 5000);
         } finally {
             setIsDeleting(false);
             setDeleteTarget(null);
@@ -448,6 +510,7 @@ export default function BookingsPage() {
                 <QRModal
                     booking={qrTarget}
                     onClose={() => setQrTarget(null)}
+                    onCheckInSuccess={fetchBookings}
                 />
             )}
 
@@ -538,7 +601,7 @@ export default function BookingsPage() {
                                             <div className="md:text-right">
                                                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Tổng cộng</p>
                                                 <p className="text-xl font-black text-gray-900">
-                                                    {booking.totalAmount.toLocaleString('vi-VN')} <span className="text-sm">₫</span>
+                                                    {(booking.totalAmount * 100).toLocaleString('vi-VN')} <span className="text-sm">₫</span>
                                                 </p>
                                             </div>
                                         </div>
@@ -561,7 +624,7 @@ export default function BookingsPage() {
                                             </button>
                                         )}
 
-                                        {booking.status === 'CONFIRMED' && (
+                                        {booking.status === 'CONFIRMED' && !booking.tickets.some(t => t.isCheckedIn) && (
                                             <button
                                                 onClick={() => {
                                                     if (!booking.invoiceId) {
@@ -577,7 +640,7 @@ export default function BookingsPage() {
                                             </button>
                                         )}
 
-                                        {booking.status !== 'CANCELLED' && (
+                                        {booking.status !== 'CANCELLED' && !booking.tickets.some(t => t.isCheckedIn) && (
                                             <button
                                                 onClick={() => setDeleteTarget(booking)}
                                                 className="w-full bg-white border border-red-200 text-red-600 font-bold py-3 rounded-xl hover:bg-red-50 transition text-sm flex items-center justify-center gap-2 group"

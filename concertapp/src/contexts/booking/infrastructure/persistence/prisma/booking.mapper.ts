@@ -18,7 +18,8 @@ export class BookingMapper {
                 Money.create(t.price),
                 Tickettype.from(t.ticketType),
                 t.seatId || null,
-                t.seatLabel || null
+                t.seatLabel || null,
+                (t as any).isCheckedIn || false
             )
         ) || [];
 

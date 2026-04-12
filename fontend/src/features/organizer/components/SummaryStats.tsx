@@ -36,7 +36,7 @@ export const SummaryStats: React.FC<SummaryStatsProps> = ({ stats, eventsCount }
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">Tổng doanh thu</p>
-                    <p className="text-3xl font-bold text-gray-900" suppressHydrationWarning>{stats.totalRevenue.toLocaleString('vi-VN')} <span className="text-sm text-gray-400">VND</span></p>
+                    <p className="text-3xl font-bold text-gray-900" suppressHydrationWarning>{(stats.totalRevenue * 100).toLocaleString('vi-VN')} <span className="text-sm text-gray-400">VND</span></p>
                 </div>
                 <div className="w-12 h-12 bg-green-50 text-green-600 flex items-center justify-center rounded-xl">
                     <DollarSign className="w-6 h-6" />

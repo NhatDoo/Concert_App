@@ -1,5 +1,17 @@
-import { IsString, IsArray, ArrayNotEmpty } from 'class-validator';
+import { IsString, IsArray, IsOptional, ValidateNested, IsInt, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+
+class TicketGroupDto {
+    @ApiProperty({ example: 'Standee', description: 'Type of ticket' })
+    @IsString()
+    ticketType: string;
+
+    @ApiProperty({ example: 2, description: 'Number of tickets' })
+    @IsInt()
+    @Min(1)
+    quantity: number;
+}
 
 export class CreateBookingDto {
     @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', description: 'User ID UUID' })
@@ -12,13 +24,21 @@ export class CreateBookingDto {
 
     @ApiProperty({
         type: 'array',
-        items: {
-            type: 'string',
-            example: '123e4567-e89b-12d3-a456-426614174002'
-        },
+        items: { type: 'string' },
+        required: false,
         example: ['123e4567-e89b-12d3-a456-426614174002']
     })
     @IsArray()
-    @ArrayNotEmpty()
-    seatIds: string[];
+    @IsOptional()
+    seatIds?: string[];
+
+    @ApiProperty({
+        type: [TicketGroupDto],
+        required: false
+    })
+    @IsArray()
+    @IsOptional()
+    @ValidateNested({ each: true })
+    @Type(() => TicketGroupDto)
+    ticketGroups?: TicketGroupDto[];
 }

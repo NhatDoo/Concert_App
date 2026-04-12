@@ -1,0 +1,136 @@
+// ─── CONCERT CONTEXT ─────────────────────────────────────────────────────────
+// Quản lý buổi diễn, nghệ sĩ, vé, ghế ngồi, danh mục
+
+model Concert {
+  id           String             @id @default(uuid())
+  organizerId  String
+  name         String
+  startDate    DateTime
+  location     String
+  seatMapUrl   String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  imageUrl     String?
+  bookings     Booking[]
+  organizer    User               @relation(fields: [organizerId], references: [id])
+  organize     Organize?
+  performances Performance[]
+  staffs       Staff[]
+  seats        Seat[]
+  tickets      Ticket[]
+  ticketPools  TicketPool[]
+  requirements EventRequirement[]
+  zones        Zone[]
+  jobPosts     JobPost[]
+  hashtags     String[]           @default([])
+  categories   Category[]         @relation("ConcertToCategory")
+  eventManagerId String?
+  eventManager   Staff?           @relation("ConcertToEventManager", fields: [eventManagerId], references: [id])
+
+  @@index([organizerId])
+  @@index([startDate])
+}
+
+model Artist {
+  id           String        @id @default(uuid())
+  name         String
+  bio          String        @default("")
+  contactInfo  String        @default("")
+  createdAt    DateTime      @default(now())
+  performances Performance[]
+
+  @@index([name])
+}
+
+model Performance {
+  id              String   @id @default(uuid())
+  concertId       String
+  artistId        String
+  name            String
+  durationMinutes Int
+  startTime       DateTime
+  artist          Artist   @relation(fields: [artistId], references: [id])
+  concert         Concert  @relation(fields: [concertId], references: [id])
+
+  @@index([concertId])
+  @@index([artistId])
+}
+
+model TicketPool {
+  id            String  @id @default(uuid())
+  concertId     String
+  ticketType    String
+  price         Float
+  totalQuantity Int     @default(0)
+  soldCount     Int     @default(0)
+  concert       Concert @relation(fields: [concertId], references: [id])
+
+  @@unique([concertId, ticketType])
+  @@index([concertId])
+}
+
+model Ticket {
+  id         String   @id @default(uuid())
+  bookingId  String?
+  concertId  String
+  userId     String?
+  seatId     String?
+  seatLabel  String?
+  ticketType  String
+  price       Float
+  isCheckedIn Boolean  @default(false)
+  checkInTime DateTime?
+  version     Int      @default(1)
+  booking     Booking? @relation(fields: [bookingId], references: [id])
+  concert     Concert  @relation(fields: [concertId], references: [id])
+  seat       Seat?    @relation(fields: [seatId], references: [id])
+
+  @@index([bookingId])
+  @@index([concertId])
+  @@index([seatId])
+}
+
+model Seat {
+  id         String   @id @default(uuid())
+  concertId  String
+  bookingId  String?
+  label      String
+  ticketType String
+  price      Float
+  status     String   @default("AVAILABLE")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  booking    Booking? @relation(fields: [bookingId], references: [id])
+  concert    Concert  @relation(fields: [concertId], references: [id])
+  tickets    Ticket[]
+
+  @@unique([concertId, label])
+  @@index([concertId])
+  @@index([bookingId])
+  @@index([status])
+}
+
+model Zone {
+  id          String   @id @default(uuid())
+  concertId   String
+  name        String
+  description String?
+  capacity    Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  concert     Concert  @relation(fields: [concertId], references: [id])
+  shifts      Shift[]
+
+  @@index([concertId])
+}
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  slug      String    @unique
+  concerts  Concert[] @relation("ConcertToCategory")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([slug])
+}

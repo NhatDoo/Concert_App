@@ -1,312 +1,374 @@
-# Đang trong quá trình xây dựng  !!!!
+﻿# Concert App
 
-<p align="center">
-  <img src="https://img.icons8.com/fluency/96/concert.png" alt="Concert App Logo" width="96"/>
-</p>
+Concert App la he thong quan ly va van hanh su kien concert theo huong full-stack, gom backend NestJS va frontend Next.js. Du an khong chi giai quyet bai toan dat ve, ma con mo rong sang quan ly nghe si, lich bieu dien, thanh toan, nhan su su kien, vendor, thiet bi, logistics va bao cao van hanh.
 
-<h1 align="center">🎵 Concert App</h1>
+Tai lieu thiet ke chi tiet hon duoc dat tai [DESIGNE.md](./DESIGNE.md).
 
-<p align="center">
-  <em>Hệ thống quản lý sự kiện concert — đặt vé, tổ chức, thanh toán</em>
-</p>
+## 1. Tong quan du an
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Backend-NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" />
-  <img src="https://img.shields.io/badge/Frontend-Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
-  <img src="https://img.shields.io/badge/Database-PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/ORM-Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white" />
-  <img src="https://img.shields.io/badge/Storage-MinIO-C72E49?style=for-the-badge&logo=minio&logoColor=white" />
-</p>
+### Muc tieu
 
----
+He thong duoc xay dung de phuc vu 3 nhom doi tuong chinh:
 
-## 📖 Giới thiệu
+- Khach hang: tim kiem concert, xem chi tiet, dat ve, thanh toan, theo doi lich su giao dich.
+- Organizer: tao concert, quan ly ticket, lich bieu dien, staff, cong viec, requirement van hanh.
+- Vendor va manager: quan ly thiet bi, xu ly don logistics, tuyen dung, giao viec cho nhan su.
 
-**Concert App** là một hệ thống quản lý sự kiện concert toàn diện, cho phép người dùng tìm kiếm, đặt vé concert, và xử lý thanh toán trực tuyến. Hệ thống cũng hỗ trợ ban tổ chức quản lý logistics, nhân sự và thiết bị cho sự kiện.
+### Gia tri chinh cua he thong
 
-### Tính năng chính
+- Tach domain thanh nhieu context de de mo rong.
+- Ap dung CQRS cho backend de tach lenh ghi va truy van doc.
+- Su dung Redis cho cache va quy trinh check-in.
+- Su dung Elasticsearch de dong bo du lieu tim kiem concert.
+- Su dung MinIO cho luu tru file media va CV.
+- Su dung VNPay sandbox cho quy trinh thanh toan.
 
-- 🎤 **Quản lý Concert** — Tạo, chỉnh sửa, lên lịch concert với thông tin nghệ sĩ và tiết mục biểu diễn
-- 🎫 **Đặt vé (Booking)** — Đặt vé, xác nhận và hủy booking với quản lý trạng thái chặt chẽ
-- 💰 **Thanh toán (Billing)** — Xuất hóa đơn, tính thuế, xử lý thanh toán qua VNPay
-- 🏗️ **Tổ chức sự kiện (Organizing)** — Quản lý địa điểm, thiết bị, hậu cần và phân công nhân sự
-- 👤 **Xác thực người dùng (Identity)** — Đăng ký, đăng nhập với JWT Authentication
-- 📸 **Upload ảnh** — Lưu trữ hình ảnh concert trên MinIO (S3-compatible)
+## 2. Kien truc tong the
 
----
+Repository hien tai duoc to chuc thanh 2 phan:
 
-## 🏗️ Architecture & Patterns
+- `concertapp/`: backend API su dung NestJS.
+- `fontend/`: frontend su dung Next.js.
 
-### Domain-Driven Design (DDD)
+### So do muc cao
 
-Hệ thống được xây dựng theo kiến trúc **Domain-Driven Design**, phân chia thành các **Bounded Contexts** độc lập:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Concert App                         │
-├──────────┬──────────┬──────────┬──────────┬─────────────┤
-│ Concert  │ Booking  │ Billing  │Organizing│  Identity   │
-│ Context  │ Context  │ Context  │ Context  │  Context    │
-├──────────┴──────────┴──────────┴──────────┴─────────────┤
-│              Shared Kernel (Common)                     │
-│           Money VO, Base Entities, etc.                 │
-└─────────────────────────────────────────────────────────┘
+```text
+Frontend (Next.js, port 3000)
+        |
+        v
+Backend API (NestJS, port 3001)
+        |
+        +-- PostgreSQL   : du lieu nghiep vu
+        +-- Redis        : cache concert, session check-in
+        +-- MinIO        : anh concert, seat map, CV
+        +-- Elasticsearch: tim kiem concert
+        +-- VNPay        : thanh toan sandbox
 ```
 
-### CQRS (Command Query Responsibility Segregation)
+### Kien truc backend
 
-Mỗi context sử dụng pattern **CQRS** với NestJS CQRS module:
+Backend duoc chia thanh cac bounded context:
 
-```
-Request → Controller → Command/Query → Handler → Domain → Repository → Database
-```
+- `concert`: quan ly concert, nghe si, performance, ticket pool, tim kiem, upload anh.
+- `booking`: dat ve, huy booking, truy van booking theo user.
+- `billing`: tao invoice, issue invoice, tao payment URL, xu ly callback VNPay.
+- `identity`: dang ky, dang nhap, refresh token, Google OAuth, quen mat khau, cap nhat profile.
+- `organizing`: location, shift, zone, staff, recruitment, vendor, task, requirement, report.
 
-### Layered Architecture (mỗi context)
+Moi context duoc to chuc theo cac lop:
 
-```
-┌──────────────────────────────────┐
-│   Presentation Layer (REST API)  │   ← Controllers, DTOs, Swagger
-├──────────────────────────────────┤
-│   Application Layer (Use Cases)  │   ← Commands, Handlers
-├──────────────────────────────────┤
-│   Domain Layer (Business Logic)  │   ← Entities, Aggregates, VOs, Events
-├──────────────────────────────────┤
-│  Infrastructure Layer (Persist)  │   ← Prisma Repositories, Mappers
-└──────────────────────────────────┘
-```
+- `presentation`: controller, DTO, HTTP contract.
+- `application`: command, query, handler, event handler.
+- `domain`: entity, aggregate, value object, repository interface, policy.
+- `infrastructure`: Prisma repository, storage service, Redis, Elasticsearch, auth service.
 
-### Các Design Patterns sử dụng
+### Mot so pattern dang duoc ap dung
 
-| Pattern | Mô tả |
-|---------|--------|
-| **Aggregate** | Booking, Invoice, Organize là các Aggregate Root quản lý consistency |
-| **Value Object** | Money, Email, Password, Role, BookingId, StartDate... |
-| **Domain Event** | ConcertCreated, BookingConfirmed, InvoicePaid... |
-| **Repository** | Abstract repository interface ở Domain, implement ở Infrastructure |
-| **Factory Method** | `static create()` và `static hydrate()/reconstruct()` trên các Entity |
-| **Policy** | TaxPolicy để tính thuế cho Invoice |
+- DDD: tach domain theo context va repository interface.
+- CQRS: su dung `@nestjs/cqrs` de tach command va query.
+- Repository pattern: domain interface, infrastructure implementation.
+- Value Object: `Money`, `Email`, `Password`, `ConcertId`, `BookingId`.
+- Domain Event: booking, concert, billing co event handler rieng.
+- Storage abstraction: interface luu file va implementation bang MinIO.
 
----
+## 3. Cau truc thu muc
 
-## 📁 Cấu trúc thư mục
-
-```
+```text
 Concert_app/
-├── concertapp/                          # 🖥️ Backend (NestJS)
-│   ├── src/
-│   │   ├── common/                      # Shared Kernel
-│   │   │   └── domain/value-object/     # Common VOs (Money, etc.)
-│   │   │
-│   │   ├── contexts/                    # Bounded Contexts
-│   │   │   ├── concert/                 # 🎤 Concert Context
-│   │   │   │   ├── application/         # Commands & Handlers
-│   │   │   │   │   └── commands/
-│   │   │   │   │       ├── create-concert.command.ts
-│   │   │   │   │       ├── artist.command.ts
-│   │   │   │   │       ├── performance.command.ts
-│   │   │   │   │       ├── generate-tickets.command.ts
-│   │   │   │   │       └── handlers/
-│   │   │   │   ├── domain/             # Entities, VOs, Events
-│   │   │   │   │   ├── entity/         # Concert, Artist, Performance
-│   │   │   │   │   ├── VO/             # StartDate, ConcertId
-│   │   │   │   │   └── events/         # ConcertCreated, ConcertRescheduled
-│   │   │   │   ├── infrastructure/     # Prisma Repositories & Mappers
-│   │   │   │   └── presentation/       # REST Controllers & DTOs
-│   │   │   │
-│   │   │   ├── booking/                # 🎫 Booking Context
-│   │   │   │   ├── application/commands/
-│   │   │   │   │   ├── create-booking.command.ts
-│   │   │   │   │   └── cancel-booking.command.ts
-│   │   │   │   ├── domain/
-│   │   │   │   │   ├── aggregate/      # Booking Aggregate
-│   │   │   │   │   ├── entity/         # Ticket
-│   │   │   │   │   ├── VO/             # BookingId
-│   │   │   │   │   └── events/         # BookingCreated, Confirmed, Cancelled
-│   │   │   │   ├── infrastructure/
-│   │   │   │   └── presentation/
-│   │   │   │
-│   │   │   ├── billing/                # 💰 Billing Context
-│   │   │   │   ├── application/commands/
-│   │   │   │   │   ├── create-invoice.command.ts
-│   │   │   │   │   ├── issue-invoice.command.ts
-│   │   │   │   │   ├── initiate-payment.command.ts
-│   │   │   │   │   └── confirm-payment.command.ts
-│   │   │   │   ├── domain/
-│   │   │   │   │   ├── aggregate/      # Invoice Aggregate
-│   │   │   │   │   ├── entity/         # Payment
-│   │   │   │   │   ├── VO/             # InvoiceItem
-│   │   │   │   │   ├── events/         # InvoiceIssued, InvoicePaid
-│   │   │   │   │   └── policy/         # TaxPolicy
-│   │   │   │   ├── infrastructure/
-│   │   │   │   └── presentation/
-│   │   │   │
-│   │   │   ├── organizing/             # 🏗️ Organizing Context
-│   │   │   │   ├── application/commands/
-│   │   │   │   │   ├── assign-location.command.ts
-│   │   │   │   │   ├── equipment-staff.command.ts
-│   │   │   │   │   ├── logistics.command.ts
-│   │   │   │   │   └── staff-task.command.ts
-│   │   │   │   ├── domain/
-│   │   │   │   │   ├── aggregate/      # Organize Aggregate
-│   │   │   │   │   ├── entity/         # Location, Staff, Logistics, Equipment
-│   │   │   │   │   └── events/         # LocationAssigned
-│   │   │   │   ├── infrastructure/
-│   │   │   │   └── presentation/
-│   │   │   │
-│   │   │   └── identity/               # 👤 Identity Context
-│   │   │       ├── application/commands/
-│   │   │       │   ├── login.command.ts
-│   │   │       │   └── register.command.ts
-│   │   │       ├── domain/
-│   │   │       │   ├── entity/         # User
-│   │   │       │   └── VO/             # Email, Password, Role, PhoneNumber
-│   │   │       ├── infrastructure/
-│   │   │       └── presentation/
-│   │   │
-│   │   ├── main.ts                     # Application entry point
-│   │   ├── app.module.ts               # Root module
-│   │   └── prisma.service.ts           # Prisma database service
-│   │
-│   ├── prisma.config.ts
-│   ├── package.json
-│   └── tsconfig.json
-│
-└── fontend/                             # 🌐 Frontend (Next.js)
-    ├── app/                             # App Router
-    │   ├── layout.tsx
-    │   ├── page.tsx
-    │   └── globals.css
-    ├── public/                          # Static assets
-    ├── package.json
-    └── tsconfig.json
+|-- README.md
+|-- DESIGNE.md
+|-- docker-compose.yml
+|-- concertapp/
+|   |-- package.json
+|   |-- prisma/
+|   |   |-- schema.prisma
+|   |   |-- schema/
+|   |   `-- seed.ts
+|   `-- src/
+|       |-- app.module.ts
+|       |-- main.ts
+|       |-- prisma.service.ts
+|       |-- common/
+|       `-- contexts/
+|           |-- billing/
+|           |-- booking/
+|           |-- concert/
+|           |-- identity/
+|           `-- organizing/
+`-- fontend/
+    |-- package.json
+    |-- app/
+    |-- src/
+    `-- public/
 ```
 
----
+Luu y:
 
-## 👥 Actors (Tác nhân)
+- Thu muc frontend hien tai duoc dat ten la `fontend/`, khong phai `frontend/`.
+- Swagger API dang duoc mount tai `/api/docs`.
+- Backend mac dinh chay cong `3001`.
 
+## 4. Chuc nang nghiep vu theo module
+
+### 4.1 Identity
+
+Chuc nang chinh:
+
+- Dang ky tai khoan bang email/password.
+- Dang nhap va nhan `accessToken`, `refreshToken`.
+- Refresh token.
+- Dang nhap bang Google OAuth.
+- Quen mat khau va reset mat khau qua email.
+- Doi mat khau va cap nhat profile.
+
+Route chinh:
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/refresh-token`
+- `GET /auth/google`
+- `GET /auth/google/callback`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
+- `POST /auth/change-password`
+- `POST /auth/profile/update`
+
+### 4.2 Concert
+
+Chuc nang chinh:
+
+- Tao, cap nhat, xoa concert.
+- Upload `image` va `seatMap`.
+- Tao nghe si, cap nhat nghe si, xoa nghe si.
+- Them performance vao concert.
+- Quan ly seat-based tickets hoac ticket pool.
+- Tim kiem concert.
+- Dong bo du lieu concert len Elasticsearch.
+- Check-in ve theo quy trinh 2 buoc co Redis.
+
+Route chinh:
+
+- `GET /concerts`
+- `GET /concerts/search?query=...`
+- `GET /concerts/:id`
+- `GET /concerts/organizer/:organizerId`
+- `POST /concerts`
+- `PUT /concerts/:id`
+- `DELETE /concerts/:id`
+- `POST /concerts/:id/tickets`
+- `GET /concerts/:id/tickets`
+- `PUT /concerts/:id/tickets/:ticketType`
+- `DELETE /concerts/:id/tickets/:ticketType`
+- `POST /concerts/:id/tickets/:ticketId/check-in`
+- `GET /concerts/:id/tickets/:ticketId/status`
+- `POST /concerts/:id/performances`
+- `GET /concerts/:id/performances`
+- `PUT /concerts/:concertId/performances/:performanceId`
+- `DELETE /concerts/:concertId/performances/:performanceId`
+- `POST /concerts/artists`
+- `GET /concerts/artists`
+- `GET /concerts/artists/:artistId`
+- `PUT /concerts/artists/:artistId`
+- `DELETE /concerts/artists/:artistId`
+- `POST /concerts/sync-es`
+
+### 4.3 Booking
+
+Chuc nang chinh:
+
+- Tao booking tu seat hoac nhom ticket.
+- Huy booking.
+- Lay danh sach booking cua user.
+
+Route chinh:
+
+- `POST /bookings`
+- `POST /bookings/:id/cancel`
+- `GET /bookings/user/:userId`
+
+### 4.4 Billing
+
+Chuc nang chinh:
+
+- Tao invoice cho booking.
+- Issue invoice.
+- Tao payment URL qua VNPay.
+- Xu ly callback thanh toan.
+- Lay lich su invoice va payment cua user.
+- Initiate payment truc tiep tu booking.
+
+Route chinh:
+
+- `POST /billing/invoices`
+- `POST /billing/invoices/:id/issue`
+- `POST /billing/payments/initiate`
+- `GET /billing/payments/callback`
+- `GET /billing/my-history?userId=...`
+- `POST /billing/payments/booking/:bookingId/initiate`
+
+### 4.5 Organizing
+
+Day la module rong nhat, bao phu van hanh su kien:
+
+- Gan location cho concert.
+- Tao requirement van hanh.
+- Tao zone, shift va assign staff vao shift.
+- Quan ly logistics va equipment cho concert.
+- Tao va giao task cho staff.
+- Moi nhan su tham gia doi ngu.
+- Quan ly job board va review don ung tuyen.
+- Quan ly vendor, thiet bi, don logistics va tuyen dung phia vendor.
+- Tao report sau su kien.
+
+Route chinh duoc tach thanh 4 nhom:
+
+- `organize/*`: operation, concert staffing, recruitment, reports.
+- `vendor/*`: equipment, order, vendor staff, requirement, vendor jobs.
+- `organize/jobs*`: job board organizer/manager.
+- `organize/staff*`: invite, join team, profile, task, discover staff.
+
+## 5. Frontend hien co
+
+Frontend su dung Next.js App Router va da co nhieu man hinh nghiep vu thuc te:
+
+- Trang chu va trang chi tiet concert.
+- Dang ky, dang nhap, quen mat khau, doi mat khau.
+- Bookings va payment callback.
+- Dashboard organizer.
+- Quan ly staff, task, recruitment, operations.
+- Khu vuc vendor: logistics, equipment, requirement, recruitment.
+- Khu vuc staff: dashboard, manager page, scan ticket.
+
+Mot so route frontend de tham khao:
+
+- `/`
+- `/concerts/[id]`
+- `/login`
+- `/register`
+- `/bookings`
+- `/organizer`
+- `/organizer/concerts/[id]/tickets`
+- `/organizer/concerts/[id]/operations`
+- `/organizer/staff`
+- `/vendor`
+- `/vendor/logistics`
+- `/vendor/equipment`
+- `/vendor/recruitment`
+- `/staff`
+- `/staff/scan`
+
+## 6. Cong nghe su dung
+
+| Thanh phan | Cong nghe |
+| --- | --- |
+| Backend | NestJS 11, TypeScript |
+| Frontend | Next.js 16, React 19 |
+| Database | PostgreSQL |
+| ORM | Prisma 7 |
+| Cache | Redis |
+| Search | Elasticsearch |
+| Storage | MinIO |
+| Authentication | JWT, Passport, Google OAuth |
+| Payment | VNPay sandbox |
+| Mail | Nodemailer |
+| Queue/Background | Bull |
+| API docs | Swagger |
+| State management frontend | Redux Toolkit |
+| Styling | Tailwind CSS 4 |
+
+## 7. Yeu cau moi truong
+
+Can chuan bi:
+
+- Node.js 18 tro len
+- npm
+- Docker Desktop neu muon chay bang compose
+- PostgreSQL, Redis, MinIO, Elasticsearch neu chay local tung dich vu
+
+## 8. Chay nhanh bang Docker Compose
+
+Day la cach don gian nhat de dung toan bo stack:
+
+### Buoc 1: tao file `.env` o thu muc goc
+
+Ban co the tao `.env` can ban nhu sau:
+
+```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=password
+POSTGRES_DB=concert
+
+MINIO_ROOT_USER=admin
+MINIO_ROOT_PASSWORD=password
+
+JWT_SECRET=replace_me
+JWT_EXPIRES_IN=1d
+JWT_REFRESH_SECRET=replace_me_too
+JWT_REFRESH_EXPIRES_IN=7d
+
+FRONTEND_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+ELASTICSEARCH_NODE=http://elasticsearch:9200
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
+
+VNP_TMN_CODE=
+VNP_HASH_SECRET=
+
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USER=
+MAIL_PASS=
+MAIL_FROM="Concert App <noreply@concertapp.com>"
+
+DEFAULT_OAUTH_PASSWORD_HASH=
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│     USER     │     │  ORGANIZER   │     │    ADMIN     │
-│   (Khán giả) │     │ (Ban tổ chức)│     │ (Quản trị)   │
-└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
-       │                    │                    │
-       │  • Đặt vé         │  • Tạo concert     │  • Quản lý user
-       │  • Thanh toán     │  • Quản lý nghệ sĩ │  • Quản lý hệ thống
-       │  • Hủy booking   │  • Tổ chức sự kiện  │  • Toàn quyền
-       │  • Xem concert   │  • Quản lý logistics│
-       │                   │  • Phân công staff  │
-       │                   │  • Xuất hóa đơn     │
-       └───────────────────┴─────────────────────┘
+
+### Buoc 2: chay compose
+
+```bash
+docker compose up --build
 ```
 
-| Actor | Role | Mô tả |
-|-------|------|--------|
-| **User** | `USER` | Người dùng thông thường — xem concert, đặt vé, thanh toán |
-| **Organizer** | `ORGANIZER` | Ban tổ chức — tạo/quản lý concert, tổ chức sự kiện, xuất hóa đơn |
-| **Admin** | `ADMIN` | Quản trị viên — quản lý toàn bộ hệ thống |
+### Buoc 3: truy cap he thong
 
----
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:3001`
+- Swagger: `http://localhost:3001/api/docs`
+- MinIO Console: `http://localhost:9001`
+- Elasticsearch: `http://localhost:9200`
 
-## 📋 Use Cases
+## 9. Chay local tung phan
 
-### 🎤 Concert Context
-
-| # | Use Case | Actor | Mô tả |
-|---|----------|-------|--------|
-| UC-01 | Tạo Concert | Organizer | Tạo sự kiện concert mới với tên, ngày, địa điểm, hình ảnh |
-| UC-02 | Thêm nghệ sĩ | Organizer | Thêm nghệ sĩ biểu diễn vào concert |
-| UC-03 | Thêm tiết mục | Organizer | Thêm performance/tiết mục cho concert |
-| UC-04 | Tạo vé | Organizer | Generate tickets cho concert (loại vé, giá, số lượng) |
-| UC-05 | Đổi lịch Concert | Organizer | Reschedule ngày tổ chức concert |
-| UC-06 | Xem Concert | User | Xem danh sách và chi tiết concert |
-
-### 🎫 Booking Context
-
-| # | Use Case | Actor | Mô tả |
-|---|----------|-------|--------|
-| UC-07 | Đặt vé | User | Tạo booking với danh sách ticket cho 1 concert |
-| UC-08 | Xác nhận Booking | System | Chuyển trạng thái booking từ PENDING → CONFIRMED |
-| UC-09 | Hủy Booking | User | Hủy booking (chỉ khi đang PENDING) |
-
-### 💰 Billing Context
-
-| # | Use Case | Actor | Mô tả |
-|---|----------|-------|--------|
-| UC-10 | Tạo hóa đơn | System | Tạo Invoice (DRAFT) từ booking |
-| UC-11 | Xuất hóa đơn | Organizer | Issue invoice — tính thuế qua TaxPolicy, chuyển DRAFT → ISSUED |
-| UC-12 | Thanh toán | User | Initiate payment qua VNPay |
-| UC-13 | Xác nhận thanh toán | System | Confirm payment — chuyển Invoice sang PAID |
-
-### 🏗️ Organizing Context
-
-| # | Use Case | Actor | Mô tả |
-|---|----------|-------|--------|
-| UC-14 | Phân bổ địa điểm | Organizer | Gán location cho concert |
-| UC-15 | Thêm thiết bị | Organizer | Thêm equipment cho sự kiện |
-| UC-16 | Quản lý hậu cần | Organizer | Tạo và cập nhật trạng thái logistics |
-| UC-17 | Phân công nhân sự | Organizer | Thêm staff và giao task cho nhân viên |
-
-### 👤 Identity Context
-
-| # | Use Case | Actor | Mô tả |
-|---|----------|-------|--------|
-| UC-18 | Đăng ký | Guest | Tạo tài khoản mới với email, password, role |
-| UC-19 | Đăng nhập | Guest | Login bằng email/password, nhận JWT token |
-| UC-20 | Refresh Token | User | Làm mới access token |
-
----
-
-## 🔄 Booking Flow (Luồng đặt vé)
-
-```
-  User                    System                  Organizer
-   │                        │                        │
-   │  1. Xem Concert        │                        │
-   │───────────────────────>│                        │
-   │                        │                        │
-   │  2. Đặt vé (Booking)   │                        │
-   │───────────────────────>│                        │
-   │                        │  3. Tạo Booking         │
-   │                        │     (PENDING)           │
-   │                        │                        │
-   │                        │  4. Tạo Invoice         │
-   │                        │     (DRAFT)             │
-   │                        │                        │
-   │                        │                        │  5. Issue Invoice
-   │                        │<───────────────────────│
-   │                        │  (DRAFT → ISSUED)      │
-   │                        │                        │
-   │  6. Thanh toán (VNPay) │                        │
-   │───────────────────────>│                        │
-   │                        │  7. Xác nhận Payment    │
-   │                        │  8. Invoice → PAID      │
-   │                        │  9. Booking → CONFIRMED │
-   │                        │                        │
-   │  ✅ Đặt vé thành công  │                        │
-   │<───────────────────────│                        │
-```
-
----
-
-## 🚀 Hướng dẫn cài đặt
-
-### Yêu cầu
-
-- **Node.js** >= 18
-- **PostgreSQL** 
-- **MinIO** (hoặc S3-compatible storage)
-
-### Backend
+### 9.1 Khoi dong backend
 
 ```bash
 cd concertapp
 npm install
 npx prisma generate
+npx prisma db push
 npm run start:dev
 ```
 
-### Frontend
+Neu can seed category:
+
+```bash
+cd concertapp
+npx ts-node prisma/seed.ts
+```
+
+Backend mac dinh chay tai:
+
+```text
+http://localhost:3001
+```
+
+### 9.2 Khoi dong frontend
 
 ```bash
 cd fontend
@@ -314,47 +376,155 @@ npm install
 npm run dev
 ```
 
-### Biến môi trường (Backend)
+Frontend mac dinh chay tai:
 
-Tạo file `.env` trong thư mục `concertapp/`:
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/concertdb"
-JWT_SECRET="your-jwt-secret"
-MINIO_ENDPOINT="localhost"
-MINIO_PORT=9000
-MINIO_ACCESS_KEY="your-access-key"
-MINIO_SECRET_KEY="your-secret-key"
+```text
+http://localhost:3000
 ```
 
----
+## 10. Bien moi truong quan trong
 
-## 📚 API Documentation
+### 10.1 Backend
 
-Sau khi chạy backend, truy cập Swagger UI:
+| Bien | Bat buoc | Y nghia |
+| --- | --- | --- |
+| `PORT` | Khong | Cong backend, mac dinh `3001` |
+| `DATABASE_URL` | Co | Chuoi ket noi PostgreSQL |
+| `REDIS_HOST` | Khong | Host Redis |
+| `REDIS_PORT` | Khong | Port Redis |
+| `ELASTICSEARCH_NODE` | Khong | URL Elasticsearch |
+| `JWT_SECRET` | Co | Secret ky access token |
+| `JWT_EXPIRES_IN` | Co | Thoi gian het han access token |
+| `JWT_REFRESH_SECRET` | Co | Secret ky refresh token |
+| `JWT_REFRESH_EXPIRES_IN` | Co | Thoi gian het han refresh token |
+| `FRONTEND_URL` | Nen co | URL frontend de redirect OAuth va reset password |
+| `GOOGLE_CLIENT_ID` | Tuy chon | Cau hinh Google login |
+| `GOOGLE_CLIENT_SECRET` | Tuy chon | Cau hinh Google login |
+| `GOOGLE_CALLBACK_URL` | Tuy chon | Callback OAuth |
+| `MAIL_HOST` | Tuy chon | SMTP host |
+| `MAIL_PORT` | Tuy chon | SMTP port |
+| `MAIL_USER` | Tuy chon | Tai khoan gui mail |
+| `MAIL_PASS` | Tuy chon | Mat khau hoac app password |
+| `MAIL_FROM` | Tuy chon | Dia chi nguoi gui |
+| `MINIO_ENDPOINT` | Nen co | Host MinIO |
+| `MINIO_PORT` | Nen co | Port MinIO |
+| `MINIO_USE_SSL` | Khong | Dung HTTPS hay khong |
+| `MINIO_ACCESS_KEY` | Nen co | Access key MinIO |
+| `MINIO_SECRET_KEY` | Nen co | Secret key MinIO |
+| `VNP_TMN_CODE` | Tuy chon | Ma terminal VNPay |
+| `VNP_HASH_SECRET` | Tuy chon | Secret VNPay |
+| `DEFAULT_OAUTH_PASSWORD_HASH` | Tuy chon | Hash mac dinh cho user dang nhap OAuth |
 
+### 10.2 Frontend
+
+| Bien | Bat buoc | Y nghia |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | Co | URL de frontend goi backend |
+
+## 11. Luong nghiep vu chinh
+
+### 11.1 Tao va ban concert
+
+1. Organizer tao concert.
+2. Organizer upload anh, seat map, category, hashtag.
+3. Organizer tao nghe si va performance.
+4. Organizer tao seat/ticket pool.
+5. Frontend hien thi concert de user dat ve.
+
+### 11.2 Dat ve va thanh toan
+
+1. User dang nhap.
+2. User tao booking.
+3. He thong tao invoice.
+4. Invoice duoc issue.
+5. User khoi tao thanh toan qua VNPay.
+6. VNPay goi callback ve backend.
+7. He thong cap nhat payment, invoice va booking.
+
+### 11.3 Check-in ve
+
+1. Staff scan ticket.
+2. Backend tao verification token va luu session trong Redis.
+3. Client xac nhan token o buoc 2.
+4. Ve duoc check-in, co the check-in theo ca booking.
+
+### 11.4 Van hanh su kien
+
+1. Organizer tao requirement cho concert.
+2. Tao zone va shift.
+3. Gan manager, staff, vendor cho tung nhu cau.
+4. Theo doi equipment, logistics, task va bao cao.
+
+## 12. Du lieu va persistence
+
+Prisma schema hien tai bao phu cac nhom du lieu lon sau:
+
+- Nguoi dung va xac thuc: `User`, `Staff`, `Vendor`, `StaffInvitation`
+- Concert: `Concert`, `Artist`, `Performance`, `Category`
+- Ticketing: `Seat`, `TicketPool`, `Ticket`, `Booking`
+- Billing: `Invoice`, `InvoiceItem`, `Payment`
+- Operations: `Organize`, `Location`, `Logistics`, `Zone`, `Shift`, `ShiftAssignment`
+- Recruitment: `JobPost`, `StaffApplication`
+- Vendor operations: `Equipment`, `LogisticsOrder`, `LogisticsOrderItem`, `EventRequirement`
+- Reporting: `EventReport`
+
+## 13. Swagger va kiem thu API
+
+Sau khi chay backend, mo:
+
+```text
+http://localhost:3001/api/docs
 ```
-http://localhost:3000/api
-```
 
----
+Swagger la diem bat dau tot nhat de:
 
-## 🛠️ Tech Stack
+- xem request/response contract,
+- test nhanh API,
+- kiem tra authentication bearer token,
+- doi chieu endpoint voi frontend.
 
-| Layer | Công nghệ |
-|-------|-----------|
-| **Backend Framework** | NestJS 11 |
-| **Frontend Framework** | Next.js 16 |
-| **Language** | TypeScript 5 |
-| **Database** | PostgreSQL + Prisma ORM 7 |
-| **Authentication** | JWT + Passport |
-| **Payment Gateway** | VNPay |
-| **Object Storage** | MinIO |
-| **API Docs** | Swagger / OpenAPI |
-| **Styling** | Tailwind CSS 4 |
+## 14. Scripts huu ich
 
----
+### Backend `concertapp/package.json`
 
-<p align="center">
-  <sub>Built with ❤️ using Domain-Driven Design & CQRS</sub>
-</p>
+- `npm run start:dev`: chay backend o che do watch
+- `npm run build`: build backend
+- `npm run test`: unit test
+- `npm run test:e2e`: end-to-end test
+- `npm run lint`: lint va sua loi co the autofix
+
+### Frontend `fontend/package.json`
+
+- `npm run dev`: chay frontend
+- `npm run build`: build production
+- `npm run start`: chay production build
+- `npm run lint`: lint frontend
+
+## 15. Ghi chu ky thuat quan trong
+
+- Controller `GET /concerts/:id` dang su dung Redis cache TTL 300 giay.
+- Tim kiem concert co ho tro dong bo Elasticsearch qua endpoint `POST /concerts/sync-es`.
+- Upload media concert va CV hien tai dung MinIO.
+- VNPay dang o `testMode: true`, phu hop moi truong dev/sandbox.
+- Password reset mail co fallback log neu SMTP chua cau hinh day du.
+- Co mot so route organizing va vendor su dung `RolesGuard`, can dam bao payload JWT va role mapping dung.
+
+## 16. Huong mo rong de xuat
+
+Neu tiep tuc phat trien, co the uu tien:
+
+- bo sung migration workflow ro rang cho Prisma,
+- viet them test cho booking concurrency va payment callback,
+- bo sung RBAC chat che hon cho toan bo route,
+- tach API contract thanh OpenAPI versioned,
+- them observability: logging, tracing, health checks,
+- them ci/cd va quy trinh release.
+
+## 17. Tai lieu lien quan
+
+- [DESIGNE.md](./DESIGNE.md): tai lieu thiet ke kien truc va quyet dinh ky thuat.
+- `docker-compose.yml`: khoi dong nhanh he thong local.
+- `concertapp/prisma/schema.prisma`: mo hinh du lieu tong.
+- `concertapp/src/app.module.ts`: composition root cua backend.
+- `fontend/app/`: cac route chinh cua frontend.
+

@@ -1,0 +1,52 @@
+// ─── BILLING CONTEXT ─────────────────────────────────────────────────────────
+// Quản lý hóa đơn và thanh toán
+
+model Invoice {
+  id             String        @id @default(uuid())
+  bookingId      String
+  userId         String
+  taxAmount      Float         @default(0)
+  discountAmount Float         @default(0)
+  status         String
+  issueDate      DateTime      @default(now())
+  dueDate        DateTime
+  paymentId      String?
+  version        Int           @default(1)
+  booking        Booking       @relation(fields: [bookingId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
+  items          InvoiceItem[]
+  payments       Payment[]
+
+  @@index([bookingId])
+  @@index([userId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String
+  description String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  invoiceId     String
+  bookingId     String
+  amount        Float
+  method        String
+  status        String
+  transactionId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId])
+  @@index([bookingId])
+  @@index([status])
+}

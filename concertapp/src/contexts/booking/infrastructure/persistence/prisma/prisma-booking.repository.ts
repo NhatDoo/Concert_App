@@ -59,6 +59,7 @@ export class PrismaBookingRepository implements IBookingRepository {
                                 seatLabel: t.getSeatLabel(),
                                 ticketType: t.getTicketType().getValue(),
                                 price: t.getPrice().getAmount(),
+                                isCheckedIn: t.isChecked(),
                                 version: 1
                             }))
                         }
@@ -156,6 +157,7 @@ export class PrismaBookingRepository implements IBookingRepository {
                         seatLabel: t.getSeatLabel(),
                         ticketType: t.getTicketType().getValue(),
                         price: t.getPrice().getAmount(),
+                        isCheckedIn: t.isChecked(),
                         version: 1
                     }))
                 });

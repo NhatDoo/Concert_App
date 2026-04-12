@@ -21,7 +21,7 @@ export const RevenueView: React.FC<RevenueViewProps> = ({ stats }) => {
                             <p className="text-xs font-black text-green-600 uppercase tracking-widest">Tổng doanh thu</p>
                         </div>
                         <p className="text-5xl font-black text-gray-900 leading-none" suppressHydrationWarning>
-                            {stats.totalRevenue.toLocaleString('vi-VN')}
+                            {(stats.totalRevenue * 100).toLocaleString('vi-VN')}
                             <span className="text-xl text-gray-400 ml-2 font-bold uppercase">Vnd</span>
                         </p>
                         <div className="mt-4 flex items-center gap-2 text-green-500 font-bold text-sm">

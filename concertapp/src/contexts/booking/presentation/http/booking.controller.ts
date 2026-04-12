@@ -28,7 +28,8 @@ export class BookingController {
         const command = new CreateBookingCommand(
             dto.userId,
             dto.concertId,
-            dto.seatIds
+            dto.seatIds,
+            dto.ticketGroups
         );
 
         const bookingId = await this.commandBus.execute(command);

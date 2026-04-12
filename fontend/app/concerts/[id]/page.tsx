@@ -16,7 +16,8 @@ export default function ConcertDetailPage() {
     const [error, setError] = useState<string | null>(null);
 
     // Booking state
-    const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
+    const [selectedSeats, setSelectedSeats] = useState<any[]>([]);
+    const [gaQuantities, setGaQuantities] = useState<{ [ticketType: string]: number }>({});
     const [isBooking, setIsBooking] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
     const [bookingError, setBookingError] = useState<string | null>(null);
@@ -38,13 +39,7 @@ export default function ConcertDetailPage() {
                 const data = await response.json();
                 setConcert(data);
 
-                const initialQuantities: Record<string, number> = {};
-                if (data.tickets) {
-                    data.tickets.forEach((t: any) => {
-                        initialQuantities[t.ticketType] = 0;
-                    });
-                }
-                setSelectedQuantities(initialQuantities);
+                // initial state for seats
 
             } catch (err: any) {
                 setError(err.message);
@@ -58,11 +53,22 @@ export default function ConcertDetailPage() {
         }
     }, [id, apiUrl]);
 
-    const updateQuantity = (type: string, delta: number, max: number) => {
-        const current = selectedQuantities[type] || 0;
-        const next = Math.max(0, Math.min(max, current + delta));
-        setSelectedQuantities({ ...selectedQuantities, [type]: next });
+    const toggleSeat = (seat: any) => {
         setBookingError(null);
+        if (selectedSeats.find(s => s.id === seat.id)) {
+            setSelectedSeats(selectedSeats.filter(s => s.id !== seat.id));
+        } else {
+            setSelectedSeats([...selectedSeats, seat]);
+        }
+    };
+
+    const adjustGAQuantity = (ticketType: string, delta: number, maxAvailable: number) => {
+        setBookingError(null);
+        setGaQuantities(prev => {
+            const current = prev[ticketType] || 0;
+            const next = Math.max(0, Math.min(maxAvailable, current + delta));
+            return { ...prev, [ticketType]: next };
+        });
     };
 
     const handleBooking = async () => {
@@ -72,24 +78,8 @@ export default function ConcertDetailPage() {
             return;
         }
 
-        const items = Object.entries(selectedQuantities)
-            .filter(([_, qty]) => qty > 0)
-            .map(([type, qty]) => ({ ticketType: type, quantity: qty }));
-
-        const seatIds = items.flatMap(({ ticketType, quantity }) => {
-            const availableSeats = (concert?.seats || []).filter((seat: any) =>
-                seat.ticketType === ticketType && seat.status !== 'BOOKED'
-            );
-            return availableSeats.slice(0, quantity).map((seat: any) => seat.id);
-        });
-
-        if (seatIds.length !== items.reduce((sum, item) => sum + item.quantity, 0)) {
-            setBookingError('Khong du ghe trong cho lua chon cua ban');
-            return;
-        }
-
-        if (items.length === 0) {
-            setBookingError('Vui lòng chọn ít nhất một loại vé');
+        if (totalSelectedTickets === 0) {
+            setBookingError('Vui lòng chọn ít nhất một vé');
             return;
         }
 
@@ -97,6 +87,11 @@ export default function ConcertDetailPage() {
         setBookingError(null);
 
         try {
+            const seatIds = selectedSeats.map(s => s.id);
+            const ticketGroups = Object.entries(gaQuantities)
+                .filter(([_, qty]) => qty > 0)
+                .map(([type, qty]) => ({ ticketType: type, quantity: qty }));
+
             const response = await fetch(`${apiUrl}/bookings`, {
                 method: 'POST',
                 headers: {
@@ -106,7 +101,8 @@ export default function ConcertDetailPage() {
                 body: JSON.stringify({
                     userId: user.id,
                     concertId: id,
-                    seatIds: []
+                    ...(seatIds.length > 0 && { seatIds }),
+                    ...(ticketGroups.length > 0 && { ticketGroups })
                 }),
             });
 
@@ -117,7 +113,6 @@ export default function ConcertDetailPage() {
             }
 
             setBookingSuccess(data.bookingId);
-            // Refresh concert data after 2 seconds or handle state
         } catch (err: any) {
             setBookingError(err.message);
         } finally {
@@ -125,11 +120,14 @@ export default function ConcertDetailPage() {
         }
     };
 
-    const totalSelectedTickets = Object.values(selectedQuantities).reduce((sum, q) => sum + q, 0);
-    const totalPrice = concert?.tickets?.reduce((sum: number, t: any) => {
-        const q = selectedQuantities[t.ticketType] || 0;
-        return sum + (t.price * q);
-    }, 0) || 0;
+    const totalGACount = Object.values(gaQuantities).reduce((a, b) => a + b, 0);
+    const totalSelectedTickets = selectedSeats.length + totalGACount;
+
+    const gaPrice = concert ? Object.entries(gaQuantities).reduce((acc, [type, qty]) => {
+        const ticketInfo = (concert.tickets || []).find((t: any) => t.ticketType === type);
+        return acc + (ticketInfo ? ticketInfo.price * qty : 0);
+    }, 0) : 0;
+    const totalPrice = selectedSeats.reduce((sum, seat) => sum + seat.price, 0) + gaPrice;
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -295,7 +293,8 @@ export default function ConcertDetailPage() {
                         {concert.tickets?.length > 0 ? (
                             <div className="space-y-4">
                                 {concert.tickets.map((ticket: any, idx: number) => {
-                                    const qty = selectedQuantities[ticket.ticketType] || 0;
+                                    const availableSeatsForType = (concert?.seats || []).filter((s: any) => s.ticketType === ticket.ticketType);
+                                    const qty = selectedSeats.filter(s => s.ticketType === ticket.ticketType).length;
                                     const isSoldOut = ticket.available === 0;
                                     const isAlmostGone = !isSoldOut && ticket.available <= Math.ceil(ticket.total * 0.1);
 
@@ -311,13 +310,13 @@ export default function ConcertDetailPage() {
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className="flex flex-col gap-1">
                                                     <span className={`text-[10px] w-fit font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${ticket.ticketType === 'VVIP' ? 'bg-amber-100 text-amber-700' :
-                                                            ticket.ticketType === 'VIP' ? 'bg-purple-100 text-purple-700' :
-                                                                'bg-gray-800 text-white'
+                                                        ticket.ticketType === 'VIP' ? 'bg-purple-100 text-purple-700' :
+                                                            'bg-gray-800 text-white'
                                                         }`}>
                                                         {ticket.ticketType}
                                                     </span>
                                                     <div className="text-xl font-black text-gray-900">
-                                                        {ticket.price.toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
+                                                        {(ticket.price * 100).toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
@@ -332,23 +331,56 @@ export default function ConcertDetailPage() {
                                             </div>
 
                                             {!isSoldOut && (
-                                                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                                                    <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Số lượng</span>
-                                                    <div className="flex items-center gap-4 bg-white rounded-xl border border-gray-200 p-1 shadow-sm">
-                                                        <button
-                                                            onClick={() => updateQuantity(ticket.ticketType, -1, ticket.available)}
-                                                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                                        >
-                                                            <Minus className="w-4 h-4" />
-                                                        </button>
-                                                        <span className="w-4 text-center font-black text-gray-900">{qty}</span>
-                                                        <button
-                                                            onClick={() => updateQuantity(ticket.ticketType, 1, ticket.available)}
-                                                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                                                        >
-                                                            <Plus className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
+                                                <div className="mt-4 border-t border-gray-100 pt-4">
+                                                    {availableSeatsForType.length > 0 ? (
+                                                        <>
+                                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Chọn ghế ngồi ({qty} đang chọn)</p>
+                                                            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                                                {availableSeatsForType.map((seat: any) => {
+                                                                    const isSelected = selectedSeats.find(s => s.id === seat.id);
+                                                                    const isBooked = seat.status === 'BOOKED';
+                                                                    return (
+                                                                        <button
+                                                                            key={seat.id}
+                                                                            disabled={isBooked}
+                                                                            onClick={() => toggleSeat(seat)}
+                                                                            className={`w-9 h-9 rounded-xl text-xs font-black transition flex items-center justify-center shrink-0 shadow-sm ${isBooked
+                                                                                ? 'bg-gray-100 text-gray-300 font-medium cursor-not-allowed border border-gray-100'
+                                                                                : isSelected
+                                                                                    ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)] border-none'
+                                                                                    : 'bg-white border text-gray-600 hover:border-red-400 hover:text-red-500 hover:bg-red-50'
+                                                                                }`}
+                                                                            title={isBooked ? 'Đã được đặt' : 'Bạn có thể chọn'}
+                                                                        >
+                                                                            {seat.label}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="flex items-center justify-between py-2">
+                                                            <div>
+                                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Vé tự do (GA)</p>
+                                                                <p className="text-[10px] text-gray-500 italic">Chọn số lượng vé bạn muốn mua</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                                                                <button
+                                                                    onClick={() => adjustGAQuantity(ticket.ticketType, -1, ticket.available)}
+                                                                    className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:text-red-600 transition"
+                                                                >
+                                                                    <Minus className="w-4 h-4" />
+                                                                </button>
+                                                                <span className="font-bold text-sm w-4 text-center">{gaQuantities[ticket.ticketType] || 0}</span>
+                                                                <button
+                                                                    onClick={() => adjustGAQuantity(ticket.ticketType, 1, ticket.available)}
+                                                                    className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:bg-green-50 hover:text-green-600 transition"
+                                                                >
+                                                                    <Plus className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -374,7 +406,7 @@ export default function ConcertDetailPage() {
                                 <div>
                                     <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">Tạm tính ({totalSelectedTickets} vé)</p>
                                     <div className="text-3xl font-black text-gray-900 leading-none">
-                                        {totalPrice.toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
+                                        {(totalPrice * 100).toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
                                     </div>
                                 </div>
                             </div>
@@ -383,8 +415,8 @@ export default function ConcertDetailPage() {
                                 onClick={handleBooking}
                                 disabled={totalSelectedTickets === 0 || isBooking}
                                 className={`w-full py-5 rounded-2xl font-black text-lg uppercase tracking-wider transition-all transform flex items-center justify-center gap-3 shadow-xl ${totalSelectedTickets === 0 || isBooking
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed translate-y-0 shadow-none'
-                                        : 'bg-gray-900 text-white hover:bg-black hover:-translate-y-1 active:scale-95 shadow-gray-200'
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed translate-y-0 shadow-none'
+                                    : 'bg-gray-900 text-white hover:bg-black hover:-translate-y-1 active:scale-95 shadow-gray-200'
                                     }`}
                             >
                                 {isBooking ? (

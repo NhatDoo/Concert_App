@@ -1,0 +1,21 @@
+// ─── BOOKING CONTEXT ─────────────────────────────────────────────────────────
+// Quản lý đặt vé và trạng thái booking
+
+model Booking {
+  id          String    @id @default(uuid())
+  userId      String
+  concertId   String
+  totalAmount Float
+  status      String
+  createdAt   DateTime  @default(now())
+  version     Int       @default(1)
+  concert     Concert   @relation(fields: [concertId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+  invoices    Invoice[]
+  seats       Seat[]
+  tickets     Ticket[]
+
+  @@index([userId])
+  @@index([concertId])
+  @@index([status])
+}

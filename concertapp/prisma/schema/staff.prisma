@@ -1,0 +1,124 @@
+// ─── STAFF CONTEXT ───────────────────────────────────────────────────────────
+// Quản lý nhân sự, nhiệm vụ, lời mời, đơn ứng tuyển và tin tuyển dụng
+
+model Staff {
+  id             String             @id @default(uuid())
+  userId         String
+  name           String
+  role           String
+  concertId      String?
+  managerId      String?
+  bio            String?
+  cvUrl          String?
+  reports        EventReport[]
+  jobPosts       JobPost[]          @relation("ManagerJobPosts")
+  concert        Concert?           @relation(fields: [concertId], references: [id])
+  manager        Staff?             @relation("StaffToManager", fields: [managerId], references: [id])
+  reportsTo      Staff[]            @relation("StaffToManager")
+  user           User               @relation(fields: [userId], references: [id])
+  applications   StaffApplication[] @relation("ApplicantStaff")
+  tasks          StaffTask[]        @relation("TaskStaff")
+  assignedTasks  StaffTask[]        @relation("ManagerAssignedTasks")
+  vendorId       String?
+  vendor         Vendor?            @relation(fields: [vendorId], references: [id])
+  requirements   EventRequirement[] @relation("RequirementAuthor")
+  managedShifts  Shift[]            @relation("ShiftManager")
+  assignedShifts ShiftAssignment[]
+  managedConcert Concert[]          @relation("ConcertToEventManager")
+
+  @@index([concertId])
+  @@index([userId])
+  @@index([managerId])
+}
+
+model StaffTask {
+  id          String    @id @default(uuid())
+  staffId     String
+  managerId   String?
+  taskName    String?
+  description String
+  status      String    @default("PENDING")
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  staff       Staff     @relation("TaskStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  taskManager Staff?    @relation("ManagerAssignedTasks", fields: [managerId], references: [id])
+
+  @@index([staffId])
+  @@index([managerId])
+}
+
+model StaffInvitation {
+  id          String   @id @default(uuid())
+  email       String
+  role        String
+  organizerId String
+  token       String   @unique
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  managerId   String?
+
+  @@index([email])
+  @@index([token])
+}
+
+model StaffApplication {
+  id          String   @id @default(uuid())
+  applicantId String
+  cvUrl       String
+  message     String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  jobPostId   String
+  applicant   Staff    @relation("ApplicantStaff", fields: [applicantId], references: [id])
+  jobPost     JobPost  @relation("JobApplications", fields: [jobPostId], references: [id])
+
+  @@index([applicantId])
+  @@index([jobPostId])
+  @@index([status])
+}
+
+model JobPost {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  requirements  String
+  status        String   @default("OPEN")
+  concertId     String?
+  concert       Concert? @relation(fields: [concertId], references: [id])
+  authorStaffId String?
+  authorUserId  String?
+  authorStaff   Staff?   @relation("ManagerJobPosts", fields: [authorStaffId], references: [id])
+  authorUser    User?    @relation("UserJobPosts", fields: [authorUserId], references: [id])
+  companyName   String?
+  companyLogo   String?
+  location      String?
+  salary        String?
+  category      String   @default("STAFF")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  applications  StaffApplication[] @relation("JobApplications")
+
+  @@index([concertId])
+  @@index([status])
+}
+
+model EventReport {
+  id              String   @id @default(uuid())
+  organizerId     String
+  authorId        String
+  concertId       String?
+  concertName     String?
+  budgetAudit     Float    @default(0)
+  marketingReach  Int      @default(0)
+  staffEvaluation String?
+  finalStatus     String   @default("SUCCESS")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  author          Staff    @relation(fields: [authorId], references: [id])
+
+  @@index([organizerId])
+  @@index([authorId])
+}

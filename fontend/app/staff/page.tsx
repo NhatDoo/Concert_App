@@ -394,6 +394,11 @@ export default function StaffDashboard() {
                         <div className="h-10 w-px bg-slate-200"></div>
 
                         <div className="flex items-center gap-6">
+                            {/* Nút scan QR check-in */}
+                            <Link href="/staff/scan" className="p-3 bg-gray-900 text-white rounded-xl hover:bg-black transition-all shadow-md flex items-center justify-center" title="Quét vé QR">
+                                <Search className="w-5 h-5 flex-shrink-0" />
+                            </Link>
+
                             <Link href="/profile" className="flex items-center gap-6 hover:opacity-80 transition-opacity group">
                                 <div className="text-right">
                                     <p className="text-xs font-black text-slate-800 uppercase tracking-tight group-hover:text-blue-600 transition-colors">{user?.name}</p>

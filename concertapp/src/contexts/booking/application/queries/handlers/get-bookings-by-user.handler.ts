@@ -36,6 +36,7 @@ export class GetBookingsByUserHandler implements IQueryHandler<GetBookingsByUser
 
         return bookings.map(b => ({
             id: b.id,
+            concertId: b.concertId,
             invoiceId: b.invoices.length > 0 ? b.invoices[0].id : null,
             concertName: b.concert.name,
             concertDate: b.concert.startDate,
@@ -50,6 +51,7 @@ export class GetBookingsByUserHandler implements IQueryHandler<GetBookingsByUser
                 price: t.price,
                 seatId: t.seatId,
                 seatLabel: t.seatLabel,
+                isCheckedIn: t.isCheckedIn,
             }))
         }));
     }

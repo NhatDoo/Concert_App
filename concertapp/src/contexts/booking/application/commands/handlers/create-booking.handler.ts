@@ -22,41 +22,84 @@ export class CreateBookingHandler implements ICommandHandler<CreateBookingComman
     ) { }
 
     async execute(command: CreateBookingCommand): Promise<string> {
-        const { userId, concertId, seatIds } = command;
+        const { userId, concertId, seatIds, ticketGroups } = command;
 
         console.log(`Executing CreateBookingCommand for User: ${userId}, Concert: ${concertId}`);
 
-        const seats = await this.prisma.seat.findMany({
-            where: {
-                concertId,
-                id: { in: seatIds },
-            },
-        });
-
-        if (seats.length !== seatIds.length) {
-            throw new NotFoundException(`Some seats were not found for Concert: ${concertId}`);
-        }
-
-        const duplicateSeatIds = seatIds.filter((seatId, index) => seatIds.indexOf(seatId) !== index);
-        if (duplicateSeatIds.length > 0) {
-            throw new BadRequestException('Duplicate seats are not allowed in one booking');
-        }
-
         const tickets: Ticket[] = [];
-        for (const seat of seats) {
-            if (seat.status === 'BOOKED') {
-                throw new ConflictException(`Seat "${seat.label}" is already booked`);
+
+        // Scenario 1: Booking with specific seats
+        if (seatIds && seatIds.length > 0) {
+            const seats = await this.prisma.seat.findMany({
+                where: {
+                    concertId,
+                    id: { in: seatIds },
+                },
+            });
+
+            if (seats.length !== seatIds.length) {
+                throw new NotFoundException(`Some seats were not found for Concert: ${concertId}`);
             }
 
-            tickets.push(Ticket.create(
-                uuidv4(),
-                concertId,
-                userId,
-                Money.create(seat.price),
-                Tickettype.from(seat.ticketType),
-                seat.id,
-                seat.label
-            ));
+            const duplicateSeatIds = seatIds.filter((seatId, index) => seatIds.indexOf(seatId) !== index);
+            if (duplicateSeatIds.length > 0) {
+                throw new BadRequestException('Duplicate seats are not allowed in one booking');
+            }
+
+            for (const seat of seats) {
+                if (seat.status === 'BOOKED') {
+                    throw new ConflictException(`Seat "${seat.label}" is already booked`);
+                }
+
+                tickets.push(Ticket.create(
+                    uuidv4(),
+                    concertId,
+                    userId,
+                    Money.create(seat.price),
+                    Tickettype.from(seat.ticketType),
+                    seat.id,
+                    seat.label
+                ));
+            }
+        }
+
+        // Scenario 2: Booking without specific seats (GA / Standing)
+        if (ticketGroups && ticketGroups.length > 0) {
+            for (const group of ticketGroups) {
+                const pool = await this.prisma.ticketPool.findUnique({
+                    where: {
+                        concertId_ticketType: {
+                            concertId,
+                            ticketType: group.ticketType
+                        }
+                    }
+                });
+
+                if (!pool) {
+                    throw new NotFoundException(`Ticket type "${group.ticketType}" not found for this concert`);
+                }
+
+                if (pool.soldCount + group.quantity > pool.totalQuantity) {
+                    throw new ConflictException(`Not enough tickets available for type "${group.ticketType}"`);
+                }
+
+                // Create individual tickets for the group
+                for (let i = 0; i < group.quantity; i++) {
+                    tickets.push(Ticket.create(
+                        uuidv4(),
+                        concertId,
+                        userId,
+                        Money.create(pool.price),
+                        Tickettype.from(group.ticketType),
+                        null, // No seatId
+                        null  // No seatLabel
+                    ));
+                }
+            }
+        }
+
+        if (tickets.length === 0) {
+            throw new BadRequestException('Either seatIds or ticketGroups must be provided');
         }
 
         // 3. Build Aggregate using Factory Method

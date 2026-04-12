@@ -8,6 +8,7 @@ import { IssueInvoiceHandler } from './application/commands/handlers/issue-invoi
 import { InitiatePaymentHandler } from './application/commands/handlers/initiate-payment.handler';
 import { ConfirmPaymentHandler } from './application/commands/handlers/confirm-payment.handler';
 import { BookingCreatedEventHandler } from './application/events/handlers/booking-created.event-handler';
+import { BookingCancelledEventHandler } from './application/events/handlers/booking-cancelled.event-handler';
 
 export const CommandHandlers = [
     CreateInvoiceHandler,
@@ -16,7 +17,7 @@ export const CommandHandlers = [
     ConfirmPaymentHandler,
 ];
 
-export const EventHandlers = [BookingCreatedEventHandler];
+export const EventHandlers = [BookingCreatedEventHandler, BookingCancelledEventHandler];
 
 @Module({
     imports: [

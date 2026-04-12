@@ -9,8 +9,9 @@ export class Ticket {
     private readonly seatLabel: string | null;
     private ticketType: Tickettype;
     private price: Money;
+    private readonly isCheckedIn: boolean;
 
-    private constructor(id: string, concertId: string, userId: string | null, price: Money, ticketType: Tickettype, seatId: string | null, seatLabel: string | null) {
+    private constructor(id: string, concertId: string, userId: string | null, price: Money, ticketType: Tickettype, seatId: string | null, seatLabel: string | null, isCheckedIn: boolean = false) {
         this.id = id;
         this.concertId = concertId;
         this.userId = userId;
@@ -18,10 +19,11 @@ export class Ticket {
         this.ticketType = ticketType;
         this.seatId = seatId;
         this.seatLabel = seatLabel;
+        this.isCheckedIn = isCheckedIn;
     }
 
-    static create(id: string, concertId: string, userId: string | null, price: Money, ticket: Tickettype, seatId: string | null = null, seatLabel: string | null = null): Ticket {
-        return new Ticket(id, concertId, userId, price, ticket, seatId, seatLabel);
+    static create(id: string, concertId: string, userId: string | null, price: Money, ticket: Tickettype, seatId: string | null = null, seatLabel: string | null = null, isCheckedIn: boolean = false): Ticket {
+        return new Ticket(id, concertId, userId, price, ticket, seatId, seatLabel, isCheckedIn);
     }
 
     getId(): string {
@@ -44,6 +46,9 @@ export class Ticket {
     }
     getPrice(): Money {
         return this.price;
+    }
+    isChecked(): boolean {
+        return this.isCheckedIn;
     }
 
     /**

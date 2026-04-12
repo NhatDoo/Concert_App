@@ -26,6 +26,7 @@ import type { IArtistRepository } from '../../domain/repository/artist.repositor
 import { IPERFORMANCE_REPOSITORY } from '../../domain/repository/performance.repository.interface';
 import type { IPerformanceRepository } from '../../domain/repository/performance.repository.interface';
 import { PrismaService } from '../../../../prisma.service';
+import { RedisService } from '../../infrastructure/redis/redis.service';
 
 @ApiTags('Concerts')
 @Controller('concerts')
@@ -36,6 +37,7 @@ export class ConcertController {
         @Inject(IARTIST_REPOSITORY) private readonly artistRepo: IArtistRepository,
         @Inject(IPERFORMANCE_REPOSITORY) private readonly performanceRepo: IPerformanceRepository,
         private readonly prisma: PrismaService,
+        private readonly redis: RedisService,
     ) { }
 
     private parseJsonArray<T>(raw: string | undefined, fieldName: string): T[] | undefined {
@@ -359,6 +361,151 @@ export class ConcertController {
     @ApiOperation({ summary: 'Get all ticket types & stats for a concert (organizer view)' })
     async getTicketsByConcert(@Param('id') concertId: string) {
         return this.queryBus.execute(new GetTicketsByConcertQuery(concertId));
+    }
+
+    // ─── CHECK IN TICKET ──────────────────────────────────────────
+    @Post(':id/tickets/:ticketId/check-in')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Scan QR code and check in a ticket (Two-step)' })
+    async checkInTicket(
+        @Param('id') concertId: string,
+        @Param('ticketId') ticketId: string,
+        @Body() body?: { verificationToken?: string }
+    ) {
+        const ticket = await this.prisma.ticket.findUnique({
+            where: { id: ticketId }
+        });
+
+        if (!ticket) {
+            throw new BadRequestException('Vé không tồn tại');
+        }
+
+        if (ticket.concertId !== concertId) {
+            throw new BadRequestException('Vé này không thuộc về concert hiện tại');
+        }
+
+        if (ticket.isCheckedIn) {
+            throw new BadRequestException('Vé này đã được check-in trước đó');
+        }
+
+        const bookingId = ticket.bookingId;
+        const sessionKey = bookingId ? `session_checkin:${bookingId}` : `session_checkin:${ticketId}`;
+        const statusKey = bookingId ? `status_checkin:${bookingId}` : `status_checkin:${ticketId}`;
+
+        // Bước 2: Xác nhận với Token
+        if (body?.verificationToken) {
+            const savedData = await this.redis.get<{ token: string, ticketIds: string[] }>(sessionKey);
+
+            if (!savedData) {
+                throw new BadRequestException('Phiên xác thực đã hết hạn hoặc không tồn tại (quá 5p). Hãy quét lại vé ở bước 1.');
+            }
+
+            const clientToken = String(body.verificationToken).trim().toUpperCase();
+            const serverToken = String(savedData.token).trim().toUpperCase();
+
+            // Kiểm tra mã khớp
+            if (serverToken !== clientToken) {
+                throw new BadRequestException(`Mã không khớp. Server chờ: ${serverToken}, Bạn gửi: ${clientToken}`);
+            }
+
+            // Kiểm tra xem chính xác ticketId này có trong session này không
+            if (!savedData.ticketIds.includes(ticketId)) {
+                throw new BadRequestException('Vé này không thuộc về phiên xác thực hiện tại.');
+            }
+
+            // Thực hiện check-in cho TOÀN BỘ vé trong session này
+            const now = new Date();
+            await this.prisma.ticket.updateMany({
+                where: { id: { in: savedData.ticketIds } },
+                data: {
+                    isCheckedIn: true,
+                    checkInTime: now
+                }
+            });
+
+            // Xóa session
+            await this.redis.del(sessionKey);
+            await this.redis.del(statusKey);
+
+            return {
+                message: `Check-in thành công ${savedData.ticketIds.length} vé`,
+                count: savedData.ticketIds.length,
+                step: 2
+            };
+        }
+
+        // Bước 1: Khởi tạo thử thách
+        // Nếu có bookingId, tìm tất cả vé chưa check-in trong booking đó. Nếu không, chỉ xử lý chính ticketId này.
+        let ticketIds = [ticketId];
+        if (bookingId) {
+            const pendingTickets = await this.prisma.ticket.findMany({
+                where: {
+                    bookingId: bookingId,
+                    isCheckedIn: false,
+                    concertId: concertId
+                },
+                select: { id: true }
+            });
+            if (pendingTickets.length > 0) {
+                ticketIds = pendingTickets.map(t => t.id);
+            }
+        }
+
+        // Bước 1: Khởi tạo thử thách
+        // Kiểm tra xem đã có session nào đang chờ confirm cho booking/ticket này chưa
+        const existingSession = await this.redis.get<{ token: string, ticketIds: string[] }>(sessionKey);
+
+        let verificationToken: string;
+
+        if (existingSession && existingSession.token) {
+            // Tái sử dụng token cũ để đảm bảo đồng bộ với máy khách
+            verificationToken = existingSession.token;
+        } else {
+            // Tạo mã xác thực mới (8 ký tự viết hoa)
+            verificationToken = Math.random().toString(36).substring(2, 10).toUpperCase();
+        }
+
+        const sessionData = {
+            token: verificationToken,
+            ticketIds: ticketIds
+        };
+
+        // Lưu session 5 phút (Gia hạn nếu đã có)
+        await this.redis.set(sessionKey, sessionData, 300);
+        await this.redis.set(statusKey, 'WAITING_CONFIRMATION', 300);
+
+        return {
+            message: 'Vui lòng quét mã QR xác thực trên máy khách hàng để hoàn tất',
+            token: verificationToken,
+            count: ticketIds.length,
+            step: 1
+        };
+    }
+
+    @Get(':id/tickets/:ticketId/status')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get current ticket check-in status (for polling)' })
+    async getTicketStatus(
+        @Param('id') concertId: string,
+        @Param('ticketId') ticketId: string
+    ) {
+        const ticket = await this.prisma.ticket.findUnique({ where: { id: ticketId } });
+        if (!ticket) throw new BadRequestException('Vé không tồn tại');
+
+        const bookingId = ticket.bookingId;
+        const statusKey = bookingId ? `status_checkin:${bookingId}` : `status_checkin:${ticketId}`;
+        const sessionKey = bookingId ? `session_checkin:${bookingId}` : `session_checkin:${ticketId}`;
+
+        const status = await this.redis.get<string>(statusKey);
+        const session = await this.redis.get<{ token: string }>(sessionKey);
+
+        return {
+            id: ticket.id,
+            isCheckedIn: ticket.isCheckedIn,
+            checkInTime: ticket.checkInTime,
+            pendingStatus: status || 'NONE',
+            verificationToken: session?.token || null
+        };
     }
 
     @Put(':id/tickets/:ticketType')

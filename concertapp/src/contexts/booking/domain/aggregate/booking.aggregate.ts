@@ -111,9 +111,11 @@ export class Booking extends AggregateRoot {
     }
 
     cancel(): void {
-        if (this.status === 'CONFIRMED') {
-            throw new InvalidBookingStateException('cancel', this.status);
+        const anyCheckedIn = this.tickets.some(t => t.isChecked());
+        if (anyCheckedIn) {
+            throw new InvalidBookingStateException('cancel', 'CHECKED_IN');
         }
+
         this.status = 'CANCELLED';
         this.apply(new BookingCancelledEvent(this.id.getString()));
     }
