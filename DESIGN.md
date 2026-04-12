@@ -1,63 +1,63 @@
-# DESIGNE.md
+# 🎨 DESIGN.md
 
-## 1. Muc dich tai lieu
+## 1. Mục đích tài liệu
 
-Tai lieu nay mo ta thiet ke ky thuat cua Concert App o muc do kien truc va implementation. Muc tieu la giup:
+Tài liệu này mô tả **thiết kế kỹ thuật** của **Concert App** ở mức độ kiến trúc và implementation. Mục tiêu là giúp:
 
-- hieu cach he thong duoc chia module,
-- hieu luong du lieu giua frontend, backend va ha tang,
-- thong nhat cac quyet dinh thiet ke chinh,
-- de bao tri, mo rong hoac thuyet trinh do an.
+- hiểu cách hệ thống được chia module,
+- hiểu luồng dữ liệu giữa frontend, backend và hạ tầng,
+- thống nhất các quyết định thiết kế chính,
+- dễ bảo trì, mở rộng hoặc thuyết trình đồ án.
 
-## 2. Pham vi he thong
+## 2. Phạm vi hệ thống
 
-Concert App khong chi la ung dung dat ve. He thong bao gom cac phan:
+**Concert App** không chỉ là ứng dụng đặt vé. Hệ thống bao gồm các phần:
 
-- quan ly concert,
-- quan ly artist va performance,
-- booking va billing,
-- identity va authentication,
-- van hanh staff va vendor,
+- quản lý concert,
+- quản lý artist và performance,
+- booking và billing,
+- identity và authentication,
+- vận hành staff và vendor,
 - requirement, shift, task, logistics,
-- check-in su kien,
-- dashboard frontend cho nhieu vai tro.
+- check-in sự kiện,
+- dashboard frontend cho nhiều vai trò.
 
-## 3. Nguyen tac thiet ke
+## 3. Nguyên tắc thiết kế
 
-### 3.1 Tach domain theo bounded context
+### 3.1 Tách domain theo bounded context
 
-Thay vi dua toan bo nghiep vu vao mot module lon, he thong tach thanh:
+Thay vì đưa toàn bộ nghiệp vụ vào một module lớn, hệ thống tách thành:
 
-- Concert
-- Booking
-- Billing
-- Identity
-- Organizing
+- **Concert**
+- **Booking**
+- **Billing**
+- **Identity**
+- **Organizing**
 
-Dieu nay giup:
+Điều này giúp:
 
-- de phan chia trach nhiem,
-- giam coupling giua nghiep vu,
-- de mo rong them team hoac service ve sau.
+- dễ phân chia trách nhiệm,
+- giảm coupling giữa nghiệp vụ,
+- dễ mở rộng thêm team hoặc service về sau.
 
-### 3.2 Dung CQRS cho backend
+### 3.2 Dùng CQRS cho backend
 
-Lenh thay doi state va truy van doc du lieu duoc tach rieng:
+Lệnh thay đổi state và truy vấn đọc dữ liệu được tách riêng:
 
-- Command: xu ly thay doi du lieu.
-- Query: xu ly doc du lieu.
+- **Command**: xử lý thay đổi dữ liệu.
+- **Query**: xử lý đọc dữ liệu.
 
-Loi ich:
+Lợi ích:
 
-- de to chuc use case theo nghiep vu,
-- de toi uu rieng cho luong doc va luong ghi,
-- de chen event handler hoac side-effect sau nay.
+- dễ tổ chức use case theo nghiệp vụ,
+- dễ tối ưu riêng cho luồng đọc và luồng ghi,
+- dễ chèn event handler hoặc side-effect sau này.
 
-### 3.3 Infrastructure an sau abstraction
+### 3.3 Infrastructure ẩn sau abstraction
 
-Code domain khong phu thuoc truc tiep vao Prisma, Redis, MinIO hay VNPay. Cac thanh phan nay nam o infrastructure layer va duoc inject vao qua interface hoac service.
+Code domain không phụ thuộc trực tiếp vào **Prisma**, **Redis**, **MinIO** hay **VNPay**. Các thành phần này nằm ở infrastructure layer và được inject vào qua interface hoặc service.
 
-## 4. So do kien truc
+## 4. Sơ đồ kiến trúc
 
 ```text
 [ Next.js Frontend ]
@@ -78,127 +78,127 @@ Code domain khong phu thuoc truc tiep vao Prisma, Redis, MinIO hay VNPay. Cac th
         +--> Nodemailer/SMTP  : reset password email
 ```
 
-## 5. Mo ta tung context
+## 5. Mô tả từng context
 
 ### 5.1 Identity Context
 
-Trach nhiem:
+**Trách nhiệm**:
 
-- quan ly user account,
+- quản lý user account,
 - login/password flow,
 - refresh token,
 - Google OAuth,
 - profile update,
 - forgot/reset password.
 
-Thanh phan chinh:
+**Thành phần chính**:
 
 - `User` entity
-- VO: `Email`, `Password`, `PhoneNumber`, `Role`
+- **VO**: `Email`, `Password`, `PhoneNumber`, `Role`
 - `JwtTokenService`
 - `JwtStrategy`
 - `GoogleStrategy`
 - `MailService`
 
-Quyet dinh ky thuat:
+**Quyết định kỹ thuật**:
 
-- Access token va refresh token duoc tao rieng.
-- JWT payload co the mang them `staffRole`.
-- Password reset link dua tren `FRONTEND_URL`.
+- Access token và refresh token được tạo riêng.
+- JWT payload có thể mang thêm `staffRole`.
+- Password reset link dựa trên `FRONTEND_URL`.
 
 ### 5.2 Concert Context
 
-Trach nhiem:
+**Trách nhiệm**:
 
-- tao va cap nhat concert,
-- luu hinh anh va seat map,
-- quan ly artist va performance,
-- quan ly ticket type/seat,
-- truy van chi tiet concert,
-- tim kiem va dong bo Elasticsearch,
+- tạo và cập nhật concert,
+- lưu hình ảnh và seat map,
+- quản lý artist và performance,
+- quản lý ticket type/seat,
+- truy vấn chi tiết concert,
+- tìm kiếm và đồng bộ **Elasticsearch**,
 - check-in.
 
-Diem noi bat:
+**Điểm nổi bật**:
 
-- `GET /concerts/:id` co cache Redis TTL 300 giay.
-- He thong ho tro 2 mo hinh ve:
-  - seat-based qua bang `Seat`
-  - quantity-based qua bang `TicketPool`
-- Khi doc concert detail, backend tu tong hop thong ke ticket tu `Seat` neu concert co seat map.
+- `GET /concerts/:id` có cache **Redis TTL 300 giây**.
+- Hệ thống hỗ trợ 2 mô hình vé:
+  - seat-based qua bảng `Seat`
+  - quantity-based qua bảng `TicketPool`
+- Khi đọc concert detail, backend tự tổng hợp thống kê ticket từ `Seat` nếu concert có seat map.
 
-Quyet dinh ky thuat:
+**Quyết định kỹ thuật**:
 
-- Redis giup giam truy van lap lai cho concert detail.
-- Elasticsearch dung cho search, khong phai source of truth.
-- MinIO tra ve public URL sau khi upload.
+- **Redis** giúp giảm truy vấn lặp lại cho concert detail.
+- **Elasticsearch** dùng cho search, không phải source of truth.
+- **MinIO** trả về public URL sau khi upload.
 
 ### 5.3 Booking Context
 
-Trach nhiem:
+**Trách nhiệm**:
 
-- tao booking,
-- huy booking,
-- doc booking theo user,
-- phoi hop voi billing thong qua event/side effect.
+- tạo booking,
+- hủy booking,
+- đọc booking theo user,
+- phối hợp với billing thông qua event/side effect.
 
-Quyet dinh ky thuat:
+**Quyết định kỹ thuật**:
 
-- Booking la aggregate chinh cua luong dat ve.
-- Trang thai booking can dam bao hop le theo state transition.
-- Co dau vet cho optimistic/concurrency control trong model thong qua `version`.
+- Booking là aggregate chính của luồng đặt vé.
+- Trạng thái booking cần đảm bảo hợp lệ theo state transition.
+- Có dấu vết cho optimistic/concurrency control trong model thông qua `version`.
 
 ### 5.4 Billing Context
 
-Trach nhiem:
+**Trách nhiệm**:
 
-- tao invoice tu booking,
+- tạo invoice từ booking,
 - issue invoice,
-- thanh toan qua VNPay,
-- callback xac nhan payment,
-- lich su thanh toan.
+- thanh toán qua **VNPay**,
+- callback xác nhận payment,
+- lịch sử thanh toán.
 
-Quyet dinh ky thuat:
+**Quyết định kỹ thuật**:
 
-- Invoice va Payment duoc luu rieng.
-- Payment gateway duoc abstract qua interface.
-- Backend luu metadata giao dich VNPay vao `transactionId` duoi dang JSON string de ho tro refund sau nay.
-- Hien tai dang chay VNPay sandbox `testMode: true`.
+- Invoice và Payment được lưu riêng.
+- Payment gateway được abstract qua interface.
+- Backend lưu metadata giao dịch **VNPay** vào `transactionId` dưới dạng JSON string để hỗ trợ refund sau này.
+- Hiện tại đang chạy **VNPay sandbox** `testMode: true`.
 
 ### 5.5 Organizing Context
 
-Trach nhiem:
+**Trách nhiệm**:
 
-- location va logistics,
+- location và logistics,
 - concert staffing,
-- tasks va shift,
-- requirement van hanh,
+- tasks và shift,
+- requirement vận hành,
 - staff invitation,
-- job board va recruitment,
+- job board và recruitment,
 - vendor equipment/order,
 - event report.
 
-Diem dac biet:
+**Điểm đặc biệt**:
 
-- Day la context rong va hien tai bao gom ca organizer-side va vendor-side.
-- Su dung nhieu route truc tiep voi Prisma trong controller cho toc do phat trien.
-- Da co `RolesGuard`, nhung muc do chat che chua dong deu giua cac route.
+- Đây là context rộng và hiện tại bao gồm cả organizer-side và vendor-side.
+- Sử dụng nhiều route trực tiếp với **Prisma** trong controller cho tốc độ phát triển.
+- Đã có `RolesGuard`, nhưng mức độ chặt chẽ chưa đồng đều giữa các route.
 
-## 6. Mo hinh du lieu muc cao
+## 6. Mô hình dữ liệu mức cao
 
-### 6.1 Nhom identity
+### 6.1 Nhóm identity
 
 - `User`
 - `Staff`
 - `Vendor`
 - `StaffInvitation`
 
-Quan he:
+**Quan hệ**:
 
-- `User` co the tro thanh `Staff`.
-- `User` co the co mot `Vendor`.
-- `Staff` co the thuoc concert, vendor, manager hoac giu vai tro event manager.
+- `User` có thể trở thành `Staff`.
+- `User` có thể có một `Vendor`.
+- `Staff` có thể thuộc concert, vendor, manager hoặc giữ vai trò event manager.
 
-### 6.2 Nhom concert va ticket
+### 6.2 Nhóm concert và ticket
 
 - `Concert`
 - `Artist`
@@ -208,27 +208,27 @@ Quan he:
 - `Ticket`
 - `Category`
 
-Quan he:
+**Quan hệ**:
 
-- `Concert` co nhieu `Performance`.
-- `Performance` thuoc mot `Artist`.
-- `Concert` co the co `Seat` hoac `TicketPool`.
-- `Ticket` gan voi booking, seat va concert.
+- `Concert` có nhiều `Performance`.
+- `Performance` thuộc một `Artist`.
+- `Concert` có thể có `Seat` hoặc `TicketPool`.
+- `Ticket` gắn với booking, seat và concert.
 
-### 6.3 Nhom booking va billing
+### 6.3 Nhóm booking và billing
 
 - `Booking`
 - `Invoice`
 - `InvoiceItem`
 - `Payment`
 
-Quan he:
+**Quan hệ**:
 
-- `Booking` thuoc `User` va `Concert`.
-- `Invoice` thuoc `Booking` va `User`.
-- `Payment` thuoc `Invoice`.
+- `Booking` thuộc `User` và `Concert`.
+- `Invoice` thuộc `Booking` và `User`.
+- `Payment` thuộc `Invoice`.
 
-### 6.4 Nhom operations
+### 6.4 Nhóm operations
 
 - `Organize`
 - `Location`
@@ -240,7 +240,7 @@ Quan he:
 - `StaffTask`
 - `EventReport`
 
-### 6.5 Nhom recruitment va vendor
+### 6.5 Nhóm recruitment và vendor
 
 - `JobPost`
 - `StaffApplication`
@@ -248,9 +248,9 @@ Quan he:
 - `LogisticsOrder`
 - `LogisticsOrderItem`
 
-## 7. Luong xu ly chinh
+## 7. Luồng xử lý chính
 
-### 7.1 Luong tao concert
+### 7.1 Luồng tạo concert
 
 ```text
 Organizer UI
@@ -263,150 +263,150 @@ Organizer UI
   -> PostgreSQL
 ```
 
-Neu co file:
+Nếu có file:
 
-- anh duoc upload len MinIO,
-- seat map duoc upload len MinIO,
-- URL luu vao bang `Concert`.
+- ảnh được upload lên **MinIO**,
+- seat map được upload lên **MinIO**,
+- URL lưu vào bảng `Concert`.
 
-### 7.2 Luong xem chi tiet concert
+### 7.2 Luồng xem chi tiết concert
 
 ```text
 Frontend
   -> GET /concerts/:id
   -> Redis lookup
-  -> Neu hit: tra du lieu ngay
-  -> Neu miss: doc PostgreSQL, tong hop ticket info, luu Redis, tra response
+  -> Nếu hit: trả dữ liệu ngay
+  -> Nếu miss: đọc PostgreSQL, tổng hợp ticket info, lưu Redis, trả response
 ```
 
-### 7.3 Luong booking va billing
+### 7.3 Luồng booking và billing
 
 ```text
-User tao booking
-  -> Booking aggregate duoc tao
-  -> Billing tao invoice
+User tạo booking
+  -> Booking aggregate được tạo
+  -> Billing tạo invoice
   -> Invoice issue
-  -> User thanh toan qua VNPay
-  -> Callback xac nhan
+  -> User thanh toán qua VNPay
+  -> Callback xác nhận
   -> Payment success
   -> Invoice = PAID
   -> Booking = CONFIRMED
 ```
 
-### 7.4 Luong check-in 2 buoc
+### 7.4 Luồng check-in 2 bước
 
-Buoc 1:
+**Bước 1**:
 
 - Staff scan ticket.
-- He thong tao `verificationToken`.
-- Redis luu session check-in trong 5 phut.
+- Hệ thống tạo `verificationToken`.
+- **Redis** lưu session check-in trong 5 phút.
 
-Buoc 2:
+**Bước 2**:
 
-- Client gui lai token.
-- He thong doi chieu token trong Redis.
-- Neu hop le, danh dau `isCheckedIn = true`.
+- Client gửi lại token.
+- Hệ thống đối chiếu token trong **Redis**.
+- Nếu hợp lệ, đánh dấu `isCheckedIn = true`.
 
-Ly do chon thiet ke nay:
+**Lý do chọn thiết kế này**:
 
-- tranh check-in nham chi bang 1 lan quet,
-- cho phep xac nhan tren thiet bi khach hang,
-- phu hop quy trinh gate control.
+- tránh check-in nhầm chỉ bằng 1 lần quét,
+- cho phép xác nhận trên thiết bị khách hàng,
+- phù hợp quy trình gate control.
 
 ## 8. Frontend design
 
-Frontend duoc xay bang Next.js App Router va chia theo route + feature:
+Frontend được xây bằng **Next.js App Router** và chia theo route + feature:
 
-- `app/`: route va page
+- `app/`: route và page
 - `src/features/`: chia theo domain UI
 - `src/stores/`: Redux store
-- `src/components/`: component dung chung
+- `src/components/`: component dùng chung
 
-Kieu thiet ke hien tai:
+**Kiểu thiết kế hiện tại**:
 
-- frontend dong vai tro BFF client, goi truc tiep backend REST API,
-- UI da co dashboard cho organizer, vendor, staff,
-- state phuc tap duoc dua qua Redux Toolkit,
-- route dynamic dung cho concert detail va dashboard theo concert.
+- frontend đóng vai trò **BFF client**, gọi trực tiếp backend REST API,
+- UI đã có dashboard cho organizer, vendor, staff,
+- state phức tạp được đẩy qua **Redux Toolkit**,
+- route dynamic dùng cho concert detail và dashboard theo concert.
 
-## 9. Ha tang va external services
+## 9. Hạ tầng và external services
 
 ### 9.1 PostgreSQL
 
-La source of truth cho toan bo nghiep vu.
+Là **source of truth** cho toàn bộ nghiệp vụ.
 
 ### 9.2 Redis
 
-Dung cho 2 muc tieu:
+Dùng cho 2 mục tiêu:
 
 - cache concert detail,
-- luu phien check-in tam thoi.
+- lưu phiên check-in tạm thời.
 
 ### 9.3 MinIO
 
-Dung de luu:
+Dùng để lưu:
 
 - concert image,
 - seat map,
 - CV upload.
 
-Bucket duoc tao dong khi can va dat public-read.
+Bucket được tạo động khi cần và đặt **public-read**.
 
 ### 9.4 Elasticsearch
 
-Dung de:
+Dùng để:
 
-- ho tro tim kiem concert,
-- tach read concern cho search.
+- hỗ trợ tìm kiếm concert,
+- tách read concern cho search.
 
-Can bo sung indexing strategy va reindex workflow ro rang hon neu dua len production.
+Cần bổ sung indexing strategy và reindex workflow rõ ràng hơn nếu đưa lên production.
 
 ### 9.5 VNPay
 
-Dung cho:
+Dùng cho:
 
-- tao payment URL,
+- tạo payment URL,
 - verify callback,
-- chuan bi cho refund.
+- chuẩn bị cho refund.
 
-Hien tai:
+**Hiện tại**:
 
-- dang o sandbox,
-- amount duoc nhan 100 de dung format VNPay.
+- đang ở sandbox,
+- amount được nhân 100 để đúng format VNPay.
 
 ### 9.6 SMTP Mail
 
-Dung de gui reset password. Neu cau hinh mail chua day du, he thong log reset link de phuc vu giai doan MVP/dev.
+Dùng để gửi reset password. Nếu cấu hình mail chưa đầy đủ, hệ thống log reset link để phục vụ giai đoạn **MVP/dev**.
 
-## 10. Bao mat va phan quyen
+## 10. Bảo mật và phân quyền
 
-Da co:
+**Đã có**:
 
-- JWT authentication
+- **JWT authentication**
 - `JwtAuthGuard`
 - `RolesGuard`
 - role trong user/staff/vendor
 
-Can cai thien them:
+**Cần cải thiện thêm**:
 
-- dong bo enforcement auth cho tat ca route quan trong,
-- han che user can thi du lieu cua user khac qua `userId` tren payload/request,
-- tach role business va role technical ro hon,
-- audit log cho thao tac nhay cam.
+- đồng bộ enforcement auth cho tất cả route quan trọng,
+- hạn chế user căn thiệp dữ liệu của user khác qua `userId` trên payload/request,
+- tách role business và role technical rõ hơn,
+- audit log cho thao tác nhạy cảm.
 
-## 11. Diem manh cua thiet ke hien tai
+## 11. Điểm mạnh của thiết kế hiện tại
 
-- Phan tach context ro rang.
-- Co du lieu nghiep vu kha day du cho mot he thong su kien.
-- Ho tro nhieu actor: customer, organizer, staff, vendor.
-- Co cache, search, object storage, payment.
-- Co frontend va backend trong cung mot workspace, de dev nhanh.
+- Phân tách context rõ ràng.
+- Có dữ liệu nghiệp vụ khá đầy đủ cho một hệ thống sự kiện.
+- Hỗ trợ nhiều actor: customer, organizer, staff, vendor.
+- Có cache, search, object storage, payment.
+- Có frontend và backend trong cùng một workspace, dễ dev nhanh.
 
-## 12. No ky thuat va rui ro hien tai
+## 12. Nợ kỹ thuật và rủi ro hiện tại
 
-### 12.1 Organizing context rat lon
+### 12.1 Organizing context rất lớn
 
-Mot context dang gom qua nhieu trach nhiem:
+Một context đang gồm quá nhiều trách nhiệm:
 
 - staffing,
 - recruitment,
@@ -414,60 +414,61 @@ Mot context dang gom qua nhieu trach nhiem:
 - operations,
 - reporting.
 
-Rui ro:
+**Rủi ro**:
 
-- kho test,
-- kho tach team,
-- controller de phinh to.
+- khó test,
+- khó tách team,
+- controller dễ phình to.
 
-### 12.2 Mot so controller truy cap Prisma truc tiep
+### 12.2 Một số controller truy cập Prisma trực tiếp
 
-Dieu nay nhanh cho MVP, nhung lam giam tinh dong nhat voi DDD/CQRS.
+Điều này nhanh cho **MVP**, nhưng làm giảm tính đồng nhất với **DDD/CQRS**.
 
-### 12.3 Authorization chua thuc su chat che
+### 12.3 Authorization chưa thực sự chặt chẽ
 
-Nhieu endpoint nhan `userId` tu body/query. Neu khong doi chieu voi JWT claim, co the phat sinh loi bao mat.
+Nhiều endpoint nhận `userId` từ body/query. Nếu không đối chiếu với **JWT claim**, có thể phát sinh lỗ bảo mật.
 
-### 12.4 Chua thay ro workflow migration
+### 12.4 Chưa thấy rõ workflow migration
 
-Repository co `schema.prisma`, `schema/` va mot so thay doi dang mo. Nen thong nhat cach sinh schema va chay migration.
+Repository có `schema.prisma`, `schema/` và một số thay đổi đang mở. Nên thống nhất cách sinh schema và chạy migration.
 
-### 12.5 Test coverage chua tuong xung do phuc tap nghiep vu
+### 12.5 Test coverage chưa tương xứng độ phức tạp nghiệp vụ
 
-Can uu tien:
+Cần ưu tiên:
 
 - booking concurrency,
 - payment callback,
 - role guard,
 - check-in session flow.
 
-## 13. Dinh huong cai tien de xuat
+## 13. Định hướng cải tiến đề xuất
 
-### Gan han
+### Gần hạn
 
-- Bo sung `.env.example` cho root, backend, frontend.
-- Chuan hoa README setup va migration workflow.
-- Them health check endpoint.
-- Them test cho cac flow quan trong.
+- Bổ sung `.env.example` cho root, backend, frontend.
+- Chuẩn hóa README setup và migration workflow.
+- Thêm health check endpoint.
+- Thêm test cho các flow quan trọng.
 
-### Trung han
+### Trung hạn
 
-- Tach `organizing` thanh `operations`, `staffing`, `vendor`.
-- Chuyen mot so Prisma query truc tiep vao query service/repository.
-- Chuan hoa RBAC.
-- Them logging co cau truc.
+- Tách `organizing` thành `operations`, `staffing`, `vendor`.
+- Chuyển một số Prisma query trực tiếp vào query service/repository.
+- Chuẩn hóa **RBAC**.
+- Thêm logging có cấu trúc.
 
-### Dai han
+### Dài hạn
 
-- Tach service theo domain neu luong tai tang.
-- Dua message broker that su vao event-driven flow.
-- Them monitoring, tracing, retry va outbox pattern.
+- Tách service theo domain nếu lưu lượng tăng.
+- Đưa message broker thực sự vào event-driven flow.
+- Thêm monitoring, tracing, retry và outbox pattern.
 
-## 14. Ket luan
+## 14. Kết luận
 
-Concert App dang co nen tang kha tot cho mot he thong quan ly su kien concert da nghiep vu. Thiet ke hien tai uu tien toc do phat trien, tinh thuc dung va kha nang demo end-to-end. Neu muon dua sang muc production vung hon, huong toi tiep theo nen la:
+**Concert App** đang có nền tảng khá tốt cho một hệ thống quản lý sự kiện concert đa nghiệp vụ. Thiết kế hiện tại ưu tiên tốc độ phát triển, tính thực dụng và khả năng demo end-to-end. Nếu muốn đưa sang mức production vững hơn, hướng tới tiếp theo nên là:
 
-- cung co auth/authorization,
-- siet lai boundary giua domain va infrastructure,
-- tang test va observability,
-- tach nho organizing context.
+- cứng cáp auth/authorization,
+- siết lại boundary giữa domain và infrastructure,
+- tăng test và observability,
+- tách nhỏ organizing context.
+
