@@ -79,6 +79,7 @@ services:
       MAIL_USER: ${MAIL_USER}
       MAIL_PASS: ${MAIL_PASS}
       DEFAULT_OAUTH_PASSWORD_HASH: ${DEFAULT_OAUTH_PASSWORD_HASH}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
 
   frontend:
     build:

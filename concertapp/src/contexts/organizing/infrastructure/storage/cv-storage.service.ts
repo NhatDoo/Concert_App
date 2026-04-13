@@ -49,6 +49,13 @@ export class CvStorageService {
             'Content-Type': contentType,
         });
 
+        const publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
+        if (publicUrl) {
+            // Remove trailing slash if present to avoid double slashes
+            const sanitizedUrl = publicUrl.replace(/\/$/, '');
+            return `${sanitizedUrl}/${bucketName}/${fileName}`;
+        }
+
         const protocol = this.configService.get<boolean>('MINIO_USE_SSL', false) ? 'https' : 'http';
         return `${protocol}://${this.endpoint}:${this.port}/${bucketName}/${fileName}`;
     }
