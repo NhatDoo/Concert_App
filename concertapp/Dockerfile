@@ -14,4 +14,4 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 EXPOSE 3001
-CMD ["sh", "-c", "until nc -z postgres 5432; do echo waiting for db; sleep 2; done; npx prisma db push && npm run start:prod"]
+CMD ["sh", "-c", "until nc -z postgres 5432; do echo waiting for db; sleep 2; done; npx prisma db push && npx prisma db seed && npm run start:prod"]
