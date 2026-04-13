@@ -8,7 +8,7 @@ Tài liệu thiết kế chi tiết hơn được đặt tại [DESIGN.md](./DES
 
 ### Mục tiêu
 
-Hệ thống được xây dựng để phục vụ 3 nhóm đối tượng chính:
+Hệ thống được xây dựng để phục vụ 5 nhóm đối tượng chính:
 
 - **Khách hàng**: Tìm kiếm concert, xem chi tiết, đặt vé, thanh toán, theo dõi lịch sử giao dịch.
 - **Organizer**: Tạo concert, quản lý ticket, lịch biểu diễn , xem báo cáo tiến độ , nhân sự từ Event Manager, tuyển dụng , liên hệ Vendor + EventManger.
