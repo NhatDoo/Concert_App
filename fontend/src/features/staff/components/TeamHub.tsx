@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, User as UserIcon, Calendar, CheckCircle, Mail, MapPin, Trash, Clock } from 'lucide-react';
 import { StaffRecord } from './types';
+import { API_URL } from '@/src/utils/api';
+
 
 interface TeamHubProps {
     organizerId: string;
@@ -17,8 +19,7 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
         const fetchTeam = async () => {
             setLoading(true);
             try {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-                const res = await fetch(`${apiUrl}/organize/staff/list/${organizerId}`, {
+                const res = await fetch(`${API_URL}/organize/staff/list/${organizerId}`, {
                     headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                 });
                 if (res.ok) {
@@ -53,8 +54,7 @@ export const TeamHub: React.FC<TeamHubProps> = ({ organizerId, token, onAssignTa
         }
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const res = await fetch(`${apiUrl}/organize/staff/${deleteConfirm.id}`, {
+            const res = await fetch(`${API_URL}/organize/staff/${deleteConfirm.id}`, {
                 method: 'DELETE',
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });

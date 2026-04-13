@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { API_URL } from '@/src/utils/api';
 
 interface User {
     id: string;
@@ -24,10 +25,6 @@ const initialState: AuthState = {
     error: null,
     registerSuccess: false,
 };
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-// Async thunk cho đăng nhập
 export const loginUser = createAsyncThunk(
     'auth/loginUser',
     async (credentials: { email: string; password: string }, { rejectWithValue }) => {

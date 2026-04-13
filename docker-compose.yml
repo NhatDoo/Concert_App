@@ -51,6 +51,7 @@ services:
     container_name: concert-backend
     ports:
       - "3001:3001"
+      - "51212:51212"
     depends_on:
       - postgres
       - redis
@@ -69,11 +70,11 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       JWT_REFRESH_EXPIRES_IN: "7d"
       JWT_EXPIRES_IN: "1d"
-      FRONTEND_URL: "http://localhost:3000"
-      NEXT_PUBLIC_API_URL: "http://localhost:3001"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost:3000}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:3001}"
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_CALLBACK_URL: "http://localhost:3001/auth/google/callback"
+      GOOGLE_CALLBACK_URL: "${GOOGLE_CALLBACK_URL:-http://localhost:3001/auth/google/callback}"
       VNP_TMN_CODE: ${VNP_TMN_CODE}
       VNP_HASH_SECRET: ${VNP_HASH_SECRET}
       MAIL_USER: ${MAIL_USER}
@@ -93,7 +94,7 @@ services:
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_URL: "http://localhost:3001"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://localhost:3001}"
 
 volumes:
   postgres_data:

@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import type { Event } from '../../../types';
+import { API_URL } from '@/src/utils/api';
 
 interface ConcertState {
     events: Event[];
@@ -24,8 +25,7 @@ export const fetchConcerts = createAsyncThunk(
     'concerts/fetchConcerts',
     async (_, { rejectWithValue }) => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const response = await fetch(`${apiUrl}/concerts`);
+            const response = await fetch(`${API_URL}/concerts`);
 
             if (!response.ok) {
                 throw new Error('Failed to fetch concerts');
@@ -56,8 +56,7 @@ export const searchConcerts = createAsyncThunk(
     'concerts/searchConcerts',
     async (query: string, { rejectWithValue }) => {
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-            const response = await fetch(`${apiUrl}/concerts/search?query=${encodeURIComponent(query)}`);
+            const response = await fetch(`${API_URL}/concerts/search?query=${encodeURIComponent(query)}`);
 
             if (!response.ok) {
                 throw new Error('Search failed');
