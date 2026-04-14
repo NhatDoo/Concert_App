@@ -48,10 +48,15 @@ export class MinioStorageService implements IStorageService {
             'Content-Type': contentType,
         });
 
-        // Return the public URL (no presigned URL needed since bucket is public)
-        const publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
+        // Return the public URL
+        let publicUrl = this.configService.get<string>('MINIO_PUBLIC_URL');
+
+        // Tự động cấu hình URL cho GitHub Codespaces nếu không có MINIO_PUBLIC_URL
+        if (!publicUrl && process.env.CODESPACE_NAME) {
+            publicUrl = `https://${process.env.CODESPACE_NAME}-9000.app.github.dev`;
+        }
+
         if (publicUrl) {
-            // Remove trailing slash if present to avoid double slashes
             const sanitizedUrl = publicUrl.replace(/\/$/, '');
             return `${sanitizedUrl}/${bucketName}/${objectName}`;
         }
