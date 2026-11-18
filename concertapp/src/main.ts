@@ -9,23 +9,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useGlobalFilters(new DomainExceptionFilter());
-  // Tự động nhận diện URL của Frontend cho CORS (Hỗ trợ cả Local và GitHub Codespaces)
-  const frontendUrl = process.env.CODESPACE_NAME
-    ? `https://${process.env.CODESPACE_NAME}-3000.app.github.dev`
-    : (process.env.FRONTEND_URL || 'http://localhost:3000');
-
-  // Enable CORS cho phép Frontend gọi API
-  const corsOrigins = [
-    'http://localhost:3000',
-    process.env.FRONTEND_URL,
-  ].filter(Boolean);
-
-  // Support GitHub Codespaces pattern
-  if (process.env.CODESPACE_NAME) {
-    corsOrigins.push(
-      `https://${process.env.CODESPACE_NAME}-3000.app.github.dev`,
-    );
-  }
+  const frontendUrl =
+    process.env.FRONTEND_URL ||
+    (process.env.CODESPACE_NAME
+      ? `https://${process.env.CODESPACE_NAME}-8080.app.github.dev`
+      : 'http://localhost:8080');
 
   app.enableCors({
     origin: frontendUrl,

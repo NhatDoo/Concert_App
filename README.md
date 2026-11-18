@@ -22,7 +22,7 @@ Hệ thống được xây dựng để phục vụ 5 nhóm đối tượng chí
 - Áp dụng **CQRS** cho backend để tách lệnh ghi và truy vấn đọc.
 - Sử dụng **Redis** cho cache và quy trình check-in.
 - Sử dụng **Elasticsearch** để đồng bộ dữ liệu tìm kiếm concert.
-- Sử dụng **MinIO** cho lưu trữ file media và CV.
+- Sử dụng **Neon Storage** qua S3-compatible API cho file media và CV.
 - Sử dụng **VNPay sandbox** cho quy trình thanh toán.
 
 ## 2. Kiến trúc tổng thể
@@ -42,7 +42,7 @@ Backend API (NestJS, port 3001)
         |
         +-- PostgreSQL   : dữ liệu nghiệp vụ
         +-- Redis        : cache concert, session check-in
-        +-- MinIO        : ảnh concert, seat map, CV
+        +-- Neon Storage : ảnh concert, seat map, CV
         +-- Elasticsearch: tìm kiếm concert
         +-- VNPay        : thanh toán sandbox
 ```
@@ -71,7 +71,7 @@ Mỗi context được tổ chức theo các lớp:
 - **Repository pattern**: domain interface, infrastructure implementation.
 - **Value Object**: `Money`, `Email`, `Password`, `ConcertId`, `BookingId`.
 - **Domain Event**: booking, concert, billing có event handler riêng.
-- **Storage abstraction**: interface lưu file và implementation bằng MinIO.
+- **Storage abstraction**: interface lưu file và implementation bằng AWS S3 SDK.
 
 ## 3. Cấu trúc thư mục
 
@@ -269,7 +269,7 @@ Frontend sử dụng **Next.js App Router** và đã có nhiều màn hình nghi
 | ORM            | Prisma 7              |
 | Cache          | Redis                 |
 | Search         | Elasticsearch         |
-| Storage        | MinIO                 |
+| Storage        | Neon S3-compatible object storage |
 | Authentication | JWT, Passport, Google OAuth |
 | Payment        | VNPay sandbox         |
 | Mail           | Nodemailer            |
@@ -285,7 +285,7 @@ Cần chuẩn bị:
 - **Node.js** 18 trở lên
 - **npm**
 - **Docker Desktop** nếu muốn chạy bằng compose
-- **PostgreSQL, Redis, MinIO, Elasticsearch** nếu chạy local từng dịch vụ
+- **Redis, Elasticsearch** chạy local; Docker Compose kết nối PostgreSQL và object storage trên Neon
 
 ## 8. Chạy nhanh bằng Docker Compose
 
@@ -296,12 +296,13 @@ Cần chuẩn bị:
 Bạn có thể tạo `.env` cơ bản như sau:
 
 ```env
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=password
-POSTGRES_DB=concert
-
-MINIO_ROOT_USER=admin
-MINIO_ROOT_PASSWORD=password
+DATABASE_URL=your_neon_postgresql_connection_string
+AWS_ENDPOINT_URL_S3=https://your-neon-storage-endpoint
+AWS_ACCESS_KEY_ID=your_storage_access_key
+AWS_SECRET_ACCESS_KEY=your_storage_secret_key
+AWS_REGION=your_storage_region
+STORAGE_BUCKET=your_storage_bucket
+STORAGE_PUBLIC_URL=
 
 JWT_SECRET=replace_me
 JWT_EXPIRES_IN=1d
@@ -319,8 +320,8 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_CALLBACK_URL=http://localhost:3001/auth/google/callback
 
-VNP_TMN_CODE=
-VNP_HASH_SECRET=
+VNPAY_TMN_CODE=
+VNPAY_HASH_SECRET=
 
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
@@ -339,11 +340,11 @@ docker compose up --build
 
 ### Bước 3: Truy cập hệ thống
 
-- **Frontend**: `http://localhost:3000`
-- **Backend API**: `http://localhost:3001`
-- **Swagger**: `http://localhost:3001/api/docs`
-- **MinIO Console**: `http://localhost:9001`
+- **Frontend và API**: `http://localhost:8080`
+- **Swagger**: `http://localhost:8080/api/docs`
 - **Elasticsearch**: `http://localhost:9200`
+
+Tạo bucket trên Neon Storage trước khi chạy ứng dụng và bật quyền đọc công khai để URL ảnh/CV dùng trực tiếp được. `STORAGE_PUBLIC_URL` là tùy chọn nếu URL public khác S3 endpoint.
 
 ## 9. Chạy local từng phần
 
@@ -391,7 +392,12 @@ http://localhost:3000
 | Biến                  | Bắt buộc | Ý nghĩa                               |
 |-----------------------|----------|---------------------------------------|
 | `PORT`                | Không    | Cổng backend, mặc định `3001`         |
-| `DATABASE_URL`        | Có       | Chuỗi kết nối PostgreSQL              |
+| `DATABASE_URL`        | Có       | Chuỗi kết nối PostgreSQL trên Neon    |
+| `AWS_ENDPOINT_URL_S3` | Có       | S3-compatible endpoint của Neon Storage |
+| `AWS_ACCESS_KEY_ID`   | Có       | Access key của Neon Storage           |
+| `AWS_SECRET_ACCESS_KEY` | Có     | Secret key của Neon Storage          |
+| `AWS_REGION`          | Có       | Region của Neon Storage               |
+| `STORAGE_BUCKET`      | Có       | Bucket đã tạo trên Neon Storage       |
 | `REDIS_HOST`          | Không    | Host Redis                            |
 | `REDIS_PORT`          | Không    | Port Redis                            |
 | `ELASTICSEARCH_NODE`  | Không    | URL Elasticsearch                     |
@@ -408,13 +414,9 @@ http://localhost:3000
 | `MAIL_USER`           | Tùy chọn | Tài khoản gửi mail                    |
 | `MAIL_PASS`           | Tùy chọn | Mật khẩu hoặc app password            |
 | `MAIL_FROM`           | Tùy chọn | Địa chỉ người gửi                     |
-| `MINIO_ENDPOINT`      | Nên có   | Host MinIO                            |
-| `MINIO_PORT`          | Nên có   | Port MinIO                            |
-| `MINIO_USE_SSL`       | Không    | Dùng HTTPS hay không                  |
-| `MINIO_ACCESS_KEY`    | Nên có   | Access key MinIO                      |
-| `MINIO_SECRET_KEY`    | Nên có   | Secret key MinIO                      |
-| `VNP_TMN_CODE`        | Tùy chọn | Mã terminal VNPay                     |
-| `VNP_HASH_SECRET`     | Tùy chọn | Secret VNPay                          |
+| `STORAGE_PUBLIC_URL`  | Tùy chọn | URL public base nếu khác S3 endpoint  |
+| `VNPAY_TMN_CODE`      | Tùy chọn | Mã terminal VNPay                     |
+| `VNPAY_HASH_SECRET`   | Tùy chọn | Secret VNPay                          |
 | `DEFAULT_OAUTH_PASSWORD_HASH` | Tùy chọn | Hash mặc định cho user đăng nhập OAuth |
 
 ### 10.2 Frontend
@@ -506,7 +508,7 @@ http://localhost:3001/api/docs
 
 - Controller `GET /concerts/:id` đang sử dụng **Redis cache TTL 300 giây**.
 - Tìm kiếm concert có hỗ trợ đồng bộ **Elasticsearch** qua endpoint `POST /concerts/sync-es`.
-- Upload media concert và CV hiện tại dùng **MinIO**.
+- Upload media concert và CV dùng **Neon Storage**.
 - **VNPay** đang ở `testMode: true`, phù hợp môi trường dev/sandbox.
 - Password reset mail có fallback log nếu SMTP chưa cấu hình đầy đủ.
 - Có một số route organizing và vendor sử dụng `RolesGuard`, cần đảm bảo payload JWT và role mapping đúng.

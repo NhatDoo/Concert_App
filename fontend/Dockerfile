@@ -1,12 +1,11 @@
 FROM node:20-alpine AS builder
 ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api}
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
 RUN npm run build
-ENV DATABASE_URL="postgresql://postgres:Nhat123456789@postgres:5432/concert"
 
 FROM node:20-alpine
 WORKDIR /app

@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { Logger, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { PassportModule } from '@nestjs/passport';
 import { IdentityInfrastructureModule } from './infrastructure/identity-infrastructure.module';
@@ -37,7 +37,24 @@ export const CommandHandlers = [
     ],
     providers: [
         ...CommandHandlers,
-        GoogleStrategy
+        {
+            provide: GoogleStrategy,
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => {
+                if (
+                    !configService.get<string>('GOOGLE_CLIENT_ID') ||
+                    !configService.get<string>('GOOGLE_CLIENT_SECRET')
+                ) {
+                    Logger.warn(
+                        'Google OAuth is disabled because its client credentials are not configured.',
+                        IdentityModule.name,
+                    );
+                    return null;
+                }
+
+                return new GoogleStrategy(configService);
+            },
+        },
     ]
 })
 export class IdentityModule { }

@@ -8,7 +8,7 @@ import { PrismaArtistRepository } from './persistence/prisma/prisma-artist.repos
 import { IPERFORMANCE_REPOSITORY } from '../domain/repository/performance.repository.interface';
 import { PrismaPerformanceRepository } from './persistence/prisma/prisma-performance.repository';
 import { ISTORAGE_SERVICE } from '../domain/service/storage.service.interface';
-import { MinioStorageService } from './storage/minio-storage.service';
+import { S3StorageService } from './storage/s3-storage.service';
 import { RedisService } from './redis/redis.service';
 import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
 import { ConcertSearchService } from './elasticsearch/elasticsearch.service';
@@ -42,7 +42,7 @@ import { ElasticsearchProcessor } from './elasticsearch/elasticsearch.processor'
         },
         {
             provide: ISTORAGE_SERVICE,
-            useClass: MinioStorageService,
+            useClass: S3StorageService,
         },
         RedisService,
     ],
