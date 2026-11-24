@@ -52,6 +52,14 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                     include: {
                         staffs: {
                             include: { tasks: true }
+                        },
+                        requirements: true,
+                        zones: {
+                            include: {
+                                shifts: {
+                                    include: { assignments: true }
+                                }
+                            }
                         }
                     }
                 }
@@ -179,6 +187,8 @@ export class PrismaOrganizeRepository implements IOrganizeRepository {
                         name: z.name,
                         description: z.description,
                         capacity: z.capacity,
+                        mapX: z.mapX,
+                        mapY: z.mapY,
                         shifts: {
                             create: z.shifts.map(sh => ({
                                 id: sh.id,

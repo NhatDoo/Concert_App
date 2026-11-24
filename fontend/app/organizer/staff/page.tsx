@@ -159,7 +159,7 @@ export default function GlobalStaffManagement() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+            <div data-editorial-dashboard="organizer" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
                 <Loader2 className="w-10 h-10 animate-spin text-red-600 mb-4" />
                 <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Đang kiến tạo cấu trúc nhân sự...</p>
             </div>
@@ -167,7 +167,7 @@ export default function GlobalStaffManagement() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-20 text-black font-bold">
+        <div data-editorial-dashboard="organizer" className="min-h-screen bg-slate-50 pb-20 text-black font-bold">
             {notification && (
                 <div className={`fixed top-24 right-6 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl text-white font-black animate-in fade-in slide-in-from-right-10 ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
                     {notification.type === 'success' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}

@@ -175,14 +175,14 @@ export const ManagerDashboard = () => {
     }, [managerJobs]);
 
     if (loading) return (
-        <div className="h-screen bg-slate-950 flex flex-col items-center justify-center font-bold">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-6" />
-            <p className="text-slate-500 uppercase tracking-[0.3em] text-[10px]">Manager Hub Loading...</p>
+        <div className="min-h-screen bg-[#f5f2eb] flex flex-col items-center justify-center font-medium">
+            <Loader2 className="w-10 h-10 text-[#d8553f] animate-spin mb-5" />
+            <p className="text-[#77756e] uppercase tracking-[0.2em] text-[10px]">Đang tải workspace quản lý...</p>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex [font-family:var(--font-outfit)] selection:bg-rose-500/10">
+        <div data-editorial-dashboard="manager" className="min-h-screen bg-[#f8fafc] text-slate-800 flex [font-family:var(--font-outfit)] selection:bg-rose-500/10">
             <aside className={`w-80 border-r border-slate-200/60 flex flex-col p-8 sticky top-0 h-screen bg-white shadow-[10px_0_30px_-15px_rgba(0,0,0,0.02)] z-40`}>
                 <div className="flex items-center gap-4 mb-16 px-2">
                     <div className={`w-11 h-11 bg-gradient-to-tr from-rose-600 to-rose-400 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-500/30`}>

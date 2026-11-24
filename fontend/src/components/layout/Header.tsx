@@ -1,40 +1,57 @@
 "use client";
 
-import React from 'react';
-import { Search, MapPin, User, Globe } from 'lucide-react';
-import { useLocation } from '../../contexts/LocationContext';
-import { LocationId } from '../../types';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../stores/store';
-import { logout } from '../../features/auth';
-import { fetchConcerts, searchConcerts } from '../../features/concerts';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import React from "react";
+import { Search, MapPin, User, Globe, ArrowUpRight } from "lucide-react";
+import { useLocation } from "../../contexts/LocationContext";
+import { LocationId } from "../../types";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../../stores/store";
+import { logout } from "../../features/auth";
+import { fetchConcerts, searchConcerts } from "../../features/concerts";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+interface ConcertSuggestionApi {
+    id: string | number;
+    name: string;
+    location: string;
+    imageUrl?: string;
+    minPrice?: number;
+    artists?: string[];
+}
+
+interface ConcertSuggestion {
+    id: string;
+    title: string;
+    location: string;
+    imageUrl?: string;
+    minPrice?: number;
+    artists?: string[];
+}
 
 export const Header = () => {
     const { currentLocation, setCurrentLocation } = useLocation();
     const { user } = useSelector((state: RootState) => state.auth);
-    const dispatch = useDispatch<any>();
+    const dispatch = useDispatch<AppDispatch>();
     const router = useRouter();
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [suggestions, setSuggestions] = React.useState<any[]>([]);
+    const [searchTerm, setSearchTerm] = React.useState("");
+    const [suggestions, setSuggestions] = React.useState<ConcertSuggestion[]>([]);
     const [mounted, setMounted] = React.useState(false);
+    const [isFocused, setIsFocused] = React.useState(false);
 
     React.useEffect(() => {
         setMounted(true);
     }, []);
-    const [isFocused, setIsFocused] = React.useState(false);
 
-    // Debounce tìm kiếm khi gõ
     React.useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
             if (searchTerm.length > 2) {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
                 try {
                     const response = await fetch(`${apiUrl}/concerts/search?query=${encodeURIComponent(searchTerm)}`);
-                    const data = await response.json();
-                    setSuggestions(data.map((item: any) => ({
-                        id: item.id?.toString(),
+                    const data: ConcertSuggestionApi[] = await response.json();
+                    setSuggestions(data.map((item) => ({
+                        id: item.id.toString(),
                         title: item.name,
                         location: item.location,
                         imageUrl: item.imageUrl,
@@ -52,15 +69,15 @@ export const Header = () => {
         return () => clearTimeout(delayDebounceFn);
     }, [searchTerm]);
 
-    const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setCurrentLocation(e.target.value as LocationId);
+    const handleLocationChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        setCurrentLocation(event.target.value as LocationId);
     };
 
-    const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
+    const handleSearch = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "Enter") {
             if (searchTerm.trim()) {
                 dispatch(searchConcerts(searchTerm));
-                router.push('/'); // Chuyển về trang chủ để xem kết quả
+                router.push("/");
             } else {
                 dispatch(fetchConcerts());
             }
@@ -68,84 +85,88 @@ export const Header = () => {
     };
 
     return (
-        <header className="bg-white border-b sticky top-0 z-50 shadow-sm">
-            <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                {/* Logo and Search */}
-                <div className="flex items-center gap-8 w-full md:w-auto">
-                    <Link href="/" className="text-2xl font-bold text-red-600 tracking-tighter cursor-pointer">
-                        CONCERTMUSIC
+        <header className="sticky top-0 z-50 border-b border-[#d6d1c7] bg-[#f5f2eb]/95 backdrop-blur-md">
+            <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
+                <div className="flex shrink-0 items-center gap-8">
+                    <Link href="/" className="group flex items-center gap-2.5" aria-label="ConcertMusic - Trang chủ">
+                        <span className="flex h-9 w-9 items-center justify-center bg-[#d8553f] font-serif text-lg italic text-white transition-colors group-hover:bg-[#b94330]">
+                            C
+                        </span>
+                        <span className="flex flex-col leading-none">
+                            <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-[#24231f]">Concert</span>
+                            <span className="mt-1 font-serif text-[12px] italic text-[#d8553f]">music journal</span>
+                        </span>
                     </Link>
 
-                    <div className="hidden md:block relative group">
-                        <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 w-96 group-focus-within:bg-white group-focus-within:ring-2 group-focus-within:ring-red-500 transition-all shadow-sm">
-                            <Search className="w-5 h-5 text-gray-400 mr-2" />
+                    <div className="relative hidden xl:block">
+                        <div className="flex w-[300px] items-center border-b border-[#c9c4ba] py-2 transition-colors focus-within:border-[#d8553f]">
+                            <Search className="mr-3 h-4 w-4 shrink-0 text-[#77756e]" />
                             <input
                                 type="text"
-                                placeholder="Tìm theo tên buổi nhạc, địa điểm..."
-                                className="bg-transparent border-none outline-none text-sm w-full text-gray-800 placeholder:text-gray-400"
+                                placeholder="Tìm buổi diễn, nghệ sĩ..."
+                                aria-label="Tìm kiếm sự kiện"
+                                className="w-full bg-transparent text-xs text-[#24231f] outline-none placeholder:text-[#99958c]"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={(event) => setSearchTerm(event.target.value)}
                                 onKeyDown={handleSearch}
                                 onFocus={() => setIsFocused(true)}
-                                onBlur={() => setTimeout(() => setIsFocused(false), 200)} // Delay to allow clicks
+                                onBlur={() => setTimeout(() => setIsFocused(false), 200)}
                             />
                         </div>
 
-                        {/* Dropdown gợi ý thông minh */}
                         {isFocused && (suggestions.length > 0 || searchTerm.length > 2) && (
-                            <div className="absolute top-12 left-0 w-full bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="absolute left-0 top-[calc(100%+12px)] z-[100] w-full border border-[#d6d1c7] bg-[#f5f2eb] shadow-xl">
                                 {suggestions.length > 0 ? (
                                     <>
                                         <div className="p-3">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2 mb-2">Kết quả tìm kiếm</p>
+                                            <p className="mb-2 px-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-[#99958c]">Kết quả tìm kiếm</p>
                                             {suggestions.slice(0, 5).map((item) => (
                                                 <Link
                                                     key={item.id}
                                                     href={`/concerts/${item.id}`}
-                                                    className="flex items-center gap-3 p-2 hover:bg-red-50 rounded-xl transition-colors group/item"
+                                                    className="group/item flex items-center gap-3 p-2 transition-colors hover:bg-[#ece7de]"
                                                 >
-                                                    <div className="w-12 h-12 rounded-lg bg-gray-200 overflow-hidden flex-shrink-0 shadow-sm border border-gray-100">
+                                                    <div className="h-12 w-12 shrink-0 overflow-hidden bg-[#e5e0d7]">
                                                         <img
                                                             src={item.imageUrl || "https://images.unsplash.com/photo-1470229722913-7c090be5c524?auto=format&fit=crop&w=200&q=80"}
                                                             alt={item.title}
-                                                            className="w-full h-full object-cover group-hover/item:scale-110 transition-transform"
+                                                            className="h-full w-full object-cover transition-transform group-hover/item:scale-105"
                                                         />
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-bold text-gray-800 truncate group-hover/item:text-red-600 transition-colors">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-xs font-semibold text-[#24231f] transition-colors group-hover/item:text-[#d8553f]">
                                                             {item.title}
                                                         </p>
-                                                        <p className="text-[11px] text-gray-500 truncate flex items-center gap-1">
-                                                            <MapPin className="w-3 h-3" /> {item.location}
+                                                        <p className="mt-1 flex items-center gap-1 truncate text-[10px] text-[#77756e]">
+                                                            <MapPin className="h-3 w-3" /> {item.location}
                                                         </p>
-                                                        {item.artists?.length > 0 && (
-                                                            <p className="text-[10px] text-red-500 font-medium truncate mt-0.5">
+                                                        {item.artists && item.artists.length > 0 && (
+                                                            <p className="mt-0.5 truncate text-[10px] text-[#d8553f]">
                                                                 Nghệ sĩ: {item.artists.join(", ")}
                                                             </p>
                                                         )}
                                                     </div>
-                                                    <div className="text-right flex-shrink-0">
-                                                        <p className="text-[11px] font-bold text-gray-800">
-                                                            {item.minPrice > 0 ? `Từ ${item.minPrice.toLocaleString('vi-VN')}đ` : 'Free'}
-                                                        </p>
-                                                    </div>
+                                                    <span className="shrink-0 text-[10px] font-semibold text-[#24231f]">
+                                                        {typeof item.minPrice === "number" && item.minPrice > 0 ? `Từ ${item.minPrice.toLocaleString("vi-VN")}đ` : "Miễn phí"}
+                                                    </span>
                                                 </Link>
                                             ))}
                                         </div>
-                                        <div
-                                            className="bg-gray-50 p-3 text-center border-t border-gray-100 hover:bg-red-50 cursor-pointer transition-colors"
+                                        <button
+                                            type="button"
+                                            className="flex w-full items-center justify-center gap-2 border-t border-[#d6d1c7] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#d8553f] transition-colors hover:bg-[#ece7de]"
                                             onClick={() => {
                                                 dispatch(searchConcerts(searchTerm));
-                                                router.push('/');
+                                                router.push("/");
                                                 setIsFocused(false);
                                             }}
                                         >
-                                            <p className="text-xs font-bold text-red-600">Xem tất cả kết quả</p>
-                                        </div>
+                                            Xem tất cả kết quả <ArrowUpRight className="h-3.5 w-3.5" />
+                                        </button>
                                     </>
                                 ) : (
-                                    <div className="p-8 text-center">
-                                        <p className="text-gray-400 text-sm">Đang tìm kiếm "{searchTerm}"...</p>
+                                    <div className="px-5 py-7 text-center text-xs text-[#77756e]">
+                                        Đang tìm kiếm &ldquo;{searchTerm}&rdquo;...
                                     </div>
                                 )}
                             </div>
@@ -153,12 +174,12 @@ export const Header = () => {
                     </div>
                 </div>
 
-                {/* Right Nav */}
-                <div className="flex items-center gap-6">
-                    <div className="hidden md:flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-gray-500" />
+                <div className="flex min-w-0 items-center justify-end gap-3 sm:gap-5">
+                    <div className="hidden items-center gap-2 border-r border-[#d6d1c7] pr-5 lg:flex">
+                        <MapPin className="h-4 w-4 text-[#d8553f]" />
                         <select
-                            className="bg-transparent border-none outline-none text-sm font-medium text-gray-700 cursor-pointer"
+                            aria-label="Chọn địa điểm"
+                            className="max-w-[150px] cursor-pointer bg-transparent text-xs text-[#57554f] outline-none"
                             value={currentLocation}
                             onChange={handleLocationChange}
                         >
@@ -170,56 +191,50 @@ export const Header = () => {
                     </div>
 
                     {user && (
-                        <Link href="/bookings" className="hidden sm:flex text-gray-700 hover:text-black transition items-center gap-1 font-bold text-sm bg-gray-100 px-4 py-2 rounded-full">
+                        <Link href="/bookings" className="hidden text-xs font-medium text-[#57554f] transition-colors hover:text-[#d8553f] sm:block">
                             Vé của tôi
                         </Link>
                     )}
 
-                    {mounted && user?.role === 'ORGANIZER' && (
-                        <div className="hidden sm:flex gap-2">
-                            <Link href="/organizer" className={`transition items-center gap-1 font-bold text-sm px-4 py-2 rounded-full ${router.hasOwnProperty('asPath') ? '' : 'bg-red-50 text-red-600'}`}>
+                    {mounted && user?.role === "ORGANIZER" && (
+                        <div className="hidden items-center gap-4 xl:flex">
+                            <Link href="/organizer" className="text-xs font-medium text-[#57554f] transition-colors hover:text-[#d8553f]">
                                 Sự kiện
                             </Link>
-                            <Link href="/organizer?tab=staff" className="text-blue-600 hover:text-blue-700 transition items-center gap-1 font-bold text-sm bg-blue-50 px-4 py-2 rounded-full">
+                            <Link href="/organizer?tab=staff" className="text-xs font-medium text-[#57554f] transition-colors hover:text-[#d8553f]">
                                 Nhân sự
                             </Link>
-                            <Link href="/organizer?tab=revenue" className="text-green-600 hover:text-green-700 transition items-center gap-1 font-bold text-sm bg-green-50 px-4 py-2 rounded-full">
+                            <Link href="/organizer?tab=revenue" className="text-xs font-medium text-[#57554f] transition-colors hover:text-[#d8553f]">
                                 Doanh thu
                             </Link>
                         </div>
                     )}
 
-                    <div className="flex items-center gap-4">
-                        <button className="text-gray-600 hover:text-black transition">
-                            <Globe className="w-5 h-5" />
-                        </button>
-                        {mounted && user ? (
-                            <div className="flex items-center gap-4">
-                                <Link
-                                    href="/profile"
-                                    className="flex items-center gap-2 text-sm font-semibold text-gray-800 hover:text-red-600 transition"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                                        <User className="w-4 h-4" />
-                                    </div>
-                                    <span className="hidden sm:block truncate max-w-[150px]">
-                                        {user.email}
-                                    </span>
-                                </Link>
-                                <button
-                                    onClick={() => dispatch(logout())}
-                                    className="border border-red-500 text-red-500 px-4 py-2 rounded-full hover:bg-red-50 text-sm font-medium transition cursor-pointer"
-                                >
-                                    Đăng xuất
-                                </button>
-                            </div>
-                        ) : (
-                            <Link href="/login" className="flex items-center gap-2 border border-full px-4 py-2 rounded-full hover:bg-red-50 hover:border-red-500 hover:text-red-500 text-sm font-medium transition cursor-pointer">
-                                <User className="w-4 h-4" />
-                                <span>Đăng nhập</span>
+                    <button type="button" aria-label="Ngôn ngữ" className="hidden text-[#77756e] transition-colors hover:text-[#d8553f] sm:block">
+                        <Globe className="h-4 w-4" />
+                    </button>
+                    {mounted && user ? (
+                        <div className="flex items-center gap-3">
+                            <Link href="/profile" className="flex items-center gap-2 text-xs font-medium text-[#57554f] transition-colors hover:text-[#d8553f]">
+                                <span className="flex h-8 w-8 items-center justify-center border border-[#d6d1c7] text-[#d8553f]">
+                                    <User className="h-4 w-4" />
+                                </span>
+                                <span className="hidden max-w-[130px] truncate lg:block">{user.email}</span>
                             </Link>
-                        )}
-                    </div>
+                            <button
+                                type="button"
+                                onClick={() => dispatch(logout())}
+                                className="hidden border-b border-[#d8553f] pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#d8553f] transition-colors hover:text-[#a83f2d] sm:block"
+                            >
+                                Đăng xuất
+                            </button>
+                        </div>
+                    ) : (
+                        <Link href="/login" className="flex items-center gap-2 bg-[#24231f] px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#f5f2eb] transition-colors hover:bg-[#d8553f] sm:px-4">
+                            <User className="h-3.5 w-3.5" />
+                            <span>Đăng nhập</span>
+                        </Link>
+                    )}
                 </div>
             </div>
         </header>

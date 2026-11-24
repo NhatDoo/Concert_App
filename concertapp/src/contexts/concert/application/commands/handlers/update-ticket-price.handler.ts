@@ -4,6 +4,7 @@ import { UpdateTicketPriceCommand } from '../update-ticket-price.command';
 import { PrismaService } from '../../../../../prisma.service';
 import { ICONCERT_REPOSITORY } from '../../../domain/repository/concert.repository.interface';
 import type { IConcertRepository } from '../../../domain/repository/concert.repository.interface';
+import { RedisService } from '../../../infrastructure/redis/redis.service';
 
 @CommandHandler(UpdateTicketPriceCommand)
 export class UpdateTicketPriceHandler implements ICommandHandler<UpdateTicketPriceCommand, void> {
@@ -11,6 +12,7 @@ export class UpdateTicketPriceHandler implements ICommandHandler<UpdateTicketPri
         private readonly prisma: PrismaService,
         @Inject(ICONCERT_REPOSITORY) private readonly concertRepo: IConcertRepository,
         private readonly publisher: EventPublisher,
+        private readonly redisService: RedisService,
     ) { }
 
     async execute(command: UpdateTicketPriceCommand): Promise<void> {
@@ -35,6 +37,14 @@ export class UpdateTicketPriceHandler implements ICommandHandler<UpdateTicketPri
                 ...(quantity !== undefined ? { totalQuantity: quantity } : {})
             }
         });
+
+        await this.prisma.seat.updateMany({
+            where: { concertId, ticketType },
+            data: { price: newPrice }
+        });
+
+        await this.redisService.del(`concert:${concertId}:v2`);
+        await this.redisService.del('concerts:all:v2');
 
         // Notify search sync
         const concert = await this.concertRepo.findById(concertId);

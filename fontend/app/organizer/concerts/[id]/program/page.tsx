@@ -189,7 +189,7 @@ export default function ManageProgramPage() {
     const getArtistName = (id: string) => allArtists.find(a => a.id === id)?.name || 'Unknown Artist';
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-20">
+        <div data-editorial-dashboard="organizer" className="min-h-screen bg-slate-50 pb-20">
             {/* Header */}
             <div className="bg-white border-b border-gray-200">
                 <div className="container mx-auto px-4 py-8 flex items-center gap-4">

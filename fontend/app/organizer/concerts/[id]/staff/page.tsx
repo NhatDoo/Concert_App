@@ -236,7 +236,7 @@ export default function StaffManagementPage({
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-20 pt-10 text-black">
+        <div data-editorial-dashboard="organizer" className="min-h-screen bg-slate-50 pb-20 pt-10 text-black">
             {/* Notification */}
             {notification && (
                 <div

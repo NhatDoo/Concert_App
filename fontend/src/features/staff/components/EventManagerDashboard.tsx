@@ -22,6 +22,7 @@ import {
     Target,
     Send,
     Calendar,
+    Map as MapIcon,
     Plus,
     X,
     Trash,
@@ -40,6 +41,7 @@ import { StaffApplyModal } from './StaffApplyModal';
 import { JobPost } from './types';
 import { useJobManagement } from '../hooks/useJobManagement';
 import { CollaborationInvitations } from './CollaborationInvitations';
+import { EventHallMap } from './EventHallMap';
 
 interface Concert {
     id: string;
@@ -252,14 +254,14 @@ export const EventManagerDashboard = () => {
     }, [activeTab, fetchDiscoverJobs]);
 
     if (loading) return (
-        <div className="h-screen bg-slate-950 flex flex-col items-center justify-center font-bold">
-            <Loader2 className="w-12 h-12 text-amber-500 animate-spin mb-6" />
-            <p className="text-slate-500 uppercase tracking-[0.3em] text-[10px]">Event Orchestration Hub Loading...</p>
+        <div className="min-h-screen bg-[#f5f2eb] flex flex-col items-center justify-center font-medium">
+            <Loader2 className="w-10 h-10 text-[#d8553f] animate-spin mb-5" />
+            <p className="text-[#77756e] uppercase tracking-[0.2em] text-[10px]">Đang tải trung tâm sự kiện...</p>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-[#fcfcfd] text-slate-800 flex [font-family:var(--font-outfit)] selection:bg-amber-500/10">
+        <div data-editorial-dashboard="event-manager" className="min-h-screen bg-[#fcfcfd] text-slate-800 flex [font-family:var(--font-outfit)] selection:bg-amber-500/10">
             {/* GOLD PREMIUM SIDEBAR */}
             <aside className="w-80 border-r border-slate-200/40 flex flex-col p-6 sticky top-0 h-screen bg-white shadow-[20px_0_40px_-20px_rgba(0,0,0,0.03)] z-40">
                 <div className="flex items-center gap-4 mb-10 px-2">
@@ -280,6 +282,7 @@ export const EventManagerDashboard = () => {
                         { id: 'job-board', icon: Briefcase, label: 'Cơ hội cộng tác' },
                         { id: 'marketplace', icon: ShoppingBag, label: 'Sàn nhân sự (Market)' },
                         { id: 'team', icon: Users, label: 'Đối tác & Team' },
+                        { id: 'hall', icon: MapIcon, label: 'Sơ đồ hội trường & call' },
                         { id: 'invitations', icon: Send, label: 'Lời Mời Hợp Tác' },
                         { id: 'settings', icon: Settings, label: 'Hồ sơ chuyên môn' },
                     ].map((item, i) => (
@@ -519,6 +522,30 @@ export const EventManagerDashboard = () => {
                             organizerId={staffRecords[0]?.organizerId || user?.id || ''}
                             token={token}
                             onAssignTask={(staffId, concertId, name) => setAssignTaskModal({ staffId, concertId, staffName: name })}
+                        />
+                    </div>
+                )}
+
+                {activeTab === 'hall' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+                        {concerts.length > 1 && (
+                            <div className="mb-6 flex items-center gap-4">
+                                <label className="text-sm font-black text-slate-600 uppercase tracking-wider">Chọn sự kiện:</label>
+                                <select
+                                    value={selectedConcertId}
+                                    onChange={(e) => setSelectedConcertId(e.target.value)}
+                                    className="bg-white border-2 border-slate-200 rounded-xl px-4 py-2 text-sm font-bold text-slate-800 focus:border-amber-500 outline-none"
+                                >
+                                    {concerts.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <EventHallMap
+                            concertId={selectedConcertId}
+                            token={token}
+                            userName={user?.name}
                         />
                     </div>
                 )}

@@ -13,7 +13,7 @@ export class CreateZoneHandler implements ICommandHandler<CreateZoneCommand, str
     ) { }
 
     async execute(command: CreateZoneCommand): Promise<string> {
-        const { concertId, name, description, capacity } = command;
+        const { concertId, name, description, capacity, mapX, mapY } = command;
 
         const organize = await this.repository.findByConcertId(concertId);
         if (!organize) {
@@ -21,7 +21,7 @@ export class CreateZoneHandler implements ICommandHandler<CreateZoneCommand, str
         }
 
         const zoneId = uuidv4();
-        const zone = Zone.create(zoneId, name, description, capacity);
+        const zone = Zone.create(zoneId, name, description, capacity, mapX, mapY);
 
         organize.addZone(zone);
 

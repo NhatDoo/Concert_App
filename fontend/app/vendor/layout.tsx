@@ -53,7 +53,7 @@ export default function VendorLayout({ children }: { children: ReactNode }) {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 flex">
+        <div data-editorial-dashboard="vendor" className="min-h-screen bg-slate-50 text-slate-900 flex">
             {/* Sidebar */}
             <aside className="w-72 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 shadow-sm z-50">
                 <div className="p-8">

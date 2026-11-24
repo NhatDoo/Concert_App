@@ -70,7 +70,7 @@ export class OrganizeMapper {
                 );
                 return new Shift(sh.id, sh.managerId, sh.title, sh.description, sh.startTime, sh.endTime, sh.headcount, assignments);
             });
-            return new Zone(z.id, z.name, z.description, z.capacity, shifts);
+            return new Zone(z.id, z.name, z.description, z.capacity, shifts, z.mapX, z.mapY);
         });
 
         return OrganizeAggregate.hydrate(
@@ -147,6 +147,8 @@ export class OrganizeMapper {
                 name: z.name,
                 description: z.description,
                 capacity: z.capacity,
+                mapX: z.mapX,
+                mapY: z.mapY,
                 shifts: z.getShifts().map(sh => ({
                     id: sh.id,
                     managerId: sh.managerId,

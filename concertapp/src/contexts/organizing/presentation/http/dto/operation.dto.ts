@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, Min, IsOptional, IsString } from 'class-validator';
+import { IsNumber, Max, Min, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateEventRequirementDto {
     @ApiProperty()
@@ -32,16 +32,88 @@ export class CreateEventRequirementDto {
 
 export class CreateZoneDto {
     @ApiProperty()
+    @IsString()
     concertId: string;
 
     @ApiProperty()
+    @IsString()
+    @MinLength(2)
+    @MaxLength(80)
     name: string;
 
     @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
     description?: string;
 
     @ApiProperty({ required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(1)
     capacity?: number;
+
+    @ApiProperty({ required: false, minimum: 0, maximum: 100, default: 50 })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    @Max(100)
+    mapX?: number;
+
+    @ApiProperty({ required: false, minimum: 0, maximum: 100, default: 50 })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    @Max(100)
+    mapY?: number;
+}
+
+export class CreateHallZoneDto {
+    @ApiProperty()
+    @IsString()
+    @MinLength(2)
+    @MaxLength(80)
+    name: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    @MaxLength(500)
+    description?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsNumber()
+    @Min(1)
+    capacity?: number;
+
+    @ApiProperty({ minimum: 0, maximum: 100, default: 50 })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    @Max(100)
+    mapX?: number;
+
+    @ApiProperty({ minimum: 0, maximum: 100, default: 50 })
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    @Max(100)
+    mapY?: number;
+}
+
+export class UpdateZonePositionDto {
+    @ApiProperty({ minimum: 0, maximum: 100 })
+    @IsNumber()
+    @Min(0)
+    @Max(100)
+    mapX: number;
+
+    @ApiProperty({ minimum: 0, maximum: 100 })
+    @IsNumber()
+    @Min(0)
+    @Max(100)
+    mapY: number;
 }
 
 export class CreateShiftDto {

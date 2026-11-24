@@ -514,7 +514,7 @@ export default function BookingsPage() {
                 />
             )}
 
-            <div className="bg-slate-50 min-h-screen pb-20">
+            <div data-editorial-customer className="bg-slate-50 min-h-screen pb-20">
                 <div className="container mx-auto px-4 py-12">
                     <header className="mb-10">
                         <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight mb-2">Vé của tôi</h1>
@@ -601,7 +601,7 @@ export default function BookingsPage() {
                                             <div className="md:text-right">
                                                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Tổng cộng</p>
                                                 <p className="text-xl font-black text-gray-900">
-                                                    {(booking.totalAmount * 100).toLocaleString('vi-VN')} <span className="text-sm">₫</span>
+                                                    {booking.totalAmount.toLocaleString('vi-VN')} <span className="text-sm">₫</span>
                                                 </p>
                                             </div>
                                         </div>

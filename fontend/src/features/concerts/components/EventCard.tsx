@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, Calendar } from 'lucide-react';
+import { ArrowUpRight, MapPin, Calendar } from 'lucide-react';
 import type { Event } from '../../../types';
 
 interface EventCardProps {
@@ -11,37 +11,40 @@ interface EventCardProps {
 
 export const EventCard = ({ event }: EventCardProps) => {
     return (
-        <Link href={`/concerts/${event.id}`} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-transform hover:-translate-y-1 duration-300 border border-gray-100 flex flex-col cursor-pointer group">
-            <div className="relative aspect-[3/2] overflow-hidden">
+        <Link href={`/concerts/${event.id}`} className="group flex h-full flex-col border-b border-[#d6d1c7] pb-5">
+            <div className="relative mb-4 aspect-[4/3] overflow-hidden bg-[#e5e0d7]">
                 <img
-                    src={event.imageUrl}
+                    src={event.imageUrl || "https://images.unsplash.com/photo-1470229722913-7c090be5c524?auto=format&fit=crop&w=900&q=80"}
                     alt={event.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
                 />
-                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-semibold uppercase text-red-600 shadow-sm">
+                <div className="absolute left-3 top-3 bg-[#f5f2eb] px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#d8553f]">
                     {event.category}
                 </div>
             </div>
 
-            <div className="p-4 flex flex-col flex-grow">
-                <h3 className="font-semibold text-[15px] leading-snug mb-3 line-clamp-2 text-gray-900 group-hover:text-red-600 transition-colors title-font">
+            <div className="flex flex-1 flex-col">
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.12em] text-[#88847b]">
+                    <Calendar className="h-3.5 w-3.5 text-[#d8553f]" />
+                    <span className="truncate">{event.dateStr}</span>
+                </div>
+                <h3 className="mb-4 line-clamp-2 font-serif text-[22px] leading-[1.12] tracking-[-0.025em] text-[#24231f] transition-colors group-hover:text-[#d8553f]">
                     {event.title}
                 </h3>
-
-                <div className="mt-auto space-y-2">
-                    {event.organizer && (
-                        <div className="text-xs text-gray-500 font-medium">Bởi: {event.organizer}</div>
-                    )}
-                    <div className="flex items-center text-gray-600 text-sm">
-                        <Calendar className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
-                        <span className="truncate">{event.dateStr}</span>
+                <div className="mt-auto flex items-end justify-between gap-3 border-t border-[#e5e0d7] pt-3">
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 text-xs text-[#77756e]">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#d8553f]" />
+                            <span className="truncate">{event.location}</span>
+                        </div>
+                        {event.organizer && (
+                            <p className="mt-1 truncate text-[10px] text-[#99958c]">Tổ chức bởi {event.organizer}</p>
+                        )}
                     </div>
-                    <div className="flex items-center text-gray-600 text-sm">
-                        <MapPin className="w-4 h-4 mr-2 text-gray-400 shrink-0" />
-                        <span className="truncate">{event.location}</span>
-                    </div>
+                    <span className="flex shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#d8553f]">
+                        Khám phá <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    </span>
                 </div>
-
             </div>
         </Link>
     );

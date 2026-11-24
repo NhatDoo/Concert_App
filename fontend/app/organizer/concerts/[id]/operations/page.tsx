@@ -15,7 +15,7 @@ export default function OperationsPage() {
 
     if (!user || (user.role !== 'ORGANIZER' && user.role !== 'MANAGER')) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+            <div data-editorial-dashboard="organizer" className="min-h-screen flex items-center justify-center bg-slate-50">
                 <div className="text-center">
                     <h2 className="text-2xl font-black text-slate-900 uppercase">Truy cập bị từ chối</h2>
                     <p className="text-slate-500 mt-2 font-medium">Bạn không có quyền truy cập vào khu vực này.</p>
@@ -31,7 +31,7 @@ export default function OperationsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-20">
+        <div data-editorial-dashboard="organizer" className="min-h-screen bg-slate-50 pb-20">
             {/* Top Navigation Bar */}
             <div className="bg-white border-b border-slate-100 sticky top-0 z-50">
                 <div className="container mx-auto px-6 py-6 flex items-center justify-between">

@@ -6,6 +6,7 @@ export interface Event {
     location: string;
     priceStr: string;
     category: string;
+    city?: string;
     categoryIds?: string[];
     organizer?: string;
 }

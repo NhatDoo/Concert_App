@@ -1,14 +1,14 @@
 "use client";
 
-import { Outfit } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 import { Providers } from "../src/stores/Provider";
 import { Header } from "../src/components/layout/Header";
 import { Footer } from "../src/components/layout/Footer";
 import { usePathname } from "next/navigation";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+const roboto = Roboto({
+  variable: "--font-roboto",
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
 });
@@ -23,10 +23,10 @@ export default function RootLayout({
 
   return (
     <html
-      lang="en"
-      className={`${outfit.variable} h-full antialiased`}
+      lang="vi"
+      className={`${roboto.variable} h-full antialiased`}
     >
-      <body className={`${outfit.className} min-h-full flex flex-col bg-slate-50 text-gray-900`}>
+      <body className={`${roboto.className} min-h-full flex flex-col bg-[#f5f2eb] text-[#24231f]`}>
         <Providers>
           {!isDashboardRoute && <Header />}
           <main className="flex-grow">

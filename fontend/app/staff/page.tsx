@@ -356,7 +356,7 @@ export default function StaffDashboard() {
     const [mainText, mainBg, mainShadow] = currentTheme.split(' ');
 
     return (
-        <div className="min-h-screen bg-[#f1f5f9] text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-600 pb-20">
+        <div data-editorial-dashboard="staff" className="min-h-screen bg-[#f1f5f9] text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-600 pb-20">
             {/* Modern Header */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200">
                 <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">

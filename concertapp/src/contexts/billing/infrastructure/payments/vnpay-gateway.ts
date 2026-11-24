@@ -29,8 +29,8 @@ export class VnpayGateway implements IPaymentGateway {
     async generatePaymentUrl(request: PaymentRequest): Promise<string> {
         try {
             const attemptKey = crypto.randomBytes(3).toString('hex');
-            // Nhân 100 thủ công để đảm bảo tuyệt đối đúng spec VNPAY
-            const amount = Math.floor(request.amount.getAmount() * 100);
+            // Thư viện vnpay tự nhân amount với 100 theo chuẩn VNPay.
+            const amount = Math.floor(request.amount.getAmount());
             const vnpTxnRef = `${request.orderId.split('-')[0]}_${attemptKey}`;
             const createDate = dateFormat(new Date());
 
@@ -72,7 +72,12 @@ export class VnpayGateway implements IPaymentGateway {
 
             const orderId = query.orderId || query.vnp_TxnRef.split('_')[0];
             const isSuccess = verify.isSuccess && query.vnp_ResponseCode === '00';
-            const amountFromVnpay = Math.round(Number(query.vnp_Amount) / 100);
+            const verifiedAmount = (verify as any).vnp_Amount;
+            const amountFromVnpay = Math.round(
+                verifiedAmount !== undefined
+                    ? Number(verifiedAmount)
+                    : Number(query.vnp_Amount) / 100
+            );
 
             // Encode transaction metadata as JSON into transactionId to facilitate future refunds
             const metaTxId = isSuccess ? JSON.stringify({

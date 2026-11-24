@@ -191,7 +191,7 @@ export default function QRScannerPage() {
     if (!user) return <div className="h-screen bg-black flex items-center justify-center text-white">Yêu cầu Staff</div>;
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans overflow-hidden">
+        <div data-editorial-scan className="min-h-screen bg-[#050505] text-white flex flex-col font-sans overflow-hidden">
             <Script src="https://unpkg.com/html5-qrcode" strategy="afterInteractive" onLoad={initScanner} />
 
             <div className="px-6 py-5 flex items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-xl z-50">

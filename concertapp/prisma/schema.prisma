@@ -480,6 +480,8 @@ model Zone {
   name        String
   description String?
   capacity    Int?
+  mapX        Float    @default(50)
+  mapY        Float    @default(50)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

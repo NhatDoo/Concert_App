@@ -356,18 +356,17 @@ function DashboardContent() {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDFDFD] pb-10 font-sans">
+        <div data-editorial-dashboard="organizer" className="min-h-screen bg-[#FDFDFD] pb-10 font-sans">
             {/* Header / Banner section */}
-            <div className="bg-gray-900 text-white pt-12 pb-20 rounded-b-[2rem] shadow-2xl relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 blur-3xl bg-gradient-to-r from-red-500 to-purple-600 animate-pulse"></div>
+            <div className="bg-[#24231f] text-[#f5f2eb] pt-12 pb-20 border-b border-[#3b3832] relative overflow-hidden">
                 <div className="container mx-auto px-4 relative z-10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="bg-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full border border-red-500/30">Organizer Dashboard</span>
                             </div>
-                            <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
-                                Xin chào, <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-amber-500">{mounted ? user?.name : ''}</span>
+                            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+                                Xin chào, <span className="font-serif font-normal italic text-[#e9785f]">{mounted ? user?.name : ''}</span>
                             </h1>
                             <p className="text-gray-400 mt-2 font-medium flex items-center gap-2">
                                 <Clock className="w-4 h-4 text-gray-500" />

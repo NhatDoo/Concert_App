@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Param, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Param, Get, Query, UseGuards, ForbiddenException, NotFoundException, Req, Patch } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { v4 as uuidv4 } from 'uuid';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
@@ -12,7 +12,9 @@ import { CreateZoneCommand } from '../../application/commands/create-zone.comman
 import { CreateShiftCommand } from '../../application/commands/create-shift.command';
 import { AssignStaffToShiftCommand } from '../../application/commands/assign-staff-shift.command';
 import { PrismaService } from '../../../../prisma.service';
-import { CreateEventRequirementDto, CreateZoneDto, CreateShiftDto, AssignShiftDto } from './dto/operation.dto';
+import { CreateEventRequirementDto, CreateZoneDto, CreateHallZoneDto, CreateShiftDto, AssignShiftDto, UpdateZonePositionDto } from './dto/operation.dto';
+import { JwtAuthGuard } from '../../../identity/infrastructure/auth/jwt-auth.guard';
+import { EventConcertAccessService } from '../../application/event-concert-access.service';
 
 @ApiTags('Organizing Operations')
 @Controller('organize')
@@ -20,7 +22,8 @@ export class OperationController {
     constructor(
         private readonly commandBus: CommandBus,
         private readonly queryBus: QueryBus,
-        private readonly prisma: PrismaService
+        private readonly prisma: PrismaService,
+        private readonly concertAccess: EventConcertAccessService
     ) { }
 
     @Get('requirements')
@@ -104,9 +107,135 @@ export class OperationController {
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Create zone' })
     async createZone(@Body() dto: CreateZoneDto) {
-        const command = new CreateZoneCommand(dto.concertId, dto.name, dto.description, dto.capacity);
+        const command = new CreateZoneCommand(
+            dto.concertId,
+            dto.name,
+            dto.description,
+            dto.capacity,
+            dto.mapX ?? 50,
+            dto.mapY ?? 50
+        );
         const id = await this.commandBus.execute(command);
         return { id, message: 'Khu vực vận hành đã được lập' };
+    }
+
+    @Get(':concertId/hall')
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Get hall zones and current shift assignments' })
+    async getHall(
+        @Param('concertId') concertId: string,
+        @Req() request: { user: { id: string } }
+    ) {
+        const userId = request.user.id;
+        if (!await this.concertAccess.canJoinCall(userId, concertId)) {
+            throw new ForbiddenException('Bạn không thuộc đội ngũ của sự kiện này');
+        }
+
+        const concert = await this.prisma.concert.findUnique({
+            where: { id: concertId },
+            select: {
+                id: true,
+                name: true,
+                startDate: true,
+                location: true,
+                zones: {
+                    orderBy: { createdAt: 'asc' },
+                    include: {
+                        shifts: {
+                            include: {
+                                assignments: {
+                                    include: {
+                                        staff: { select: { id: true, name: true, role: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        if (!concert) throw new NotFoundException('Không tìm thấy sự kiện');
+
+        const now = new Date();
+        return {
+            ...concert,
+            zones: concert.zones.map(zone => ({
+                id: zone.id,
+                name: zone.name,
+                description: zone.description,
+                capacity: zone.capacity,
+                mapX: zone.mapX,
+                mapY: zone.mapY,
+                shifts: zone.shifts.map(shift => ({
+                    id: shift.id,
+                    title: shift.title,
+                    startTime: shift.startTime,
+                    endTime: shift.endTime,
+                    assignments: shift.assignments.map(assignment => ({
+                        id: assignment.id,
+                        status: assignment.status,
+                        checkIn: assignment.checkIn,
+                        checkOut: assignment.checkOut,
+                        staff: assignment.staff,
+                        workingNow:
+                            shift.startTime <= now &&
+                            shift.endTime > now &&
+                            !assignment.checkOut &&
+                            !['CANCELLED', 'COMPLETED'].includes(assignment.status)
+                    }))
+                }))
+            }))
+        };
+    }
+
+    @Post(':concertId/hall/zones')
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Create a hall zone' })
+    async createHallZone(
+        @Param('concertId') concertId: string,
+        @Body() dto: CreateHallZoneDto,
+        @Req() request: { user: { id: string } }
+    ) {
+        const userId = request.user.id;
+        if (!await this.concertAccess.canManage(userId, concertId)) {
+            throw new ForbiddenException('Chỉ ban tổ chức hoặc Event Manager được chỉnh sơ đồ');
+        }
+        const zone = await this.prisma.zone.create({
+            data: {
+                concertId,
+                name: dto.name,
+                description: dto.description,
+                capacity: dto.capacity,
+                mapX: dto.mapX ?? 50,
+                mapY: dto.mapY ?? 50
+            },
+            select: { id: true, name: true, description: true, capacity: true, mapX: true, mapY: true }
+        });
+        return zone;
+    }
+
+    @Patch(':concertId/hall/zones/:zoneId/position')
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Save a hall zone position' })
+    async updateZonePosition(
+        @Param('concertId') concertId: string,
+        @Param('zoneId') zoneId: string,
+        @Body() dto: UpdateZonePositionDto,
+        @Req() request: { user: { id: string } }
+    ) {
+        const userId = request.user.id;
+        if (!await this.concertAccess.canManage(userId, concertId)) {
+            throw new ForbiddenException('Chỉ ban tổ chức hoặc Event Manager được chỉnh sơ đồ');
+        }
+        const result = await this.prisma.zone.updateMany({
+            where: { id: zoneId, concertId },
+            data: { mapX: dto.mapX, mapY: dto.mapY }
+        });
+        if (!result.count) throw new NotFoundException('Không tìm thấy khu vực');
+        return { id: zoneId, mapX: dto.mapX, mapY: dto.mapY };
     }
 
     @Post('shifts')

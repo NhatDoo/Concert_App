@@ -180,7 +180,7 @@ export default function ConcertDetailPage() {
     if (!concert) return null;
 
     return (
-        <div className="bg-slate-50 min-h-screen pb-20">
+        <div data-editorial-customer className="bg-slate-50 min-h-screen pb-20">
             {/* Banner Image */}
             <div className="w-full relative h-[400px] md:h-[500px]">
                 <img
@@ -316,7 +316,7 @@ export default function ConcertDetailPage() {
                                                         {ticket.ticketType}
                                                     </span>
                                                     <div className="text-xl font-black text-gray-900">
-                                                        {(ticket.price * 100).toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
+                                                        {ticket.price.toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
@@ -406,7 +406,7 @@ export default function ConcertDetailPage() {
                                 <div>
                                     <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">Tạm tính ({totalSelectedTickets} vé)</p>
                                     <div className="text-3xl font-black text-gray-900 leading-none">
-                                        {(totalPrice * 100).toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
+                                        {totalPrice.toLocaleString('vi-VN')} <span className="text-sm font-medium">₫</span>
                                     </div>
                                 </div>
                             </div>

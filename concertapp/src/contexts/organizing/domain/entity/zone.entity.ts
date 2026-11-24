@@ -8,13 +8,22 @@ export class Zone {
         public readonly name: string,
         public readonly description: string | null,
         public readonly capacity: number | null,
-        shifts: Shift[] = []
+        shifts: Shift[] = [],
+        public readonly mapX: number = 50,
+        public readonly mapY: number = 50
     ) {
         this.shifts = shifts;
     }
 
-    static create(id: string, name: string, description: string | null = null, capacity: number | null = null): Zone {
-        return new Zone(id, name, description, capacity, []);
+    static create(
+        id: string,
+        name: string,
+        description: string | null = null,
+        capacity: number | null = null,
+        mapX = 50,
+        mapY = 50
+    ): Zone {
+        return new Zone(id, name, description, capacity, [], mapX, mapY);
     }
 
     addShift(shift: Shift): void {

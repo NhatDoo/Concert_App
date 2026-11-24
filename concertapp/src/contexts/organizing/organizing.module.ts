@@ -26,6 +26,10 @@ import { GetJobsHandler } from './application/queries/handlers/get-jobs.handler'
 import { GetJobByIdHandler } from './application/queries/handlers/get-job-by-id.handler';
 import { GetRequirementsHandler } from './application/queries/handlers/get-requirements.handler';
 import { CreateStaffOnRegistrationHandler } from './application/events/handlers/create-staff-on-registration.handler';
+import { EventConcertAccessService } from './application/event-concert-access.service';
+import { JwtAuthGuard } from '../identity/infrastructure/auth/jwt-auth.guard';
+import { IdentityInfrastructureModule } from '../identity/infrastructure/identity-infrastructure.module';
+import { EventCallGateway } from './presentation/http/event-call.gateway';
 
 export const CommandHandlers = [
     AssignLocationHandler,
@@ -62,7 +66,8 @@ export const EventHandlers = [
 @Module({
     imports: [
         CqrsModule,
-        OrganizingInfrastructureModule
+        OrganizingInfrastructureModule,
+        IdentityInfrastructureModule
     ],
     controllers: [
         StaffController,
@@ -74,7 +79,10 @@ export const EventHandlers = [
     providers: [
         ...CommandHandlers,
         ...QueryHandlers,
-        ...EventHandlers
+        ...EventHandlers,
+        EventConcertAccessService,
+        JwtAuthGuard,
+        EventCallGateway
     ]
 })
 export class OrganizingModule { }
